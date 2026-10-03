@@ -99,7 +99,10 @@
     window.__quality = l;
   }
   setLevel(level);
-  let qAcc = 0, qFrames = 0, qNext = performance.now() + 4000;
+  let qFrames = 0, qStart = performance.now() + 5000, qNext = qStart + 3000, qLow = 0;
+  const dbg = /[?&]fps/.test(location.search) ? $('dbg') : null;
+  if (dbg) dbg.hidden = false;
+  let dbgT = 0, dbgN = 0, dbgAcc = 0;
 
   // ---- HUD -------------------------------------------------------------------------------
   const el = {
@@ -130,10 +133,11 @@
   $('loading').classList.add('hide');
 
   // ---- loop ------------------------------------------------------------------------------
-  let last = performance.now();
+  let last = -1;
   function frame(now) {
     requestAnimationFrame(frame);
-    const dt = Math.min((now - last) / 1000, 0.05); last = now;
+    const dt = last < 0 ? 1 / 60 : R.clamp((now - last) / 1000, 0, 0.05);
+    last = now;
     const T = R.THEMES[themeName];
 
     input.poll();
@@ -183,12 +187,21 @@
 
     renderer.render(scene, camera);
 
-    qAcc += dt; qFrames++;
+    if (dbg) {
+      dbgAcc += dt; dbgN++;
+      if (dbgAcc > 0.5) {
+        const i = renderer.info.render;
+        dbg.textContent = Math.round(dbgN / dbgAcc) + ' fps · качество ' + level + ' · ' + i.calls + ' выз · ' + Math.round(i.triangles / 1000) + 'k тр';
+        dbgAcc = 0; dbgN = 0;
+      }
+    }
+    if (now >= qStart) qFrames++;
     if (now > qNext) {
-      const fps = qFrames / qAcc;
+      const fps = qFrames / ((now - qStart) / 1000);
       window.__fps = fps;
-      if (fps < 38 && level > 0) setLevel(level - 1);
-      qAcc = 0; qFrames = 0; qNext = now + 3000;
+      qLow = fps < 36 ? qLow + 1 : 0;
+      if (qLow >= 2 && level > 0) { setLevel(level - 1); qLow = 0; }
+      qFrames = 0; qStart = now; qNext = now + 3000;
     }
   }
   requestAnimationFrame(frame);
