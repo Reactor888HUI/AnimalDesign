@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div id="loading">Загрузка</div>
+<div id="loading"><span id="loadText">Загрузка</span></div>
 
 <div id="vignette" class="ui"></div>
 <div id="lines" class="ui"></div>
@@ -30,6 +30,11 @@
 </div>
 
 <div id="banner" class="ui">Режим погони</div>
+
+<div id="compass" class="ui panel" aria-label="Где кот">
+  <svg id="arrow" viewBox="0 0 24 24"><path d="M12 3l6.5 15L12 14.5 5.5 18z"/></svg>
+  <span id="cdist">0 м</span>
+</div>
 
 <button id="themeBtn" class="ui panel" type="button" aria-label="Переключить день и ночь">
   <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>
@@ -50,15 +55,18 @@
 <script src="vendor/three.min.js"></script>
 <script src="vendor/GLTFLoader.js"></script>
 <script src="vendor/BufferGeometryUtils.js"></script>
+<script src="vendor/SkeletonUtils.js"></script>
 <script src="js/config.js"></script>
 <script src="js/util.js"></script>
 <script src="js/materials.js"></script>
+<script src="js/assets.js"></script>
 <script src="js/world.js"></script>
 <script src="js/models.js"></script>
 <script src="js/input.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/player.js"></script>
 <script src="js/cat.js"></script>
+<script src="js/chickens.js"></script>
 <script src="js/camera.js"></script>
 <script src="js/main.js"></script>
 </body>

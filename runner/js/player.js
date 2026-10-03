@@ -1,6 +1,6 @@
 (function (R) {
   const C = R.C, clamp = R.clamp, damp = R.damp;
-  const RADIUS = 0.5;
+  const RADIUS = C.DOG_RADIUS;
 
   class Player {
     constructor(entity) {
@@ -38,7 +38,6 @@
       this.vx += (fx_ * this.speed - this.vx) * k;
       this.vz += (fz_ * this.speed - this.vz) * k;
 
-      const px = this.x;
       this.x += this.vx * dt; this.z += this.vz * dt;
 
       // jump (buffered + coyote time, shorter hop when released early)
@@ -66,7 +65,7 @@
 
       // collisions
       this.hitCd -= dt;
-      const hit = world.resolve(this, px, RADIUS);
+      const hit = world.resolve(this, RADIUS);
       if (hit) {
         const vn = this.vx * hit.nx + this.vz * hit.nz; // negative = moving into the obstacle
         if (vn < 0) {
@@ -91,7 +90,7 @@
         this.dustT -= dt;
         if (this.dustT <= 0 && (this.slip > 0.06 || v > 11)) {
           this.dustT = this.slip > 0.06 ? 0.035 : 0.09;
-          fx.emit(this.x - fx_ * 0.9, 0.12, this.z - fz_ * 0.9, {
+          fx.emit(this.x - fx_ * 0.6, 0.1, this.z - fz_ * 0.6, {
             color: theme.dust, count: 1, speed: 1.2, up: 0.5, size: 0.35, grow: 2.6,
             opacity: this.slip > 0.06 ? 0.45 : 0.22, life: 0.55,
           });

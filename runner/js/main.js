@@ -13,33 +13,26 @@
   document.body.prepend(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x1b2342, 0.02);
-  const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 280);
+  scene.fog = new THREE.FogExp2(0x1b2342, 0.012);
+  const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 320);
 
   const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 1);
-  sun.castShadow = true;
+  sun.castShadow = !coarse;
   const sm = coarse ? 1024 : 2048;
   sun.shadow.mapSize.set(sm, sm);
   const sc = sun.shadow.camera;
-  sc.left = -34; sc.right = 34; sc.top = 34; sc.bottom = -34; sc.near = 1; sc.far = 160;
-  sun.shadow.bias = -0.0008;
+  sc.left = -26; sc.right = 26; sc.top = 26; sc.bottom = -26; sc.near = 1; sc.far = 170;
+  sun.shadow.bias = -0.0012;
+  sun.shadow.normalBias = 0.06;
   scene.add(sun, sun.target);
 
-  const buddyLight = new THREE.PointLight(0xffe2b0, 0, 11, 1.4);
+  const buddyLight = new THREE.PointLight(0xffe2b0, 0, 12, 1.4);
   scene.add(buddyLight);
+  const lampLights = [0, 1].map(() => { const l = new THREE.PointLight(0xffb468, 0, 30, 1.6); scene.add(l); return l; });
 
-  const lampLights = [0, 1].map(() => {
-    const l = new THREE.PointLight(0xffb468, 0, 26, 1.7);
-    scene.add(l);
-    return l;
-  });
-
-  // ---- world + actors --------------------------------------------------------------------
-  const world = new R.World(scene);
-  const fx = new R.FX(scene);
-
+  // ---- theme -----------------------------------------------------------------------------
   let themeName = 'night';
   try { themeName = localStorage.getItem('runner-theme') || 'night'; } catch (e) {}
   if (!R.THEMES[themeName]) themeName = 'night';
@@ -57,29 +50,62 @@
     $('themeBtn').setAttribute('aria-label', name === 'night' ? 'Включить день' : 'Включить ночь');
     try { localStorage.setItem('runner-theme', name); } catch (e) {}
   }
-  setTheme(themeName);
   const toggleTheme = () => setTheme(themeName === 'night' ? 'day' : 'night');
   $('themeBtn').addEventListener('click', toggleTheme);
   input.onTheme = toggleTheme;
 
-  const [dogEnt, catEnt] = await Promise.all([R.makeDog(), R.makeCat()]);
+  // ---- load everything -------------------------------------------------------------------
+  const loadText = $('loadText');
+  const [, dogEnt, catEnt, chickenTpl] = await Promise.all([
+    R.assets.load((d, n) => { loadText.textContent = 'Город ' + d + ' / ' + n; }),
+    R.makeDog(), R.makeCat(), R.loadChicken(),
+  ]);
+  setTheme(themeName);
+
+  const world = new R.World(scene);
+  const fx = new R.FX(scene);
   const player = new R.Player(dogEnt);
   const cat = new R.Cat(catEnt);
   scene.add(player.root, cat.root);
-  player.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  cat.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  cat.respawn(player, 24);
+  player.x = world.start.x; player.z = world.start.z;
+  world.update(player.x, player.z, 99);
+  cat.respawn(player, world, 24);
+  const flock = chickenTpl ? new R.Flock(scene, chickenTpl, 7, world, player) : null;
 
-  world.update(player.z, 99);
+  // soft blob shadows (used when real shadows are switched off)
+  const blobTex = R.glowTexture();
+  const blobs = [player, cat].concat(flock ? flock.birds : []).map((o, i) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: blobTex, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.renderOrder = 2;
+    const sz = i === 0 ? 2.1 : i === 1 ? 1.4 : 0.9;
+    m.scale.set(sz, sz, 1);
+    scene.add(m);
+    return { m, o };
+  });
+
   const rig = new R.CameraRig(camera, world);
   rig.resize(innerWidth / innerHeight);
   rig.snap(player);
+
+  // ---- quality governor ------------------------------------------------------------------
+  let level = coarse ? 1 : 2;
+  function setLevel(l) {
+    level = l;
+    sun.castShadow = l >= 2;
+    world.nearR = l >= 1 ? 1 : 0;
+    renderer.setPixelRatio(l === 0 ? 1 : Math.min(devicePixelRatio, coarse ? 1.5 : 1.75));
+    renderer.setSize(innerWidth, innerHeight);
+    for (const b of blobs) b.m.visible = l < 2;
+    window.__quality = l;
+  }
+  setLevel(level);
+  let qAcc = 0, qFrames = 0, qNext = performance.now() + 4000;
 
   // ---- HUD -------------------------------------------------------------------------------
   const el = {
     speedFill: $('speedFill'), speedNum: $('speedNum'), chaseFill: $('chaseFill'),
     score: $('score'), combo: $('combo'), banner: $('banner'), flash: $('flash'), lines: $('lines'),
-    best: $('best'),
+    best: $('best'), arrow: $('arrow'), cdist: $('cdist'),
   };
   let score = 0, best = 0, combo = 0, comboT = 0, flashT = 0, bannerA = 0;
   try { best = +localStorage.getItem('runner-best') || 0; } catch (e) {}
@@ -95,22 +121,16 @@
     el.combo.textContent = mult > 1 ? '×' + mult : '';
     el.combo.classList.toggle('on', mult > 1);
     flashT = 0.3;
-    fx.emit(cat.x, 0.9, cat.z, { color: 0xffe27a, count: 12, speed: 6, up: 3, size: 0.4, opacity: 0.95, life: 0.6 });
-    cat.respawn(player, 26);
+    fx.emit(cat.x, 0.5, cat.z, { color: 0xffe27a, count: 12, speed: 6, up: 3, size: 0.25, opacity: 0.95, life: 0.6 });
+    cat.respawn(player, world, 30);
   }
 
   let started = false;
-  input.onFirst = () => {
-    if (started) return;
-    started = true;
-    $('hint').classList.add('hide');
-  };
-
+  input.onFirst = () => { if (started) return; started = true; $('hint').classList.add('hide'); };
   $('loading').classList.add('hide');
 
   // ---- loop ------------------------------------------------------------------------------
   let last = performance.now();
-  const lampTarget = [new THREE.Vector3(), new THREE.Vector3()];
   function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
@@ -119,36 +139,33 @@
     input.poll();
     player.update(dt, input, world, fx, T);
     cat.update(dt, player, world);
-    world.update(player.z, 1);
+    if (flock) flock.update(dt, player, world);
+    world.update(player.x, player.z, 1);
     fx.update(dt);
     rig.update(dt, player, now / 1000);
 
-    // catch
-    if (cat.dist < 1.7 && !player.air) caught();
-    else if (cat.dist < 1.7 && player.y < 0.9) caught();
+    if (cat.dist < 2.2 && player.y < 1.1) caught();
     if (comboT > 0) { comboT -= dt; if (comboT <= 0) { combo = 0; el.combo.textContent = ''; el.combo.classList.remove('on'); } }
 
-    // sun / moon + shadow follow the player
     const o = T.sunOffset;
     sun.position.set(player.x + o[0], o[1], player.z + o[2]);
     sun.target.position.set(player.x, 0, player.z);
 
-    // two real lights glide between the nearest street lamps (night only)
     const fwdX = -Math.sin(player.heading), fwdZ = -Math.cos(player.heading);
-    const lamps = world.lampsNear(player.x + fwdX * 8, player.z + fwdZ * 8, 2);
+    const lamps = world.lampsNear(player.x + fwdX * 10, player.z + fwdZ * 10, 2);
     for (let i = 0; i < 2; i++) {
       const l = lampLights[i], lp = lamps[i];
       if (lp) {
-        lampTarget[i].set(lp.x, lp.y, lp.z);
         l.position.x = R.damp(l.position.x, lp.x, 6, dt);
         l.position.y = lp.y;
         l.position.z = R.damp(l.position.z, lp.z, 6, dt);
       }
-      l.intensity = R.damp(l.intensity, T.lamps ? 5 : 0, 6, dt);
+      l.intensity = R.damp(l.intensity, T.lamps ? 7 : 0, 6, dt);
     }
+    buddyLight.position.set(player.x - fwdX * 1.2, 2.4, player.z - fwdZ * 1.2);
+    buddyLight.intensity = R.damp(buddyLight.intensity, T.lamps ? 2.4 : 0, 6, dt);
 
-    buddyLight.position.set(player.x - fwdX * 1.6, 2.6, player.z - fwdZ * 1.6);
-    buddyLight.intensity = R.damp(buddyLight.intensity, T.lamps ? 2.2 : 0, 6, dt);
+    for (const b of blobs) if (b.m.visible) b.m.position.set(b.o.x, 0.09, b.o.z);
 
     // HUD
     const v = player.vel, sf = R.clamp(v / C.MAX_SPEED, 0, 1);
@@ -160,8 +177,19 @@
     el.banner.style.opacity = bannerA.toFixed(2);
     flashT = Math.max(0, flashT - dt);
     el.flash.style.opacity = (flashT / 0.3 * 0.35).toFixed(2);
+    const rel = R.angDiff(rig.heading, Math.atan2(-(cat.x - player.x), -(cat.z - player.z)));
+    el.arrow.style.transform = 'rotate(' + (-rel * 180 / Math.PI).toFixed(1) + 'deg)';
+    el.cdist.textContent = Math.round(cat.dist) + ' м';
 
     renderer.render(scene, camera);
+
+    qAcc += dt; qFrames++;
+    if (now > qNext) {
+      const fps = qFrames / qAcc;
+      window.__fps = fps;
+      if (fps < 38 && level > 0) setLevel(level - 1);
+      qAcc = 0; qFrames = 0; qNext = now + 3000;
+    }
   }
   requestAnimationFrame(frame);
 
@@ -170,5 +198,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = { player, cat, world, renderer, scene, camera, setTheme, input };
+  window.__runner = { player, cat, world, flock, renderer, scene, camera, rig, setTheme, setLevel, input };
 })(window.R);

@@ -1,231 +1,328 @@
 (function (R) {
   const C = R.C;
-  const SHADOW_CAST = /^(wall|roof|bench|bin|crate|cone|barrier|car|trunk|foliage|pole|rooftop)/;
-  const NO_RECEIVE = /^(pool|globe|win|shop)/;
-  const TOTAL = C.CHUNK - C.INT; // length of the building zone inside one chunk
+  const P = C.P, B = C.B, HB = B / 2, SW = C.SW, HP = P / 2;
+  const PADH = HB + SW;               // half size of the sidewalk pad
+  const A = R.assets;
+  const rad = d => d * Math.PI / 180;
 
-  class Batch {
-    constructor() { this.g = {}; }
-    add(key, geo) { (this.g[key] = this.g[key] || []).push(geo); }
-    box(key, cx, cy, cz, sx, sy, sz) {
-      const g = new THREE.BoxGeometry(sx, sy, sz);
-      g.translate(cx, cy, cz); this.add(key, g);
-    }
-    plane(key, cx, cy, cz, w, h, rx, ry) {
-      const g = new THREE.PlaneGeometry(w, h);
-      if (rx) g.rotateX(rx);
-      if (ry) g.rotateY(ry);
-      g.translate(cx, cy, cz); this.add(key, g);
-    }
-    cyl(key, cx, cy, cz, rt, rb, h, seg, rz) {
-      const g = new THREE.CylinderGeometry(rt, rb, h, seg || 8);
-      if (rz) g.rotateZ(rz);
-      g.translate(cx, cy, cz); this.add(key, g);
-    }
-    sph(key, cx, cy, cz, r) {
-      const g = new THREE.SphereGeometry(r, 8, 6);
-      g.translate(cx, cy, cz); this.add(key, g);
-    }
-    cone(key, cx, cy, cz, r, h) {
-      const g = new THREE.ConeGeometry(r, h, 8);
-      g.translate(cx, cy, cz); this.add(key, g);
-    }
-    build(group) {
-      for (const key in this.g) {
-        const list = this.g[key];
-        const merged = THREE.BufferGeometryUtils.mergeBufferGeometries(list, false);
-        list.forEach(g => g.dispose());
-        const mesh = new THREE.Mesh(merged, R.mat(key));
-        mesh.castShadow = SHADOW_CAST.test(key);
-        mesh.receiveShadow = !NO_RECEIVE.test(key);
-        mesh.matrixAutoUpdate = false;
-        group.add(mesh);
-      }
-    }
+  const COL = {
+    asphalt: [0.20, 0.21, 0.24], sidewalk: [0.56, 0.54, 0.51], curb: [0.74, 0.72, 0.68],
+    paint: [0.9, 0.88, 0.78], grass: [0.27, 0.5, 0.2], grass2: [0.34, 0.58, 0.25],
+    paving: [0.68, 0.62, 0.54], path: [0.74, 0.68, 0.56], fill: [0.3, 0.27, 0.26],
+    pole: [0.27, 0.29, 0.33], globe: [1.0, 0.92, 0.65],
+  };
+  const FAR_TINT = [[0.6, 0.2, 0.17], [0.5, 0.48, 0.35], [0.52, 0.3, 0.2], [0.58, 0.52, 0.42], [0.45, 0.25, 0.2]];
+
+  const SIDES = [
+    { nx: 0, nz: 1, yaw: 0 }, { nx: 1, nz: 0, yaw: rad(90) },
+    { nx: 0, nz: -1, yaw: rad(180) }, { nx: -1, nz: 0, yaw: rad(270) },
+  ];
+  // point on a side: t = along the side, off = distance from the block center along its outward normal
+  function pt(side, t, off) {
+    return side.nz ? [t, side.nz * off] : [side.nx * off, t];
   }
 
-  // grid of windows on a wall; (ox,oz) = start of the wall line, (ux,uz) = direction along it, theta = facing
-  function windows(b, rnd, ox, oz, ux, uz, len, theta, h) {
-    const n = Math.max(1, Math.floor((len - 1.2) / 2.4));
-    const step = len / n;
-    const rows = Math.floor((h - 3.4) / 2.6);
-    const nx = Math.sin(theta) * 0.03, nz = Math.cos(theta) * 0.03;
-    for (let r = 0; r < rows; r++) {
-      const y = 4.0 + r * 2.6;
-      for (let c = 0; c < n; c++) {
-        const t = (c + 0.5) * step;
-        const g = new THREE.PlaneGeometry(0.95, 1.35);
-        g.rotateY(theta);
-        g.translate(ox + ux * t + nx, y, oz + uz * t + nz);
-        b.add(rnd() > 0.3 ? 'winLit' : 'winDark', g);
-      }
-    }
+  const FACADES = ['building_red', 'building_green', 'gb_blank', 'rb_blank', 'brown_building'];
+  const CORNER_YAW = {
+    pizza_corner:        { pp: 0, pm: 90, mm: 180, mp: 270 },
+    building_red_corner: { mp: 0, pp: 90, pm: 180, mm: 270 },
+  };
+
+  function cellType(ci, cj, rnd) {
+    if (ci === 0 && cj === 0) return 'city';
+    if (ci === 1 && cj === 0) return 'park';
+    const h = rnd();
+    return h < 0.64 ? 'city' : h < 0.86 ? 'park' : h < 0.95 ? 'plaza' : 'city';
   }
 
-  function buildChunk(i) {
-    const rnd = R.rng(i * 7919 + 101);
-    const b = new Batch();
-    const obstacles = [], lamps = [];
-    const zTop = -i * C.CHUNK;
-    const Z = lz => zTop - lz;
-    const RW = C.ROAD_W, BX = C.BLDG_X, W = C.SIDE_LEN;
-
-    // road, sidewalks, side street, markings
-    b.plane('road', 0, 0, Z(C.CHUNK / 2), RW, C.CHUNK, -Math.PI / 2);
-    const swLen = BX + W - RW / 2;
-    for (const s of [-1, 1]) {
-      b.plane('side', s * (RW / 2 + C.CURB_W / 2), 0.004, Z(TOTAL / 2), C.CURB_W, TOTAL, -Math.PI / 2);
-      b.box('curb', s * (RW / 2 + 0.05), 0.04, Z(TOTAL / 2), 0.1, 0.08, TOTAL);
-      b.plane('road', s * (RW / 2 + swLen / 2), 0.002, Z(TOTAL + C.INT / 2), swLen, C.INT, -Math.PI / 2);
+  // layout of the ring of buildings around a block (shared by near and far versions)
+  function ringPlan(rnd) {
+    const out = [], s = 5.8, L = B - 2 * s, slotW = L / 3;
+    for (const sx of [1, -1]) for (const sz of [1, -1]) {
+      const key = rnd() < 0.5 ? 'pizza_corner' : 'building_red_corner';
+      const yaw = rad(CORNER_YAW[key][(sx > 0 ? 'p' : 'm') + (sz > 0 ? 'p' : 'm')]);
+      out.push({ key, x: sx * (HB - s / 2), z: sz * (HB - s / 2), yaw, w: s, sy: 0.9 + rnd() * 0.3, corner: true });
     }
-    for (let lz = 1; lz < TOTAL - 3; lz += 6) b.plane('dash', 0, 0.012, Z(lz + 1.5), 0.14, 3, -Math.PI / 2);
-    for (const lz0 of [TOTAL + 1.4, C.CHUNK - 1.4]) {
-      for (let k = 0; k < 8; k++) b.box('dash', -3.0 + k * 0.86, 0.012, Z(lz0), 0.5, 0.02, 1.3);
-    }
-
-    // buildings on both sides
-    for (const side of [-1, 1]) {
-      const facing = side > 0 ? -Math.PI / 2 : Math.PI / 2;
-      let lz = 0;
-      while (TOTAL - lz > 5.5) {
-        let d = 7 + rnd() * 7;
-        if (TOTAL - lz - d < 7) d = TOTAL - lz;
-        const h = 5 + rnd() * 14;
-        const wi = Math.floor(rnd() * 6), ri = Math.floor(rnd() * 5);
-        const cx = side * (BX + W / 2), cz = Z(lz + d / 2);
-        b.box('wall' + wi, cx, h / 2, cz, W, h, d);
-        b.box('roof' + ri, cx, h + 0.2, cz, W + 0.3, 0.4, d + 0.3);
-        if (rnd() < 0.6) b.box('rooftop', side * (BX + 1.6), h + 1.0, cz + (rnd() - 0.5) * d * 0.5, 1.8, 1.2, 1.6);
-        if (rnd() < 0.5) b.cyl('rooftop', side * (BX + 4), h + 1.5, cz + (rnd() - 0.5) * d * 0.5, 0.05, 0.05, 2.2, 5);
-
-        windows(b, rnd, side * BX, Z(lz), 0, -1, d, facing, h);
-        if (lz === 0) windows(b, rnd, side * BX, Z(0), side, 0, W, 0, h);
-        if (lz + d >= TOTAL - 0.01) windows(b, rnd, side * BX, Z(TOTAL), side, 0, W, Math.PI, h);
-
-        if (d > 8) {
-          for (const f of [0.27, 0.73]) {
-            const k = Math.floor(rnd() * 3);
-            const zz = Z(lz + d * f);
-            const g = new THREE.PlaneGeometry(3.2, 2.1);
-            g.rotateY(facing);
-            g.translate(side * BX - side * 0.03, 1.35, zz);
-            b.add('shop' + k, g);
-            b.box('awn' + k, side * (BX - 0.5), 2.75, zz, 1.0, 0.16, 3.7);
-          }
-        }
-        lz += d;
+    for (const side of SIDES) {
+      const r = rnd();
+      const pattern = r < 0.45 ? ['s', 's', 's'] : r < 0.72 ? ['B', 's'] : ['s', 'B'];
+      let pos = -L / 2;
+      for (const kind of pattern) {
+        const w = kind === 'B' ? slotW * 2 : slotW;
+        const key = kind === 'B' ? 'big_building' : FACADES[Math.floor(rnd() * FACADES.length)];
+        const sy = kind === 'B' ? 0.85 + rnd() * 0.25 : 0.85 + rnd() * 0.5;
+        out.push({ key, side, t: pos + w / 2, w, sy, yaw: side.yaw, tint: Math.floor(rnd() * FAR_TINT.length) });
+        pos += w;
       }
-      // dead end of the side street
-      const hd = 6 + rnd() * 6;
-      b.box('wall' + Math.floor(rnd() * 6), side * (BX + W + 3), hd / 2, Z(TOTAL + C.INT / 2), 6, hd, C.INT);
-      windows(b, rnd, side * (BX + W), Z(TOTAL), 0, -1, C.INT, facing, hd);
     }
+    return out;
+  }
 
-    // street lamps (every 15 m, alternating sides)
+  function planPlace(item) {
+    const dims = A.dims(item.key);
+    if (!dims) return null;
+    let sy = item.sy;
+    if (dims.h * item.w * sy > 27) sy = 27 / (dims.h * item.w);
+    const d = dims.d * item.w, h = dims.h * item.w * sy;
+    let x, z;
+    if (item.corner) { x = item.x; z = item.z; }
+    else { [x, z] = pt(item.side, item.t, HB - d / 2); }
+    return { x, z, d, h, sy };
+  }
+
+  function lamp(b, obs, lamps, x, z, towardX, towardZ) {
+    b.cyl(COL.pole, x, 2.5, z, 0.07, 0.1, 5, 6);
+    b.box(COL.pole, x + towardX * 0.45, 5.0, z + towardZ * 0.45, towardX ? 0.9 : 0.07, 0.07, towardZ ? 0.9 : 0.07);
+    b.sph(COL.globe, x + towardX * 0.9, 4.9, z + towardZ * 0.9, 0.3, 'glass');
+    b.poolDecal(x + towardX * 2.2, z + towardZ * 2.2, 11);
+    obs.push({ x, z, hx: 0.15, hz: 0.15, h: 5, kind: 'pole' });
+    lamps.push({ x: x + towardX * 0.9, y: 4.9, z: z + towardZ * 0.9 });
+  }
+
+  function addObs(obs, fp, kind, minH) {
+    if (fp && fp.h > (minH || 0.3)) { fp.kind = kind || 'prop'; obs.push(fp); }
+  }
+
+  function groundBase(b, ox, oz, padCol) {
+    b.rect(COL.asphalt, ox, oz, P, P, 0);
+    b.rect(padCol || COL.sidewalk, ox, oz, 2 * PADH, 2 * PADH, 0.03);
+    for (const s of SIDES) {
+      const [cx, cz] = pt(s, 0, PADH);
+      b.box(COL.curb, ox + cx, 0.09, oz + cz, s.nz ? 2 * PADH : 0.28, 0.18, s.nx ? 2 * PADH : 0.28);
+    }
+    // centre lines and zebra crossings (drawn on this cell's half of each street)
+    const seg = HP - C.ROAD / 2 - 4, zc = HP - C.ROAD / 2 - 2;
+    for (let t = -seg; t < seg; t += 6) {
+      b.box(COL.paint, ox + HP, 0.02, oz + t + 1.5, 0.16, 0.02, 3);
+      b.box(COL.paint, ox + t + 1.5, 0.02, oz + HP, 3, 0.02, 0.16);
+    }
     for (let k = 0; k < 3; k++) {
-      const lz = 5 + k * 15;
-      const side = ((i * 3 + k) & 1) ? 1 : -1;
-      const x = side * (RW / 2 + 0.35), z = Z(lz);
-      b.cyl('pole', x, 2.3, z, 0.07, 0.1, 4.6, 6);
-      b.box('pole', x - side * 0.3, 4.55, z, 0.6, 0.07, 0.07);
-      b.sph('globe', x - side * 0.6, 4.5, z, 0.27);
-      b.plane('pool', x - side * 2.2, 0.03, z, 9, 9, -Math.PI / 2);
-      lamps.push({ x: x - side * 0.6, y: 4.5, z });
+      const off = HP - 5.1 + k * 1.8;
+      for (const s of [1, -1]) for (const q of [1, -1]) {
+        b.box(COL.paint, ox + s * off, 0.02, oz + q * zc, 0.9, 0.02, 3);
+        b.box(COL.paint, ox + q * zc, 0.02, oz + s * off, 3, 0.02, 0.9);
+      }
     }
+  }
+  function farCell(ci, cj, rnd, type) {
+    const ox = ci * P, oz = cj * P, b = new R.Batch(), obs = [];
+    groundBase(b, ox, oz, type === 'plaza' ? COL.paving : COL.sidewalk);
+    if (type === 'city') {
+      b.box(COL.fill, ox, 5, oz, B - 12, 10, B - 12);
+      for (const it of ringPlan(rnd)) {
+        const pl = planPlace(it);
+        if (!pl) continue;
+        const w = it.w, tint = FAR_TINT[(it.tint || 0) % FAR_TINT.length];
+        const turned = Math.abs(Math.sin(it.yaw)) > 0.7;
+        b.facadeBox(tint, ox + pl.x, pl.h / 2, oz + pl.z, turned ? pl.d : w, pl.h, turned ? w : pl.d);
+      }
+      obs.push({ x: ox, z: oz, hx: HB, hz: HB, h: 99, kind: 'wall' });
+    } else {
+      b.rect(type === 'park' ? COL.grass : COL.paving, ox, oz, B, B, 0.05);
+      if (type === 'park') for (let i = 0; i < 8; i++) {
+        const x = (rnd() - 0.5) * (B - 6), z = (rnd() - 0.5) * (B - 6);
+        b.cone([0.2, 0.42, 0.18], ox + x, 3.5, oz + z, 1.9, 6);
+        b.cyl([0.35, 0.24, 0.15], ox + x, 0.8, oz + z, 0.15, 0.2, 1.6, 5);
+      }
+    }
+    return { b, obs, lamps: [] };
+  }
 
-    // sidewalk trees (solid)
-    for (const lz of [12, 28]) {
-      for (const side of [-1, 1]) {
-        if (rnd() > 0.55) continue;
-        const x = side * (RW / 2 + C.CURB_W * 0.55), z = Z(lz + (rnd() - 0.5) * 3);
-        b.cyl('trunk', x, 1.1, z, 0.13, 0.19, 2.2, 6);
-        b.sph('foliage0', x, 3.3, z, 1.35);
-        b.sph('foliage1', x, 4.1, z, 1.0);
-        obstacles.push({ x, z, hx: 0.35, hz: 0.35, h: 4, kind: 'tree' });
+  function nearCell(ci, cj, rnd, type) {
+    const ox = ci * P, oz = cj * P, b = new R.Batch(), obs = [], lamps = [];
+    groundBase(b, ox, oz, type === 'plaza' ? COL.paving : COL.sidewalk);
+    const place = (key, x, z, yaw, s, sy, y) => A.place(b, key, ox + x, oz + z, yaw, s, sy, y);
+    const solid = (fp, kind, minH) => addObs(obs, fp, kind, minH);
+    const rr = (a, c) => a + rnd() * (c - a);
+    const pick = arr => arr[Math.floor(rnd() * arr.length)];
+
+    // lamps and trees along the curb of every cell
+    const lampT = [-11, 11];
+    for (const side of SIDES) {
+      for (const t of lampT) {
+        const [x, z] = pt(side, t, PADH - 0.45);
+        const l = [];
+        lamp(b, l, lamps, ox + x, oz + z, -side.nx, -side.nz);
+        obs.push(...l);
+      }
+      for (let t = -HB + 4; t < HB - 3; t += 8 + rnd() * 4) {
+        if (Math.abs(Math.abs(t) - 11) < 3 || rnd() < 0.3) continue;
+        const [x, z] = pt(side, t, PADH - 1.0);
+        const fp = place('tree', x, z, rnd() * 6.28, rr(0.85, 1.2));
+        if (fp) obs.push({ x: ox + x, z: oz + z, hx: 0.3, hz: 0.3, h: 7, kind: 'tree' });
+      }
+    }
+    // traffic lights at the corners of the pad
+    if (A.has('traffic_light')) {
+      const w = A.dims('traffic_light').w;
+      for (const sx of [1, -1]) for (const sz of [1, -1]) {
+        const px = sx * (PADH - 0.6), pz = sz * (PADH - 0.6);
+        place('traffic_light', px + sx * w / 2, pz, sx > 0 ? Math.PI : 0);
+        obs.push({ x: ox + px, z: oz + pz, hx: 0.22, hz: 0.22, h: 6, kind: 'pole' });
       }
     }
 
-    // parked cars (one side at most)
-    if (rnd() < 0.7) {
-      const side = rnd() < 0.5 ? -1 : 1;
-      const lz = 9 + rnd() * (TOTAL - 18);
-      const x = side * (RW / 2 - 0.95), z = Z(lz), ck = 'car' + Math.floor(rnd() * 3);
-      b.box(ck, x, 0.6, z, 1.8, 0.75, 4.2);
-      b.box(ck, x, 1.2, z + 0.2, 1.55, 0.55, 2.2);
-      b.box('carGlass', x, 1.22, z + 0.2, 1.58, 0.4, 2.0);
-      for (const wx of [-0.88, 0.88]) for (const wz of [-1.35, 1.35]) b.cyl('tire', x + wx, 0.33, z + wz, 0.33, 0.33, 0.24, 8, Math.PI / 2);
-      obstacles.push({ x, z, hx: 0.95, hz: 2.1, h: 1.45, kind: 'car' });
-    }
-
-    // obstacles in the lane
-    const count = 3 + Math.floor(rnd() * 3);
-    for (let n = 0; n < count; n++) {
-      const lz = 6 + rnd() * (TOTAL - 12);
-      if (i === 0 && lz < 24) continue; // keep the start clear
-      const x = (rnd() - 0.5) * 5.2, z = Z(lz);
-      const t = rnd();
-      if (t < 0.3) {
-        b.cone('cone', x, 0.28, z, 0.3, 0.56);
-        obstacles.push({ x, z, hx: 0.28, hz: 0.28, h: 0.56, kind: 'cone' });
-      } else if (t < 0.55) {
-        b.box('crate', x, 0.45, z, 0.95, 0.9, 0.95);
-        obstacles.push({ x, z, hx: 0.5, hz: 0.5, h: 0.9, kind: 'crate' });
-      } else if (t < 0.8) {
-        b.box('barrier', x, 0.55, z, 2.6, 0.2, 0.28);
-        b.box('barrier', x, 0.25, z, 2.6, 0.2, 0.28);
-        b.box('pole', x - 1.1, 0.35, z, 0.1, 0.7, 0.1);
-        b.box('pole', x + 1.1, 0.35, z, 0.1, 0.7, 0.1);
-        obstacles.push({ x, z, hx: 1.3, hz: 0.18, h: 0.75, kind: 'barrier' });
-      } else {
-        b.cyl('bin', x, 0.5, z, 0.42, 0.36, 1.0, 10);
-        obstacles.push({ x, z, hx: 0.4, hz: 0.4, h: 1.0, kind: 'bin' });
+    // parked cars + obstacles on the road
+    const cars = ['car', 'car_b', 'suv', 'police_car', 'sports_car', 'pickup_truck', 'van', 'motorcycle'];
+    for (const side of SIDES) {
+      for (const t0 of [-14, 0, 14]) {
+        if (rnd() < 0.5) continue;
+        const t = t0 + rr(-3, 3);
+        const key = rnd() < 0.08 ? 'bus' : pick(cars);
+        const [x, z] = pt(side, t, PADH + 1.7);
+        const along = side.nz ? 1 : 0;
+        const yaw = (along ? rad(90) : 0) + (rnd() < 0.5 ? 0 : Math.PI);
+        solid(place(key, x, z, yaw, 1), 'car', 0.5);
+      }
+      const n = 1 + Math.floor(rnd() * 2);
+      for (let i = 0; i < n; i++) {
+        const t = rr(-HB + 5, HB - 5), off = PADH + rr(3.4, 5.2);
+        const [x, z] = pt(side, t, off);
+        if (Math.abs(ox + x - HP) < 8 && Math.abs(oz + z) < 24 && ci === 0 && cj === 0) continue;
+        const k = pick(['cone', 'cone', 'box', 'trash_can', 'dumpster', 'planter_bushes', 'fence_piece', 'trash_bag']);
+        if (k === 'cone') {
+          for (let c = 0; c < 3; c++) solid(place('cone', x + (side.nz ? c * 1.0 : 0), z + (side.nz ? 0 : c * 1.0), 0, 1), 'cone');
+        } else solid(place(k, x, z, rad(90) * Math.floor(rnd() * 4), 1), k);
       }
     }
+    for (let i = 0; i < 3; i++) {
+      const side = pick(SIDES), [x, z] = pt(side, rr(-HB, HB), PADH + rr(2, 5));
+      place(rnd() < 0.5 ? 'manhole_cover' : 'debris_papers', x, z, rnd() * 6.28, 1, 1, 0.03);
+    }
 
-    const group = new THREE.Group();
-    b.build(group);
-    return { idx: i, group, obstacles, lamps };
+    if (type === 'city') {
+      b.box(COL.fill, ox, 5, oz, B - 12, 10, B - 12);
+      obs.push({ x: ox, z: oz, hx: HB, hz: HB, h: 99, kind: 'wall' });
+      for (const it of ringPlan(rnd)) {
+        const pl = planPlace(it);
+        if (pl) A.place(b, it.key, ox + pl.x, oz + pl.z, it.yaw, it.w, pl.sy);
+        else {
+          // model missing: plain block instead
+          const tint = FAR_TINT[(it.tint || 0) % FAR_TINT.length];
+          const [x, z] = it.corner ? [it.x, it.z] : pt(it.side, it.t, HB - 3);
+          b.box(tint, ox + x, 7, oz + z, 9, 14, 6);
+        }
+      }
+      // furniture in front of the buildings
+      for (const side of SIDES) {
+        for (let t = -HB + 6; t < HB - 5; t += rr(6, 10)) {
+          const [x, z] = pt(side, t, HB + 0.8);
+          const r = rnd();
+          if (r < 0.2) solid(place('trash_can', x, z, 0, 1), 'prop');
+          else if (r < 0.35) solid(place('mailbox', x, z, side.yaw, 1), 'prop');
+          else if (r < 0.5) solid(place('power_box', x, z, side.yaw, 1), 'prop');
+          else if (r < 0.62) solid(place('planter_bushes', x, z, side.yaw, 1), 'prop');
+          else if (r < 0.74) solid(place('flower_pot', x, z, 0, 1), 'prop');
+          else if (r < 0.82) solid(place('bench', x, z, side.yaw + Math.PI, 1), 'prop');
+          else if (r < 0.88) solid(place('atm', x, z, side.yaw, 1), 'prop');
+          else if (r < 0.94) solid(place('trash_bag', x, z, rnd() * 6, 1), 'prop');
+        }
+        const [hx, hz] = pt(side, rr(-14, 14), PADH - 0.6);
+        solid(place('fire_hydrant', hx, hz, 0, 1), 'prop');
+      }
+      if (rnd() < 0.5) {
+        const side = pick(SIDES), [x, z] = pt(side, rr(-6, 6), PADH - 1.8);
+        solid(place('bus_stop', x, z, side.yaw, 1), 'prop');
+      }
+    } else if (type === 'park') {
+      b.rect(COL.grass, ox, oz, B, B, 0.05);
+      b.rect(COL.grass2, ox, oz, B - 8, B - 8, 0.06);
+      b.rect(COL.path, ox, oz, B, 3.2, 0.08);
+      b.rect(COL.path, ox, oz, 3.2, B, 0.08);
+      b.rect(COL.path, ox, oz, 9, 9, 0.09);
+      const spots = [];
+      const free = (x, z, d) => spots.every(s => Math.hypot(s[0] - x, s[1] - z) > d);
+      for (let tries = 0; tries < 60 && spots.length < 15; tries++) {
+        const x = rr(-HB + 3, HB - 3), z = rr(-HB + 3, HB - 3);
+        if (Math.abs(x) < 3.6 || Math.abs(z) < 3.6 || !free(x, z, 6)) continue;
+        spots.push([x, z]);
+        place('tree', x, z, rnd() * 6.28, rr(0.9, 1.3));
+        obs.push({ x: ox + x, z: oz + z, hx: 0.32, hz: 0.32, h: 8, kind: 'tree' });
+      }
+      for (const [bx, bz, yaw] of [[5, 2.8, 0], [-5, -2.8, Math.PI], [2.8, -6, rad(90)], [-2.8, 7, rad(270)], [12, 2.8, 0], [-12, -2.8, Math.PI]]) {
+        solid(place('bench', bx, bz, yaw, 1), 'prop');
+      }
+      for (const [x, z] of [[7, 5], [-7, -5], [5, -9], [-9, 5]]) solid(place('planter_bushes', x, z, rad(90) * Math.floor(rnd() * 4), 1), 'prop');
+      for (const [x, z] of [[4, 4], [-4, -4], [4, -4], [-4, 4]]) lamp(b, obs, lamps, ox + x, oz + z, -Math.sign(x), 0);
+      solid(place('fire_hydrant', 3, 14, 0, 1), 'prop');
+      solid(place('trash_can', 3.5, 8, 0, 1), 'prop');
+      solid(place('trash_can', -3.5, -8, 0, 1), 'prop');
+    } else {
+      b.rect(COL.paving, ox, oz, B, B, 0.05);
+      b.rect([0.6, 0.55, 0.48], ox, oz, B - 6, B - 6, 0.06);
+      for (let i = 0; i < 9; i++) solid(place('cone', -16 + i * 4, (i % 2 ? 1.4 : -1.4), 0, 1), 'cone');
+      for (let i = 0; i < 7; i++) solid(place('cone', 10 + (i % 2 ? 1.4 : -1.4), -18 + i * 5, 0, 1), 'cone');
+      for (const [x, z] of [[-14, -14], [14, 14], [-14, 14], [14, -14]]) {
+        solid(place('planter_bushes', x, z, 0, 1.2), 'prop');
+        place('tree', x + 3, z + 3, rnd() * 6, 1);
+        obs.push({ x: ox + x + 3, z: oz + z + 3, hx: 0.3, hz: 0.3, h: 8, kind: 'tree' });
+      }
+      for (let i = 0; i < 4; i++) solid(place('box', -4 + i * 2.2, 8, 0, 1), 'box');
+      solid(place('box', -2.9, 8, 0, 1, 1, 0.85), 'box');
+      for (const [x, z, yaw] of [[0, 17, Math.PI], [0, -17, 0], [17, 0, rad(90) + Math.PI]]) solid(place('bench', x, z, yaw, 1), 'prop');
+      for (let i = 0; i < 5; i++) solid(place('fence_piece', 6 + i * 1.3, -8, 0, 1), 'fence');
+    }
+    return { b, obs, lamps };
   }
 
   class World {
     constructor(scene) {
       this.scene = scene;
-      this.chunks = new Map();
+      this.cells = new Map();
+      this.start = { x: HP, z: 0 };
+      this.farCells = C.FAR_CELLS;
+      this.nearR = 1;
     }
-    static index(z) { return Math.floor(-z / C.CHUNK); }
+    static cellIndex(v) { return Math.round(v / P); }
+    key(ci, cj) { return ci + ',' + cj; }
 
-    update(z, budget) {
-      const c = World.index(z), r = C.CHUNK_RADIUS;
-      for (const [i, ch] of this.chunks) {
-        if (i < c - r - 1 || i > c + r + 1) this.remove(i, ch);
+    update(px, pz, budget) {
+      const ci0 = World.cellIndex(px), cj0 = World.cellIndex(pz), R_ = this.farCells;
+      const want = [];
+      for (let dz = -R_; dz <= R_; dz++) for (let dx = -R_; dx <= R_; dx++) {
+        const near = Math.max(Math.abs(dx), Math.abs(dz)) <= this.nearR;
+        const ci = ci0 + dx, cj = cj0 + dz, c = this.cells.get(this.key(ci, cj));
+        if (!c || c.near !== near) want.push({ ci, cj, near, d: dx * dx + dz * dz });
       }
-      let built = 0;
-      for (let d = 0; d <= r; d++) {
-        for (const i of d === 0 ? [c] : [c - d, c + d]) {
-          if (this.chunks.has(i) || built >= budget) continue;
-          const ch = buildChunk(i);
-          this.chunks.set(i, ch);
-          this.scene.add(ch.group);
-          built++;
-        }
+      want.sort((a, b) => a.d - b.d);
+      let n = 0;
+      for (const w of want) {
+        if (n >= budget) break;
+        this.build(w.ci, w.cj, w.near);
+        n++;
+      }
+      for (const [k, c] of this.cells) {
+        if (Math.max(Math.abs(c.ci - ci0), Math.abs(c.cj - cj0)) > R_ + 1) this.drop(k, c);
       }
     }
-    remove(i, ch) {
-      this.scene.remove(ch.group);
-      ch.group.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
-      this.chunks.delete(i);
+
+    build(ci, cj, near) {
+      const k = this.key(ci, cj), old = this.cells.get(k);
+      if (old) this.drop(k, old);
+      const seed = ((ci * 73856093) ^ (cj * 19349663)) >>> 0;
+      const rnd = R.rng(seed), type = cellType(ci, cj, rnd);
+      const r = near ? nearCell(ci, cj, rnd, type) : farCell(ci, cj, rnd, type);
+      const group = new THREE.Group();
+      r.b.build(group);
+      this.scene.add(group);
+      this.cells.set(k, { ci, cj, near, type, group, obstacles: r.obs, lamps: r.lamps });
     }
-    near(z, fn) {
-      const c = World.index(z);
-      for (let i = c - 1; i <= c + 1; i++) {
-        const ch = this.chunks.get(i);
-        if (ch) fn(ch);
+    drop(k, c) {
+      this.scene.remove(c.group);
+      c.group.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
+      this.cells.delete(k);
+    }
+    each3x3(x, z, fn) {
+      const ci = World.cellIndex(x), cj = World.cellIndex(z);
+      for (let j = cj - 1; j <= cj + 1; j++) for (let i = ci - 1; i <= ci + 1; i++) {
+        const c = this.cells.get(this.key(i, j));
+        if (c) fn(c);
       }
     }
     obstaclesNear(x, z, range) {
       const out = [];
-      this.near(z, ch => {
-        for (const o of ch.obstacles) {
+      this.each3x3(x, z, c => {
+        for (const o of c.obstacles) {
           if (Math.abs(o.x - x) < range + o.hx && Math.abs(o.z - z) < range + o.hz) out.push(o);
         }
       });
@@ -233,35 +330,37 @@
     }
     lampsNear(x, z, n) {
       const all = [];
-      this.near(z, ch => { for (const l of ch.lamps) all.push(l); });
+      this.each3x3(x, z, c => { for (const l of c.lamps) all.push(l); });
       all.sort((a, b) => ((a.x - x) ** 2 + (a.z - z) ** 2) - ((b.x - x) ** 2 + (b.z - z) ** 2));
       return all.slice(0, n);
     }
-    inIntersection(z) {
-      const i = World.index(z);
-      return (-z - i * C.CHUNK) >= TOTAL;
+    // is a tall, unjumpable thing within r of this point?
+    solidAt(x, z, r) {
+      for (const o of this.obstaclesNear(x, z, r)) {
+        if (o.h > 1.5 && Math.abs(o.x - x) < o.hx + r && Math.abs(o.z - z) < o.hz + r) return true;
+      }
+      return false;
+    }
+    // keep the camera out of buildings
+    pushOut(pos, r) {
+      for (const o of this.obstaclesNear(pos.x, pos.z, r)) {
+        if (o.h < 3) continue;
+        const cx = R.clamp(pos.x, o.x - o.hx, o.x + o.hx), cz = R.clamp(pos.z, o.z - o.hz, o.z + o.hz);
+        let dx = pos.x - cx, dz = pos.z - cz;
+        const d2 = dx * dx + dz * dz;
+        if (d2 >= r * r) continue;
+        if (d2 < 1e-6) { dx = pos.x - o.x; dz = pos.z - o.z; }
+        const d = Math.hypot(dx, dz) || 1;
+        pos.x = cx + dx / d * r; pos.z = cz + dz / d * r;
+      }
     }
 
-    // keep p inside the street and push it out of obstacles; returns the obstacle hit (or null)
-    resolve(p, prevX, r) {
-      const i = World.index(p.z), lz = -p.z - i * C.CHUNK, zTop = -i * C.CHUNK;
-      const ax = Math.abs(p.x), sx = Math.sign(p.x) || 1;
-      let bump = false;
-      if (lz >= TOTAL) {
-        if (ax > C.SIDE_LIMIT) { p.x = sx * C.SIDE_LIMIT; bump = true; }
-      } else if (ax > C.MAIN_LIMIT) {
-        if (Math.abs(prevX) > C.MAIN_LIMIT + 0.15) {
-          p.z = lz < TOTAL / 2 ? zTop + 0.45 : zTop - (TOTAL + 0.45);
-        } else {
-          p.x = sx * C.MAIN_LIMIT;
-        }
-        bump = true;
-      }
-      let hit = bump ? { nx: -sx, nz: 0, h: 99, kind: 'wall' } : null;
+    // push p out of obstacles; returns the strongest hit (normal points away from the obstacle)
+    resolve(p, r) {
+      let hit = null;
       for (const o of this.obstaclesNear(p.x, p.z, r + 0.2)) {
         if (p.y > o.h - 0.15) continue;
-        const cx = R.clamp(p.x, o.x - o.hx, o.x + o.hx);
-        const cz = R.clamp(p.z, o.z - o.hz, o.z + o.hz);
+        const cx = R.clamp(p.x, o.x - o.hx, o.x + o.hx), cz = R.clamp(p.z, o.z - o.hz, o.z + o.hz);
         let dx = p.x - cx, dz = p.z - cz;
         const d2 = dx * dx + dz * dz;
         if (d2 >= r * r) continue;

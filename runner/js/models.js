@@ -122,78 +122,146 @@
     };
   }
 
-  // ---- GLB models (Quaternius etc.) -------------------------------------------------------
-  function classify(clips) {
-    const find = (re, not) => clips.find(c => re.test(c.name.toLowerCase()) && !(not && not.test(c.name.toLowerCase())));
-    return {
-      idle: find(/^idle$/) || find(/idle|stand/, /eat|attack|death|hit/) || clips[0],
-      walk: find(/walk/),
-      run: find(/gallop|run|trot/, /jump/) || find(/walk/),
-      jump: find(/jump/, /toidle/) || find(/jump/),
-    };
+  // ---- GLB models ---------------------------------------------------------------------------
+  const loader = () => new THREE.GLTFLoader();
+  const load = url => new Promise(res => {
+    if (!THREE.GLTFLoader) return res(null);
+    fetch(url, { method: 'HEAD' }).then(r => {
+      if (!r.ok) return res(null);
+      loader().load(url, g => res(g), undefined, () => res(null));
+    }).catch(() => res(null));
+  });
+
+  function fixMaterial(m) {
+    if (m.map) { m.map.encoding = THREE.LinearEncoding; m.map.needsUpdate = true; }
+    if ('metalness' in m) { m.metalness = 0; m.roughness = 0.9; }
   }
 
-  function wrapGLB(gltf, targetLen) {
+  // A model without a skeleton: the legs are swung in the vertex shader. The lower part of the
+  // body is sheared back and forth, diagonal pairs in opposite phase (a trot).
+  function legShader(mesh, cfg) {
+    const geo = mesh.geometry;
+    geo.computeBoundingBox();
+    const bb = geo.boundingBox, len = bb.max.z - bb.min.z, wid = bb.max.x - bb.min.x, hgt = bb.max.y - bb.min.y;
+    const u = {
+      uPhase: { value: 0 }, uAmp: { value: 0 }, uLift: { value: 0 },
+      uMidZ: { value: (bb.max.z + bb.min.z) / 2 + len * cfg.midShift }, uFA: { value: len * 0.05 }, uSA: { value: wid * 0.04 },
+      uYMin: { value: bb.min.y }, uLegTop: { value: bb.min.y + hgt * cfg.legTop },
+    };
+    const m = mesh.material;
+    m.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, u);
+      sh.vertexShader = 'uniform float uPhase,uAmp,uLift,uMidZ,uFA,uSA,uYMin,uLegTop;\n' + sh.vertexShader.replace('#include <begin_vertex>', `
+        vec3 transformed = vec3( position );
+        {
+          float fa = smoothstep(-uFA, uFA, position.z - uMidZ);
+          float sd = smoothstep(-uSA, uSA, position.x);
+          float w = clamp(1.0 - (position.y - uYMin) / (uLegTop - uYMin), 0.0, 1.0);
+          float ph = uPhase + (fa + sd) * 3.14159;
+          transformed.z += sin(ph) * uAmp * w;
+          transformed.y += max(0.0, cos(ph)) * uLift * w * w;
+        }`);
+    };
+    m.customProgramCacheKey = () => 'legs' + cfg.name;
+    return { u, len, hgt };
+  }
+
+  function makeStatic(gltf, targetLen, cfg) {
     const model = gltf.scene;
-    model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+    let sh = null;
+    model.traverse(o => {
+      if (!o.isMesh) return;
+      o.castShadow = true; o.frustumCulled = false;
+      o.material = Array.isArray(o.material) ? o.material[0] : o.material;
+      fixMaterial(o.material);
+      if (!sh) sh = legShader(o, cfg);
+    });
+    model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model);
-    const size = box.getSize(new THREE.Vector3());
-    const k = targetLen / Math.max(size.x, size.z, 0.0001);
-    model.scale.setScalar(k);
-    box.setFromObject(model);
-    const c = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    const k = targetLen / Math.max(size.x, size.z);
+    const inner = new THREE.Group();            // pitch / bob happen here
     model.position.set(-c.x, -box.min.y, -c.z);
+    inner.add(model);
+    inner.scale.setScalar(k);
     const pivot = new THREE.Group();
     pivot.rotation.y = C.MODEL_YAW;
-    pivot.add(model);
+    pivot.add(inner);
     const root = new THREE.Group();
     root.add(pivot);
-
-    const clips = gltf.animations || [];
-    console.info('[runner] GLB clips:', clips.map(c => c.name).join(', ') || '(none)');
-    const mixer = clips.length ? new THREE.AnimationMixer(model) : null;
-    const map = mixer ? classify(clips) : {};
-    const actions = {};
-    if (mixer) for (const key in map) if (map[key]) actions[key] = mixer.clipAction(map[key]);
-    let cur = null;
-    function play(name, scale) {
-      const a = actions[name] || actions.idle;
-      if (!a) return;
-      a.timeScale = scale || 1;
-      if (cur === a) return;
-      a.reset().fadeIn(0.18).play();
-      if (cur) cur.fadeOut(0.18);
-      cur = a;
-    }
+    let phase = 0, ampS = 0, t = 0;
     return {
-      kind: 'glb', root,
+      kind: 'static', root,
       update(dt, s) {
-        if (!mixer) return;
-        if (s.air && actions.jump) play('jump', 1);
-        else if (s.speed01 > 0.5) play('run', 0.8 + s.speed01 * 0.7);
-        else if (s.speed01 > 0.06) play('walk', 0.6 + s.speed01 * 1.4);
-        else play('idle', 1);
-        mixer.update(dt);
+        t += dt;
+        const moving = s.speed01 > 0.04 && !s.air;
+        phase += dt * (7 + s.speed01 * 15);
+        ampS = R.damp(ampS, moving ? (0.35 + 0.65 * s.speed01) * cfg.amp * sh.len : 0, 14, dt);
+        sh.u.uPhase.value = phase;
+        sh.u.uAmp.value = ampS;
+        sh.u.uLift.value = ampS * 0.7;
+        const gallop = moving ? Math.sin(phase * 2) : 0;
+        inner.position.y = R.damp(inner.position.y, (moving ? Math.abs(Math.sin(phase)) * 0.045 * s.speed01 : 0) * targetLen, 18, dt);
+        inner.rotation.x = R.damp(inner.rotation.x, gallop * 0.07 * s.speed01 + (s.air ? -0.12 : 0), 14, dt);
+        inner.scale.y = k * (1 + (moving ? 0 : Math.sin(t * 2.2) * 0.012));
       },
     };
   }
 
-  function loadGLB(url, targetLen) {
-    return new Promise(resolve => {
-      if (!THREE.GLTFLoader) return resolve(null);
-      fetch(url, { method: 'HEAD' }).then(r => {
-        if (!r.ok) return resolve(null);
-        new THREE.GLTFLoader().load(url, g => {
-          try { resolve(wrapGLB(g, targetLen)); } catch (e) { console.warn('[runner] GLB setup failed', e); resolve(null); }
-        }, undefined, () => resolve(null));
-      }).catch(() => resolve(null));
-    });
-  }
+  const DOG_CFG = { name: 'dog', legTop: 0.46, amp: 0.22, midShift: 0.0 };
+  const CAT_CFG = { name: 'cat', legTop: 0.34, amp: 0.2, midShift: 0.02 };
 
   R.makeDog = async function () {
-    return (await loadGLB('../models/dog_runner.glb', C.DOG_LEN)) || makeProceduralDog();
+    const g = await load('../models/dog_runner.glb');
+    if (g) try { return makeStatic(g, C.DOG_LEN, DOG_CFG); } catch (e) { console.warn('[runner] dog model failed', e); }
+    return makeProceduralDog();
   };
   R.makeCat = async function () {
-    return (await loadGLB('../models/cat.glb', 1.3)) || makeProceduralCat();
+    const g = await load('../models/cat.glb');
+    if (g) try { return makeStatic(g, C.CAT_LEN, CAT_CFG); } catch (e) { console.warn('[runner] cat model failed', e); }
+    return makeProceduralCat();
+  };
+
+  // Chicken: skinned model with its own animations, cloned per bird.
+  R.loadChicken = async function () {
+    const g = await load('../models/chicken.glb');
+    if (!g) return null;
+    g.scene.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.castShadow = true; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { fixMaterial(m); m.color.multiplyScalar(1.7); m.emissive.setRGB(0.1, 0.1, 0.1); }); } });
+    g.scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(g.scene);
+    const size = box.getSize(new THREE.Vector3());
+    const find = (re, not) => g.animations.find(a => re.test(a.name.toLowerCase()) && !(not && not.test(a.name.toLowerCase())));
+    console.info('[runner] chicken clips:', g.animations.map(a => a.name).join(', '));
+    return {
+      scale: C.CHICKEN_H / size.y, minY: box.min.y,
+      clips: { idle: find(/idle/), walk: find(/walk/), jump: find(/jump/) },
+      spawn() {
+        const scene = THREE.SkeletonUtils.clone(g.scene);
+        const inner = new THREE.Group();
+        scene.position.y = -this.minY;
+        inner.add(scene);
+        inner.scale.setScalar(this.scale);
+        const pivot = new THREE.Group();
+        pivot.rotation.y = C.MODEL_YAW;
+        pivot.add(inner);
+        const root = new THREE.Group();
+        root.add(pivot);
+        const mixer = new THREE.AnimationMixer(scene), acts = {};
+        for (const k in this.clips) if (this.clips[k]) acts[k] = mixer.clipAction(this.clips[k]);
+        let cur = null;
+        return {
+          root, mixer,
+          play(name, ts) {
+            const a = acts[name] || acts.idle;
+            if (!a) return;
+            a.timeScale = ts || 1;
+            if (cur === a) return;
+            a.reset().fadeIn(0.15).play();
+            if (cur) cur.fadeOut(0.15);
+            cur = a;
+          },
+        };
+      },
+    };
   };
 })(window.R = window.R || {});
