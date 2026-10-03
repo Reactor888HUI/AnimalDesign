@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="night">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f1c">
+<title>Бегун</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="loading">Загрузка</div>
+
+<div id="vignette" class="ui"></div>
+<div id="lines" class="ui"></div>
+<div id="flash" class="ui"></div>
+
+<div id="hud" class="ui">
+  <div class="stat panel">
+    <div class="row"><label>Скорость</label><span><b id="speedNum">0</b><small>км/ч</small></span></div>
+    <div class="bar"><i id="speedFill"></i></div>
+  </div>
+  <div class="stat panel">
+    <div class="row"><label>Поймано</label><span><b id="score">0</b><span id="combo"></span><small>рекорд <span id="best">0</span></small></span></div>
+    <div class="row sub"><label>Кот рядом</label></div>
+    <div class="bar"><i id="chaseFill"></i></div>
+  </div>
+</div>
+
+<div id="banner" class="ui">Режим погони</div>
+
+<button id="themeBtn" class="ui panel" type="button" aria-label="Переключить день и ночь">
+  <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>
+  <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
+</button>
+
+<div id="hint" class="ui panel"><kbd>W</kbd> разгон &nbsp;·&nbsp; <kbd>A</kbd> <kbd>D</kbd> повороты &nbsp;·&nbsp; <kbd>S</kbd> тормоз &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок &nbsp;·&nbsp; <kbd>N</kbd> день/ночь</div>
+
+<div id="touchUI" hidden>
+  <div id="stickHint">руль</div>
+  <div id="jumpBtn">прыжок</div>
+  <div id="stickZone"></div>
+  <div id="jumpZone"></div>
+  <div id="stick"><div id="knob"></div></div>
+  <button id="autoBtn" class="panel" type="button" aria-pressed="false">Автобег</button>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="vendor/BufferGeometryUtils.js"></script>
+<script src="js/config.js"></script>
+<script src="js/util.js"></script>
+<script src="js/materials.js"></script>
+<script src="js/world.js"></script>
+<script src="js/models.js"></script>
+<script src="js/input.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/player.js"></script>
+<script src="js/cat.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
