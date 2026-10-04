@@ -555,6 +555,8 @@
       // a guard stays on post: no auto-run by default
       if (ctx.input.touch) { ctx.input.autoRun = false; const ab = $('autoBtn'); if (ab) ab.setAttribute('aria-pressed', 'false'); }
       player = new R.Player(dogEnt);
+      // a guard dog jumps lower and has no air jump: the 2.4 m fence must hold it
+      player.jumpMul = 0.86; player.maxAirJumps = 0;
       scene.add(player.root);
       ctx.addBlob(player, 2.1);
       player.x = Y.dogStart.x; player.z = Y.dogStart.z;

@@ -174,6 +174,10 @@
     tone('sine', [[0, 1320], [0.4, 1320]], 0.09, 0.4, 0.07);
   };
   A.whoosh = () => { if (ok()) noise(700, 0.6, 0.08, 0.25); };
+  // double jump: a quick rising "boing" with air
+  A.hop2 = () => { if (ok()) { tone('sine', [[0, 420], [0.16, 980]], 0.16, 0.2); noise(1500, 0.8, 0.07, 0.2); } };
+  // a bone picked up: notes rise with every bone of a run
+  A.pick = n => { if (ok()) { const f = 660 * Math.pow(2, Math.min(n, 10) / 12); tone('triangle', [[0, f], [0.05, f * 1.5]], 0.14, 0.14); } };
   A.alarm = () => {
     if (!ok()) return;
     tone('square', [[0, 660], [0.18, 660]], 0.08, 0.18, 0, 1500, 0.8);

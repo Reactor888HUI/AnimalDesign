@@ -32,6 +32,24 @@
   scene.add(buddyLight);
   const lampLights = [0, 1].map(() => { const l = new THREE.PointLight(0xffb468, 0, 22, 2); scene.add(l); return l; });
 
+  // ---- sky: clouds by day, the moon at night (they ride along with the camera, far away) -----
+  const sky = new THREE.Group();
+  scene.add(sky);
+  const clouds = [];
+  {
+    const rnd = R.rng(31), tex = R.cloudTexture();
+    for (let i = 0; i < 14; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, opacity: 0.75 + rnd() * 0.2 }));
+      const w = 60 + rnd() * 70;
+      s.scale.set(w, w * 0.42, 1);
+      s.userData = { a: rnd() * Math.PI * 2, r: 190 + rnd() * 60, y: 55 + rnd() * 50 };
+      sky.add(s); clouds.push(s);
+    }
+  }
+  const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.glowTexture(), color: 0xe6eeff, transparent: true, depthWrite: false, fog: false }));
+  moon.scale.set(34, 34, 1); moon.position.set(-150, 150, -160);
+  sky.add(moon);
+
   // ---- theme -----------------------------------------------------------------------------
   let themeName = 'night', themeLocked = false;
   try { themeName = localStorage.getItem('runner-theme') || 'night'; } catch (e) {}
@@ -46,6 +64,8 @@
     hemi.color.setHex(T.hemiSky); hemi.groundColor.setHex(T.hemiGround); hemi.intensity = T.hemiI;
     sun.color.setHex(T.sunColor); sun.intensity = T.sunI;
     renderer.toneMappingExposure = T.exposure;
+    for (const c of clouds) c.visible = !!T.clouds;
+    moon.visible = !!T.stars;
     document.documentElement.dataset.theme = name;
     $('themeBtn').setAttribute('aria-label', name === 'night' ? 'Включить день' : 'Включить ночь');
     if (!keep) try { localStorage.setItem('runner-theme', name); } catch (e) {}
@@ -109,7 +129,7 @@
       const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: blobTex, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false }));
       m.rotation.x = -Math.PI / 2; m.renderOrder = 2; m.scale.set(size, size, 1);
       scene.add(m);
-      blobs.push({ m, o });
+      blobs.push({ m, o, size });
       m.visible = level < 2;
     },
   };
@@ -127,6 +147,7 @@
     else if (name === 'bump') au.thump(0.6);
     else if (name === 'hitCar') { au.yelp(); au.thump(1); }
     else if (name === 'jump') au.whoosh();
+    else if (name === 'jump2') au.hop2();
   };
   traffic.onHorn = (x, z) => au.horn(Math.max(0.2, 1 - Math.hypot(x - player.x, z - player.z) / 40));
 
@@ -174,6 +195,11 @@
     au.update({ carDist: traffic.nearest || 99, carSpeed: traffic.nearestSpeed || 0, night: !!T.lamps });
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) toast.classList.remove('on'); }
 
+    sky.position.set(camera.position.x, 0, camera.position.z);
+    if (T.clouds) for (const c of clouds) {
+      const u = c.userData; u.a += dt * 0.0035;
+      c.position.set(Math.cos(u.a) * u.r, u.y, Math.sin(u.a) * u.r);
+    }
     const o = T.sunOffset;
     sun.position.set(player.x + o[0], o[1], player.z + o[2]);
     sun.target.position.set(player.x, 0, player.z);
@@ -195,7 +221,11 @@
     for (const b of blobs) {
       if (!b.m.visible) continue;
       const hidden = b.o.hidden || (b.o.root && b.o.root.visible === false);
-      b.m.material.opacity = hidden ? 0 : 0.55;
+      // the shadow shrinks and fades as the animal goes up
+      const up = Math.max(0, (b.o.y || 0) - (b.o.ground || 0));
+      const ss = b.size * (1 - Math.min(0.5, up * 0.18));
+      b.m.scale.set(ss, ss, 1);
+      b.m.material.opacity = hidden ? 0 : 0.55 * (1 - Math.min(0.6, up * 0.22));
       b.m.position.set(b.o.x, (b.o.ground || 0) + 0.09, b.o.z);
     }
     lines.style.opacity = R.clamp((gait - 0.6) * 1.6, 0, 0.5).toFixed(2);

@@ -123,8 +123,10 @@
     const kt = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0);
     let ts = 0, tt = 0;
     if (T.id !== null) {
-      ts = Math.abs(T.x) < 0.12 ? 0 : T.x;
-      tt = T.y < -0.35 ? -T.y : (T.y > 0.45 ? -(T.y - 0.3) : 0);
+      // a soft curve: small stick moves give fine turns, the edge gives a full turn
+      const ax = Math.abs(T.x);
+      ts = ax < 0.1 ? 0 : Math.sign(T.x) * Math.pow((ax - 0.1) / 0.9, 1.5);
+      tt = T.y < -0.25 ? Math.min(1, (-T.y - 0.25) / 0.6) : (T.y > 0.45 ? -(T.y - 0.3) : 0);
     }
     if (input.autoRun && !k.KeyS && !k.ArrowDown && !(T.id !== null && T.y > 0.45) && kt === 0 && tt === 0) tt = 1;
     this.steer = clamp(ks + ts, -1, 1);

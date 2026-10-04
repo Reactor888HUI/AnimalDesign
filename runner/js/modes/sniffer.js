@@ -363,7 +363,7 @@
   function carry(ctx, kind) {
     const c = S.c;
     const m = thing(kind);
-    m.position.set(0, kind === 'basket' ? 0.18 : 0.26, -0.62);
+    m.position.set(0, kind === 'basket' ? -0.17 : -0.09, -0.62);   // lean pivots 0.35 m up
     m.scale.setScalar(kind === 'basket' ? 0.8 : kind === 'keys' ? 1.8 : 1);
     player.lean.add(m);
     c.carried = m;

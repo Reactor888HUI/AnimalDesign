@@ -259,9 +259,10 @@
       },
       update(dt, s) {
         if (oneShot > 0) oneShot -= dt;
-        else if (s.air && acts.jump) play('jump', acts.jump.getClip().duration / 0.85, 0.1);
-        else if (s.speed01 > 0.42) play('run', 0.75 + s.speed01 * 0.75);
-        else if (s.speed01 > 0.04) play('walk', 0.7 + s.speed01 * 2.2);
+        else if (s.air && acts.jump) play('jump', acts.jump.getClip().duration / 1.15, 0.12);
+        // a little hysteresis so walk and gallop do not flicker at the border; longer blends
+        else if (s.speed01 > (cur === acts.run ? 0.36 : 0.46)) play('run', 0.75 + s.speed01 * 0.75, 0.3);
+        else if (s.speed01 > 0.04) play('walk', 0.7 + s.speed01 * 2.2, 0.3);
         else if (s.sniff && acts.sniff) play('sniff', 1);
         else play('idle', 1);
         mixer.update(dt);

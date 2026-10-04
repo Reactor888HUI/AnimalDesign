@@ -35,6 +35,27 @@
     return glow;
   };
 
+  // a soft puffy cloud: a few overlapping blurred blobs
+  let cloud = null;
+  R.cloudTexture = function () {
+    if (cloud) return cloud;
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 128;
+    const g = c.getContext('2d');
+    const rnd = R.rng(7);
+    for (let i = 0; i < 9; i++) {
+      const x = 50 + rnd() * 156, y = 62 + (rnd() - 0.4) * 30, r = 26 + rnd() * 30;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, 'rgba(255,255,255,0.9)');
+      gr.addColorStop(0.6, 'rgba(255,255,255,0.55)');
+      gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr;
+      g.fillRect(0, 0, 256, 128);
+    }
+    cloud = new THREE.CanvasTexture(c);
+    return cloud;
+  };
+
   const skyCache = {};
   R.skyTexture = function (name) {
     if (skyCache[name]) return skyCache[name];
