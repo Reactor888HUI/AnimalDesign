@@ -254,7 +254,18 @@ body.is-touch #ghint { display: none; }
   border: 2px solid var(--line); touch-action: none;
 }
 .act.on { transform: scale(.92); }
-#barkBtn { right: calc(150px + env(safe-area-inset-right, 0px)); bottom: calc(40px + env(safe-area-inset-bottom, 0px)); border-color: #ff7a3a; }
+#biteBtn { right: calc(146px + env(safe-area-inset-right, 0px)); bottom: calc(34px + env(safe-area-inset-bottom, 0px)); width: 88px; height: 88px; font-size: 13px; border-color: #ff4d4d; }
+#biteBtn.hot { box-shadow: 0 0 0 3px rgba(255, 77, 77, .45), 0 0 22px rgba(255, 77, 77, .55); }
+#barkBtn { right: calc(150px + env(safe-area-inset-right, 0px)); bottom: calc(138px + env(safe-area-inset-bottom, 0px)); width: 68px; height: 68px; border-color: #ff7a3a; }
+#tug {
+  position: fixed; left: 50%; bottom: calc(18% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  width: min(320px, 70vw); padding: 10px 14px; display: grid; gap: 8px; text-align: center;
+}
+#tug[hidden] { display: none; }
+#tug label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
+#tug .bar { height: 12px; }
+#tug .bar i { background: linear-gradient(90deg, #ff4d4d, #ffd36a 60%, #45d483); transform-origin: left; }
+@media (max-width: 600px) { body.is-touch #tug { bottom: auto; top: calc(172px + env(safe-area-inset-top, 0px)); padding: 6px 12px; gap: 4px; } }
 #scentBtn { right: calc(40px + env(safe-area-inset-right, 0px)); bottom: calc(160px + env(safe-area-inset-bottom, 0px)); border-color: #45d483; }
 
 @media (max-width: 900px) {

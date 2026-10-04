@@ -539,7 +539,7 @@
 
   // ---- surfaces -----------------------------------------------------------------------------
   const STEP = 0.3;                 // the dog walks up onto anything this low
-  const NOSTAND = { tree: 1, pole: 1, cone: 1, trash_bag: 1, wall: 1, traffic: 1, fence_tall: 1, pen: 1 };
+  const NOSTAND = { tree: 1, pole: 1, cone: 1, trash_bag: 1, wall: 1, traffic: 1, fence_tall: 1, pen: 1, npc: 1 };
   function topAt(o, x, z) {
     if (!o.ramp) return o.h;
     const along = o.ramp.axis === 'x' ? x - o.x : z - o.z, half = o.ramp.axis === 'x' ? o.hx : o.hz;

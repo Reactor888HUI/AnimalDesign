@@ -52,7 +52,8 @@
   </div>
 </div>
 <div id="marks" class="g-only"></div>
-<div id="ghint" class="ui panel g-only"><kbd>W A S D</kbd> бег &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок &nbsp;·&nbsp; <kbd>F</kbd> лай &nbsp;·&nbsp; <kbd>E</kbd> чутьё &nbsp;·&nbsp; обегай зелёные огоньки, лови чужих, своих не трогай</div>
+<div id="ghint" class="ui panel g-only"><kbd>W A S D</kbd> бег &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок &nbsp;·&nbsp; <kbd>G</kbd> кусь &nbsp;·&nbsp; <kbd>F</kbd> лай &nbsp;·&nbsp; <kbd>E</kbd> чутьё &nbsp;·&nbsp; обегай зелёные огоньки, кусай чужих, своих не трогай</div>
+<div id="tug" class="ui panel g-only" hidden><label>Перетягивание</label><div class="bar"><i id="tugFill"></i></div></div>
 
 <div id="result" class="g-only" hidden>
   <div class="card panel">
@@ -75,7 +76,7 @@
       <button class="card panel" data-mode="guard" type="button">
         <span class="tag">Доберман</span>
         <b>Охранник</b>
-        <span>Ночь на складе. Воры, лиса и кот лезут через забор. Лай, хватай, обегай посты. Своих не трогай.</span>
+        <span>Ночь на складе. Воры, лиса и кот лезут через забор. Лай, кусай, отбивай ящики, обегай посты. Своих не трогай.</span>
       </button>
       <div class="card panel soon">
         <span class="tag">Шиба-ину</span>
@@ -109,6 +110,7 @@
   <div id="jumpZone"></div>
   <div id="stick"><div id="knob"></div></div>
   <button id="autoBtn" class="panel" type="button" aria-pressed="false">Автобег</button>
+  <button id="biteBtn" class="act g-only" type="button">Кусь</button>
   <button id="barkBtn" class="act g-only" type="button">Лай</button>
   <button id="scentBtn" class="act g-only" type="button">Чутьё</button>
 </div>

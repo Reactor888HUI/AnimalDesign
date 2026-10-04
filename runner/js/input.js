@@ -8,11 +8,12 @@
     touch: false,
     onTheme: null,
     onFirst: null,
-    _jumpEdge: false, _barkEdge: false, _scentEdge: false,
+    _jumpEdge: false, _barkEdge: false, _scentEdge: false, _biteEdge: false,
     _k: {},
     consumeJump() { const j = this._jumpEdge; this._jumpEdge = false; return j; },
     consumeBark() { const j = this._barkEdge; this._barkEdge = false; return j; },
     consumeScent() { const j = this._scentEdge; this._scentEdge = false; return j; },
+    consumeBite() { const j = this._biteEdge; this._biteEdge = false; return j; },
   };
 
   // ---- keyboard ---------------------------------------------------------------------------
@@ -26,6 +27,7 @@
     if (e.code === 'KeyN' && input.onTheme) input.onTheme();
     if (e.code === 'KeyF') input._barkEdge = true;
     if (e.code === 'KeyE') input._scentEdge = true;
+    if (e.code === 'KeyG') input._biteEdge = true;
     if (input.onFirst) input.onFirst();
   });
   addEventListener('keyup', e => {
@@ -101,7 +103,7 @@
   jumpZone.addEventListener('pointerup', jumpUp);
   jumpZone.addEventListener('pointercancel', jumpUp);
 
-  for (const [id, key] of [['barkBtn', '_barkEdge'], ['scentBtn', '_scentEdge']]) {
+  for (const [id, key] of [['barkBtn', '_barkEdge'], ['scentBtn', '_scentEdge'], ['biteBtn', '_biteEdge']]) {
     const btn = document.getElementById(id);
     if (!btn) continue;
     btn.addEventListener('pointerdown', e => { input[key] = true; btn.classList.add('on'); e.preventDefault(); e.stopPropagation(); });

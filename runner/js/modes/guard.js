@@ -2,6 +2,8 @@
   const C = R.C;
   const NIGHT_LEN = 150;            // seconds until dawn
   const BARK_R = 11, BARK_CD = 1.4, SCENT_CD = 9, SCENT_T = 4;
+  const BITE_CD = 0.6, BITE_R = 2.3, LUNGE_T = 0.3;   // bite: reach and the short leap forward
+  const TUG_HIT = 0.12, TUG_MAX_T = 6;                // tug of war over a box
   const ROLE = {
     thief:   { Shirt: 0x141519, Pants: 0x0c0c0f, Hair: 0x0a0a0a, Socks: 0x1a1a1a },
     postman: { Shirt: 0x2b50aa, Pants: 0x1c2a52, Socks: 0xd8c040, Hair: 0x3a2a1a },
@@ -37,7 +39,7 @@
   function clear(ax, az, bx, bz, skip) {
     const mx = (ax + bx) / 2, mz = (az + bz) / 2, half = Math.hypot(bx - ax, bz - az) / 2;
     for (const o of G.world.obstaclesNear(mx, mz, half + 1)) {
-      if ((skip && skip[o.kind]) || o.h < 1 || o.kind === 'traffic' || o.kind === 'fence_tall') continue;
+      if ((skip && skip[o.kind]) || o.h < 1 || o.kind === 'traffic' || o.kind === 'fence_tall' || o.kind === 'npc') continue;
       const hx = o.hx + 0.45, hz = o.hz + 0.45;
       let t0 = 0, t1 = 1;
       const dx = bx - ax, dz = bz - az;
@@ -83,7 +85,10 @@
   const gateOut = () => ({ x: Y.ox, z: Y.oz + Y.fence + 3 });
   // along the sidewalk, away from the gate (the road has parked cars and traffic)
   const street = () => ({ x: Y.ox + (Math.random() < 0.5 ? -1 : 1) * 32, z: Y.oz + Y.fence + 2 });
-  const PEN = { pen: 1 };   // a 1 m mesh fence does not stop people, cats or foxes
+  // a 1 m mesh fence does not stop people, cats or foxes; people do not bump into themselves
+  const PEN = { pen: 1, npc: 1 };
+  const OVER = { fence_tall: 1, npc: 1 };
+  const STILL = { input: { throttle: 0, steer: 0, jumpHeld: false, consumeJump: () => false } };
 
   class Npc {
     constructor(kind) {
@@ -217,6 +222,13 @@
     dropLoot(back) {
       if (!this.loot) return;
       this.root.remove(this.loot.mesh);
+      if (back && this.kind === 'thief') {
+        // the box stays on the ground for a moment, then it is back in the stack
+        const m = this.loot.mesh;
+        m.position.set(this.x + Math.sin(this.h) * 0.8, 0.28, this.z + Math.cos(this.h) * 0.8);
+        m.rotation.set(0, this.h + 0.4, 0);
+        G.scene.add(m); G.props.push({ m, t: 4 });
+      }
       if (this.loot.bird) { this.loot.bird.stolen = false; this.loot.bird.e.root.visible = true; if (back) coop.respawn(this.loot.bird, player, 0); }
       this.loot = null;
     }
@@ -224,7 +236,7 @@
       let mesh, bird = null;
       if (this.kind === 'thief') {
         mesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55, 0.55), new THREE.MeshLambertMaterial({ color: 0x8c6236 }));
-        mesh.position.set(0, 1.25, 0.32);
+        mesh.position.set(0, 1.1, -0.42);   // held in front
       } else if (this.kind === 'fox') {
         bird = coop.birds.find(b => !b.stolen);
         if (bird) { bird.stolen = true; bird.e.root.visible = false; }
@@ -241,7 +253,7 @@
     seesDog() { return Math.hypot(player.x - this.x, player.z - this.z) < this.sight && player.y < 2.4; }
 
     flee() {
-      if (['flee', 'out', 'caught', 'leave', 'gone', 'approach', 'climb'].includes(this.state)) return;
+      if (['flee', 'out', 'caught', 'leave', 'gone', 'approach', 'climb', 'tug'].includes(this.state)) return;
       const skip = PEN;
       let best = null;
       for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -266,7 +278,7 @@
       switch (this.state) {
         case 'approach':
           this.play('walk', 1);
-          if (this.moveTo(this.cross.x, this.cross.z, this.walk, dt, { fence_tall: 1 }) < 0.3) {
+          if (this.moveTo(this.cross.x, this.cross.z, this.walk, dt, OVER) < 0.3) {
             this.state = 'climb'; this.t = 0;
             this.from = { x: this.x, z: this.z };
             this.to = { x: this.x - this.cross.nx * 1.8, z: this.z - this.cross.nz * 1.8 };
@@ -311,6 +323,10 @@
             else G.scared++;
             this.dropLoot(false);
           }
+          break;
+        case 'tug':
+          // the mode holds him in place; he backs off pulling the box
+          this.play('walk', -1.4);
           break;
         case 'caught':
           this.play('sit', 1, true);
@@ -363,11 +379,14 @@
   }
 
   function newNight(ctx, n) {
-    if (G) for (const npc of G.npcs) npc.remove();
+    const hinted = G ? G.hinted : false;
+    if (G) { for (const npc of G.npcs) npc.remove(); for (const p of G.props) ctx.scene.remove(p.m); }
+    ctx.au.growl && ctx.au.growl(false);
     G = {
-      n, time: NIGHT_LEN, stars: 3, caught: 0, scared: 0, npcs: [], events: plan(n), over: false,
+      n, time: NIGHT_LEN, stars: 3, caught: 0, scared: 0, saved: 0, npcs: [], props: [], events: plan(n), over: false,
       scene: ctx.scene, world: ctx.world, au: ctx.au, ctx,
       barkCd: 0, scentCd: 0, scentT: 0, vig: 0.6,
+      biteCd: 0, lunge: 0, daze: 0, tug: null, hinted,
       lose(text) {
         this.stars--; ctx.say(text, 'bad'); ctx.au.alarm();
         el.stars.dataset.n = Math.max(0, this.stars);
@@ -387,16 +406,119 @@
   function endNight(ctx, ok) {
     if (G.over) return;
     G.over = true;
+    if (G.tug) { G.tug.n.state = 'caught'; G.tug.n.t = 99; G.tug = null; }
+    ctx.au.growl && ctx.au.growl(false);
+    el.tug.hidden = true;
     let best = 0;
     try { best = +localStorage.getItem('guard-best') || 0; } catch (e) {}
     if (ok && G.n > best) { try { localStorage.setItem('guard-best', G.n); } catch (e) {} }
     el.resTitle.textContent = ok ? 'Рассвет! Ночь ' + G.n + ' пройдена' : 'Хозяин недоволен';
     el.resText.textContent = (ok ? 'Звёзды доверия: ' + '★'.repeat(G.stars) + '☆'.repeat(3 - G.stars) + '. ' : '') +
-      'Поймано: ' + G.caught + ', прогнано: ' + G.scared + '.';
+      'Поймано: ' + G.caught + ', прогнано: ' + G.scared + (G.saved ? ', отбито ящиков: ' + G.saved : '') + '.';
     el.resNext.textContent = ok ? 'Следующая ночь' : 'Ещё раз';
     el.resNext.onclick = () => newNight(ctx, ok ? G.n + 1 : G.n);
     el.result.hidden = false;
     if (ok) ctx.au.chime();
+  }
+
+  // ---- bite and tug of war ---------------------------------------------------------------------
+  // can the dog get its teeth into n right now?
+  function biteable(n) {
+    if (!n.foe) return n.state !== 'gone' && inside(n.x, n.z) && Math.abs(n.y - player.y) < 1.3;
+    if (n.released || ['gone', 'leave', 'caught', 'approach', 'tug'].includes(n.state)) return false;
+    // half way over the fence he can still be pulled down by the legs
+    if (n.state === 'climb') return n.t > 0.4;
+    if (n.state === 'out') return n.t < 0.6;
+    return Math.abs(n.y - player.y) < 1.3;
+  }
+  // whoever is closest in front of the dog
+  function biteTarget(range, foes) {
+    const fx = -Math.sin(player.heading), fz = -Math.cos(player.heading);
+    let best = null, bs = 1e9;
+    for (const n of G.npcs) {
+      if ((foes && !n.foe) || !biteable(n)) continue;
+      const dx = n.x - player.x, dz = n.z - player.z, d = Math.hypot(dx, dz);
+      if (d > range) continue;
+      const dot = d > 1e-3 ? (dx * fx + dz * fz) / d : 1;
+      if (dot < 0.25 && d > 1.1) continue;
+      const score = d * (1.6 - dot);
+      if (score < bs) { bs = score; best = n; }
+    }
+    return best;
+  }
+  // a fox or a cat lets go of the loot and runs
+  function catchCritter(n, ctx) {
+    if (n.released) return;
+    n.released = true;
+    n.dropLoot(true);
+    G.caught++;
+    if (n.state !== 'flee') { n.state = 'sneak'; n.flee(); }
+    ctx.say(n.kind === 'fox' ? 'Лиса удрала без курицы' : 'Кот удрал без колбасы');
+    if (n.kind === 'fox') ctx.au.yelp(); else ctx.au.meow();
+    ctx.fx.emit(n.x, 1, n.z, { color: 0xffe27a, count: 10, speed: 5, up: 2.5, size: 0.25, opacity: 0.95, life: 0.6 });
+  }
+  function bite(n, ctx) {
+    if (dogEnt.trigger) dogEnt.trigger('attack');
+    ctx.au.snap();
+    ctx.fx.emit(n.x, Math.max(0.6, n.y + 0.8), n.z, { color: 0xffffff, count: 6, speed: 4, up: 1.5, size: 0.22, opacity: 0.9, life: 0.35 });
+    if (!n.foe) {
+      if (!n.flagged.bite) { n.flagged.bite = n.flagged.grab = true; G.lose('Это ' + NAME[n.kind] + '! Своих не кусают'); }
+      return;
+    }
+    // pull him off the fence, back into the yard
+    if (n.state === 'climb' || n.state === 'out') {
+      const p = n.state === 'climb' ? n.to : n.from;
+      n.x = p.x; n.z = p.z; n.y = 0; n.state = 'sneak';
+      if (n.kind === 'thief') ctx.say('Стянул с забора!');
+    }
+    if (n.kind !== 'thief') { catchCritter(n, ctx); return; }
+    if (n.loot) { startTug(n, ctx); return; }
+    n.released = true; n.state = 'caught'; n.t = 2.6; n.path = null;
+    G.caught++; ctx.say('Вор сдался!'); ctx.au.chime();
+    ctx.fx.emit(n.x, 1, n.z, { color: 0xffe27a, count: 10, speed: 5, up: 2.5, size: 0.25, opacity: 0.95, life: 0.6 });
+  }
+  // the thief holds on to the box: whoever pulls harder gets it
+  function startTug(n, ctx) {
+    let px = n.x - player.x, pz = n.z - player.z;
+    const l = Math.hypot(px, pz);
+    if (l < 0.2) { px = -Math.sin(player.heading); pz = -Math.cos(player.heading); } else { px /= l; pz /= l; }
+    G.tug = { n, m: 0.45, t: 0, px, pz, cx: n.x, cz: n.z };
+    n.state = 'tug'; n.path = null;
+    n.loot.mesh.position.set(0, 0.7, -0.62);
+    ctx.au.growl(true);
+    ctx.say(ctx.coarse ? 'Тяни! Жми «Кусь» быстро!' : 'Тяни! Жми G быстро!');
+    el.tug.hidden = false;
+  }
+  function endTug(won, ctx) {
+    const T = G.tug, n = T.n;
+    G.tug = null;
+    ctx.au.growl(false);
+    el.tug.hidden = true;
+    n.state = 'sneak';
+    if (won) {
+      n.dropLoot(true);
+      G.saved++; ctx.say('Отбил ящик!'); ctx.au.chime();
+      ctx.fx.emit(n.x, 1, n.z, { color: 0xffe27a, count: 12, speed: 5, up: 2.5, size: 0.25, opacity: 0.95, life: 0.6 });
+    } else {
+      n.loot.mesh.position.set(0, 1.1, -0.42);
+      G.daze = 0.8;
+      player.vx = -T.px * 6; player.vz = -T.pz * 6;
+      ctx.say('Вор вырвался!', 'bad'); ctx.au.thump(1);
+    }
+    n.flee();
+  }
+  // the pair drifts towards whoever is winning; the dog faces the thief
+  function holdTug(dt) {
+    const T = G.tug, n = T.n;
+    T.t += dt;
+    T.m -= (0.4 + 0.04 * G.n) * dt;
+    const off = (0.5 - T.m) * 1.6 + Math.sin(T.t * 17) * 0.06;
+    n.x = T.cx + T.px * off; n.z = T.cz + T.pz * off;
+    G.world.resolve(n, 0.35, PEN);
+    n.h = Math.atan2(T.px, T.pz);
+    player.x = n.x - T.px * 1.3; player.z = n.z - T.pz * 1.3;
+    player.heading = Math.atan2(-T.px, -T.pz);
+    player.vx = player.vz = player.speed = 0;
   }
 
   // ---- markers at the screen edge -------------------------------------------------------------
@@ -449,7 +571,7 @@
       el = {
         night: $('gNight'), time: $('gTime'), stars: $('gStars'), vig: $('gVig'), caught: $('gCaught'),
         marks: $('marks'), result: $('result'), resTitle: $('resTitle'), resText: $('resText'), resNext: $('resNext'),
-        barkBtn: $('barkBtn'), scentBtn: $('scentBtn'),
+        barkBtn: $('barkBtn'), scentBtn: $('scentBtn'), biteBtn: $('biteBtn'), tug: $('tug'), tugFill: $('tugFill'),
       };
       el.pool = [];
       for (let i = 0; i < 8; i++) {
@@ -465,9 +587,69 @@
     update(dt, ctx) {
       const { world, fx, au, input, camera } = ctx;
       const T = ctx.theme();
-      player.update(dt, input, world, fx, T);
+      // people are solid for the dog
+      for (const n of G.npcs) {
+        if (n.kind === 'fox' || n.kind === 'cat' || ['gone', 'climb', 'out', 'tug'].includes(n.state)) continue;
+        world.dynamic.push({ x: n.x, z: n.z, hx: 0.3, hz: 0.3, h: 1.8, kind: 'npc' });
+      }
+      for (let i = G.props.length - 1; i >= 0; i--) {
+        if ((G.props[i].t -= dt) <= 0) { G.scene.remove(G.props[i].m); G.props.splice(i, 1); }
+      }
+      if (G.over) {
+        input.consumeBark(); input.consumeScent(); input.consumeBite();
+        player.update(dt, input, world, fx, T);
+        return;
+      }
+
+      // bite: a short leap at whoever is in front; while tugging, every bite pulls the box
+      G.biteCd -= dt; G.lunge = Math.max(0, G.lunge - dt); G.daze = Math.max(0, G.daze - dt);
+      const biting = input.consumeBite();
+      if (G.tug) {
+        if (biting && G.biteCd <= 0) {
+          G.biteCd = 0.07; G.tug.m += TUG_HIT;
+          if (dogEnt.trigger) dogEnt.trigger('attack');
+          au.snap();
+        }
+        if (G.tug.m >= 1) endTug(true, ctx);
+        else if (G.tug.m <= 0 || G.tug.t > TUG_MAX_T) endTug(false, ctx);
+        else holdTug(dt);
+      } else if (biting && G.biteCd <= 0 && G.daze <= 0) {
+        G.biteCd = BITE_CD;
+        const n = biteTarget(BITE_R);
+        let d = 9;
+        if (n) {
+          d = Math.hypot(n.x - player.x, n.z - player.z);
+          if (d > 0.05) player.heading = Math.atan2(-(n.x - player.x), -(n.z - player.z));
+          bite(n, ctx);
+        } else {
+          G.lunge = LUNGE_T;
+          if (dogEnt.trigger) dogEnt.trigger('attack');
+          au.snap();
+        }
+        if (!G.tug && d > 1.2) {
+          const fx_ = -Math.sin(player.heading), fz_ = -Math.cos(player.heading);
+          player.speed = Math.max(player.speed, 9);
+          player.vx = fx_ * Math.max(player.vel, 11); player.vz = fz_ * Math.max(player.vel, 11);
+          if (!player.air) player.vy = Math.max(player.vy, 3);
+        }
+      }
+      if (G.tug || G.daze > 0) {
+        input.consumeJump();
+        player.update(dt, STILL.input, world, fx, T);
+      } else {
+        const v0 = player.vel;
+        player.update(dt, input, world, fx, T);
+        G.hitVel = Math.max(v0, player.vel);
+      }
+      if (G.daze > 0 && Math.random() < dt * 10) {
+        fx.emit(player.x, player.y + 1.1, player.z, { color: 0xffe27a, count: 1, speed: 1, up: 0.6, size: 0.2, opacity: 0.9, life: 0.5 });
+      }
+      // the leap itself catches whoever it lands on
+      if (G.lunge > 0 && !G.tug) {
+        const n = biteTarget(1.4);
+        if (n) { G.lunge = 0; bite(n, ctx); }
+      }
       coop.update(dt, player, world);
-      if (G.over) { input.consumeBark(); input.consumeScent(); return; }
 
       // the night goes on
       G.time -= dt;
@@ -498,11 +680,11 @@
       // bark
       G.barkCd -= dt;
       if (input.consumeBark() && G.barkCd <= 0) {
-        G.barkCd = BARK_CD; au.bark();
+        G.barkCd = BARK_CD; au.bark(240);
         if (dogEnt.trigger) dogEnt.trigger('attack');
         for (const n of G.npcs) {
           const d = Math.hypot(n.x - player.x, n.z - player.z);
-          if (d > BARK_R || n.state === 'gone') continue;
+          if (d > BARK_R || n.state === 'gone' || n.state === 'tug') continue;
           if (n.foe) {
             if (n.kind !== 'thief' && n.loot) { n.dropLoot(true); G.scared++; ctx.say(n.kind === 'fox' ? 'Лиса бросила курицу!' : 'Кот бросил колбасу!'); }
             if (n.kind === 'thief' && ['sneak', 'steal', 'flee'].includes(n.state)) { n.state = 'frozen'; n.t = 1.4; ctx.say('Вор замер!'); }
@@ -523,17 +705,16 @@
         if (n.state === 'gone') continue;
         n.update(dt);
         const d = Math.hypot(n.x - player.x, n.z - player.z);
-        if (n.foe && !n.released && d < 1.45 && Math.abs(player.y - n.y) < 1.3 && ['sneak', 'steal', 'flee', 'frozen'].includes(n.state)) {
-          n.released = true;
-          n.dropLoot(true);
-          G.caught++;
+        // a fox or a cat is caught just by running into it; a thief has to be bitten
+        if (n.foe && n.kind !== 'thief' && !n.released && d < 1.45 && Math.abs(player.y - n.y) < 1.3 && ['sneak', 'steal', 'flee', 'frozen'].includes(n.state)) {
           if (dogEnt.trigger) dogEnt.trigger('attack');
-          if (n.kind === 'thief') { n.state = 'caught'; n.t = 2.6; ctx.say('Вор пойман!'); au.chime(); }
-          else { n.flee(); n.state = 'flee'; ctx.say(n.kind === 'fox' ? 'Лиса удрала без курицы' : 'Кот удрал без колбасы'); if (n.kind === 'fox') au.yelp(); else au.meow(); }
-          fx.emit(n.x, 1, n.z, { color: 0xffe27a, count: 10, speed: 5, up: 2.5, size: 0.25, opacity: 0.95, life: 0.6 });
+          catchCritter(n, ctx);
+        }
+        if (n.kind === 'thief' && !G.hinted && !n.released && d < 4 && inside(n.x, n.z) && ['sneak', 'steal', 'flee', 'frozen'].includes(n.state)) {
+          G.hinted = true; ctx.say(ctx.coarse ? 'Жми «Кусь»!' : 'Жми G — кусь!');
         }
         if (!n.foe && inside(n.x, n.z)) {
-          if (d < 1.2 && player.vel > 6 && !n.flagged.grab) { n.flagged.grab = true; G.lose('Это ' + NAME[n.kind] + '! Нельзя бросаться на своих'); }
+          if (d < 1.25 && G.hitVel > 6 && !n.flagged.grab) { n.flagged.grab = true; G.lose('Это ' + NAME[n.kind] + '! Нельзя бросаться на своих'); }
           if (d < 2.6 && player.vel < 3 && !n.flagged.hello) { n.flagged.hello = true; ctx.say('Свой. Хороший пёс!'); au.chime(); }
         }
         if (n.y > 0.05 || n.state === 'climb') n.ground = n.y;
@@ -555,6 +736,9 @@
       el.caught.textContent = G.caught;
       el.barkBtn.style.setProperty('--cd', Math.max(0, G.barkCd / BARK_CD).toFixed(2));
       el.scentBtn.style.setProperty('--cd', Math.max(0, G.scentCd / SCENT_CD).toFixed(2));
+      el.biteBtn.style.setProperty('--cd', G.tug ? '0' : Math.max(0, G.biteCd / BITE_CD).toFixed(2));
+      el.biteBtn.classList.toggle('hot', !!G.tug || !!biteTarget(BITE_R + 0.5, true));
+      if (G.tug) el.tugFill.style.transform = 'scaleX(' + R.clamp(G.tug.m, 0, 1).toFixed(3) + ')';
     },
 
     debug() { return { guard: () => G, Y: () => Y }; },

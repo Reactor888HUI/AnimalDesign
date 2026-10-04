@@ -69,11 +69,86 @@
   }
 
   A.step = v => { if (ok()) noise(350 + v * 500, 1.1, 0.05 + v * 0.1, 0.045); };
-  A.bark = () => {
+  // A bark is a short, rough, noisy "woof": a buzzy voice with a rising-then-falling pitch,
+  // distorted and shaped by mouth formants, plus a puff of breath.
+  let shaper = null;
+  function rough() {
+    if (shaper) return shaper;
+    const n = 1024, curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const x = i * 2 / n - 1; curve[i] = Math.tanh(x * 6) * 0.9; }
+    shaper = curve;
+    return curve;
+  }
+  function woof(delay, f0, vol) {
+    const c = A.ctx, t = c.currentTime + delay, dur = 0.2;
+    const env = c.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    env.gain.setValueAtTime(vol, t + 0.05);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const out = c.createBiquadFilter(); out.type = 'lowpass'; out.frequency.value = 3800;
+    env.connect(out); out.connect(A.master);
+
+    const ws = c.createWaveShaper(); ws.curve = rough(); ws.oversample = '2x';
+    const pre = c.createGain(); pre.gain.value = 1.4;
+    for (const [type, mul, g] of [['sawtooth', 1, 0.6], ['square', 0.5, 0.35], ['sawtooth', 1.007, 0.4]]) {
+      const o = c.createOscillator(); o.type = type;
+      o.frequency.setValueAtTime(f0 * 1.1 * mul, t);
+      o.frequency.linearRampToValueAtTime(f0 * 1.35 * mul, t + 0.035);
+      o.frequency.exponentialRampToValueAtTime(f0 * 0.62 * mul, t + dur);
+      const og = c.createGain(); og.gain.value = g;
+      o.connect(og); og.connect(pre);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+    // jitter makes it growly instead of a clean tone
+    const lfo = c.createOscillator(); lfo.frequency.value = 38;
+    const lg = c.createGain(); lg.gain.value = 0.35;
+    lfo.connect(lg); lg.connect(pre.gain); lfo.start(t); lfo.stop(t + dur + 0.05);
+    pre.connect(ws);
+    for (const [f, q, g] of [[620, 2.5, 1.0], [1250, 3.5, 0.7], [2500, 4, 0.3]]) {
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+      const bg = c.createGain(); bg.gain.value = g;
+      ws.connect(bp); bp.connect(bg); bg.connect(env);
+    }
+    // breath
+    const s = c.createBufferSource(); s.buffer = A.noise;
+    const nb = c.createBiquadFilter(); nb.type = 'bandpass'; nb.frequency.value = 1700; nb.Q.value = 0.7;
+    const ng = c.createGain(); ng.gain.value = 0.55;
+    s.connect(nb); nb.connect(ng); ng.connect(env);
+    s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+  }
+  // f0: voice pitch (a big dog is lower); two barks: "woof-woof"
+  A.bark = f0 => {
     if (!ok()) return;
-    for (const dl of [0, 0.19]) {
-      tone('sawtooth', [[0, 470], [0.05, 520], [0.13, 270]], 0.28, 0.13, dl, 950, 1.6);
-      noise(1300, 1.4, 0.12, 0.09, dl);
+    f0 = f0 || 300;
+    woof(0, f0, 0.5);
+    woof(0.24, f0 * 0.94, 0.42);
+  };
+  A.snap = () => {
+    if (!ok()) return;
+    noise(2400, 0.9, 0.35, 0.05);
+    tone('sine', [[0, 160], [0.08, 70]], 0.3, 0.09);
+  };
+  // continuous growl while the dog pulls at something
+  A.growl = on => {
+    if (!A.ctx) return;
+    const c = A.ctx, t = c.currentTime;
+    if (on && !A.gr) {
+      const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 78;
+      const am = c.createOscillator(); am.frequency.value = 23;
+      const amg = c.createGain(); amg.gain.value = 0.12;
+      const g = c.createGain(); g.gain.value = 0.0001;
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
+      const ws = c.createWaveShaper(); ws.curve = rough();
+      am.connect(amg); amg.connect(g.gain);
+      o.connect(ws); ws.connect(lp); lp.connect(g); g.connect(A.master);
+      o.start(); am.start();
+      g.gain.setTargetAtTime(A.muted ? 0 : 0.22, t, 0.05);
+      A.gr = { o, am, g };
+    } else if (!on && A.gr) {
+      const gr = A.gr; A.gr = null;
+      gr.g.gain.setTargetAtTime(0.0001, t, 0.05);
+      gr.o.stop(t + 0.3); gr.am.stop(t + 0.3);
     }
   };
   A.meow = () => { if (ok()) tone('sawtooth', [[0, 520], [0.18, 840], [0.5, 560]], 0.2, 0.55, 0, 1100, 2.2); };
