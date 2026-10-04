@@ -232,6 +232,8 @@
       run: exact('gallop') || exact('run') || has(/gallop|run|trot/, /jump/) || has(/walk/),
       jump: exact('gallop_jump') || has(/jump/, /toidle|land/) || has(/jump/),
       attack: exact('attack') || has(/attack|bite/),
+      sniff: exact('idle_2_headlow') || has(/headlow/),
+      eat: exact('eating') || has(/eat/),
     };
     console.info('[runner] animated model, clips:', Object.entries(map).map(([k2, v]) => k2 + '=' + (v ? v.name : '-')).join(' '));
     const mixer = new THREE.AnimationMixer(model), acts = {};
@@ -260,6 +262,7 @@
         else if (s.air && acts.jump) play('jump', acts.jump.getClip().duration / 0.85, 0.1);
         else if (s.speed01 > 0.42) play('run', 0.75 + s.speed01 * 0.75);
         else if (s.speed01 > 0.04) play('walk', 0.7 + s.speed01 * 2.2);
+        else if (s.sniff && acts.sniff) play('sniff', 1);
         else play('idle', 1);
         mixer.update(dt);
       },
@@ -294,6 +297,19 @@
       return makeAnimated(g, 1.25);
     } catch (e) { console.warn('[runner] guard dog failed', e); }
     return makeProceduralDog();
+  };
+
+  // Sniffer: the Quaternius shiba inu
+  R.makeShiba = async function () {
+    const g = await load('../models/dog_shiba.glb');
+    if (g) try { return makeAnimated(g, 1.0); } catch (e) { console.warn('[runner] shiba failed', e); }
+    return makeProceduralDog();
+  };
+  // any animal with Quaternius clips, driven like the dogs (speed01 / air)
+  R.makeAnimal = async function (url, len) {
+    const g = await load(url);
+    if (g) try { return makeAnimated(g, len); } catch (e) { console.warn('[runner] animal failed', url, e); }
+    return null;
   };
 
   // A skinned model used as a template: every spawn is a clone with its own colours and mixer.

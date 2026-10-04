@@ -103,7 +103,7 @@
     say(text, kind) {
       toast.textContent = text;
       toast.className = 'ui on' + (kind ? ' ' + kind : '');
-      toastT = kind === 'bad' ? 2.2 : 1.4;
+      toastT = kind === 'long' ? 3.6 : kind === 'bad' ? 2.2 : 1.4;
     },
     addBlob(o, size) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: blobTex, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false }));

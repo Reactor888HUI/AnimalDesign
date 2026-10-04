@@ -51,7 +51,23 @@
     <div class="bar"><i id="gVig"></i></div>
   </div>
 </div>
-<div id="marks" class="g-only"></div>
+<div id="marks"></div>
+
+<div id="noseFx" class="s-only"></div>
+<div id="shud" class="ui s-only">
+  <div class="stat panel">
+    <div class="row"><label>Дело <span id="sCaseN">1</span></label><b id="sCaseT" class="case">…</b></div>
+    <div id="sTask" class="task"></div>
+    <div class="row sub"><label>Свежесть запаха</label><i id="sChip" class="chip"></i></div>
+    <div class="bar"><i id="sFresh"></i></div>
+  </div>
+  <div class="stat panel">
+    <div class="row"><label>Косточки</label><span><b id="sBones">0</b><small>рекорд <span id="sBest">0</span></small></span></div>
+    <div class="row sub"><label>След</label><span id="sWarm">—</span></div>
+    <div class="bar"><i id="sWarmBar"></i></div>
+  </div>
+</div>
+<div id="shint" class="ui panel s-only"><kbd>W A S D</kbd> бег &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок &nbsp;·&nbsp; <kbd>E</kbd> нюх вкл/выкл &nbsp;·&nbsp; <kbd>G</kbd> рыть &nbsp;·&nbsp; иди по запаху своего цвета, чужие следы обманывают</div>
 <div id="ghint" class="ui panel g-only"><kbd>W A S D</kbd> бег &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок &nbsp;·&nbsp; <kbd>G</kbd> кусь &nbsp;·&nbsp; <kbd>F</kbd> лай &nbsp;·&nbsp; <kbd>E</kbd> чутьё &nbsp;·&nbsp; обегай зелёные огоньки, кусай чужих, своих не трогай</div>
 <div id="tug" class="ui panel g-only" hidden><label>Перетягивание</label><div class="bar"><i id="tugFill"></i></div></div>
 
@@ -78,11 +94,11 @@
         <b>Охранник</b>
         <span>Ночь на складе. Воры, лиса и кот лезут через забор. Лай, кусай, отбивай ящики, обегай посты. Своих не трогай.</span>
       </button>
-      <div class="card panel soon">
+      <button class="card panel" data-mode="sniffer" type="button">
         <span class="tag">Шиба-ину</span>
         <b>Нюхач</b>
-        <span>Скоро: квест по запахам.</span>
-      </div>
+        <span>Соседи теряют вещи. Понюхай, включи нюх и иди по цветному следу. Ключи, мячик, котёнок и лиса-воришка.</span>
+      </button>
     </div>
   </div>
 </div>
@@ -113,6 +129,8 @@
   <button id="biteBtn" class="act g-only" type="button">Кусь</button>
   <button id="barkBtn" class="act g-only" type="button">Лай</button>
   <button id="scentBtn" class="act g-only" type="button">Чутьё</button>
+  <button id="noseBtn" class="act s-only" type="button" aria-pressed="false">Нюх</button>
+  <button id="digBtn" class="act s-only" type="button">Рыть</button>
 </div>
 
 <script src="vendor/three.min.js"></script>
@@ -135,6 +153,7 @@
 <script src="js/camera.js"></script>
 <script src="js/modes/runner.js"></script>
 <script src="js/modes/guard.js"></script>
+<script src="js/modes/sniffer.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

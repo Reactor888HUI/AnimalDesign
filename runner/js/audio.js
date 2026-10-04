@@ -151,6 +151,12 @@
       gr.o.stop(t + 0.3); gr.am.stop(t + 0.3);
     }
   };
+  // quick sniffs through the nose: "fff-fff-fff"
+  A.sniff = () => {
+    if (!ok()) return;
+    for (let i = 0; i < 3; i++) noise(3200 + i * 300, 1.4, 0.11, 0.07, i * 0.11);
+  };
+  A.dig = () => { if (ok()) { noise(600, 0.8, 0.3, 0.12); noise(1800, 1, 0.12, 0.08, 0.05); } };
   A.meow = () => { if (ok()) tone('sawtooth', [[0, 520], [0.18, 840], [0.5, 560]], 0.2, 0.55, 0, 1100, 2.2); };
   A.cluck = () => {
     if (!ok()) return;

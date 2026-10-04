@@ -117,7 +117,7 @@
       this.root.rotation.y = this.heading;
       this.lean.rotation.z = R.damp(this.lean.rotation.z, -this.steerS * sf * 0.2, 8, dt);
       this.lean.rotation.x = R.damp(this.lean.rotation.x, this.air ? clamp(this.vy * -0.03, -0.3, 0.3) : 0, 8, dt);
-      this.ent.update(dt, { speed01: clamp(v / C.MAX_SPEED, 0, 1), air: this.air, vy: this.vy });
+      this.ent.update(dt, { speed01: clamp(v / C.MAX_SPEED, 0, 1), air: this.air, vy: this.vy, sniff: this.sniff });
     }
   }
 
