@@ -23,17 +23,19 @@
 
       // throttle
       if (input.throttle > 0) this.speed += C.ACCEL * input.throttle * (1 - 0.55 * sf) * dt;
-      else if (input.throttle < 0) this.speed -= C.BRAKE * -input.throttle * dt;
+      else if (input.throttle < 0) this.speed -= C.BRAKE * -input.throttle * (this.steerS * this.steerS > 0.09 ? 0.35 : 1) * dt;
       else this.speed -= C.COAST * dt;
       this.speed = clamp(this.speed, 0, C.MAX_SPEED);
 
       // steering: right turn lowers the heading (forward = -Z at heading 0)
-      const turnGain = (0.38 + 0.62 * Math.min(1, this.speed / 6)) * (1 - 0.3 * sf) * (this.air ? 0.45 : 1);
+      // turning works even standing still; braking while steering gives a tight sliding turn
+      const sliding = input.throttle < 0 && this.speed > 4 && Math.abs(this.steerS) > 0.3;
+      const turnGain = (0.75 + 0.25 * Math.min(1, this.speed / 6)) * (1 - 0.15 * sf) * (this.air ? 0.45 : 1) * (sliding ? 1.5 : 1);
       this.heading -= this.steerS * C.TURN_RATE * turnGain * dt;
 
       // velocity chases the facing direction; low grip at speed makes the dog drift
       const fx_ = -Math.sin(this.heading), fz_ = -Math.cos(this.heading);
-      const grip = this.air ? 1.2 : R.lerp(C.GRIP_LOW, C.GRIP_HIGH, sf * sf);
+      const grip = this.air ? 1.2 : sliding ? 2.6 : R.lerp(C.GRIP_LOW, C.GRIP_HIGH, sf * sf);
       const k = 1 - Math.exp(-grip * dt);
       this.vx += (fx_ * this.speed - this.vx) * k;
       this.vz += (fz_ * this.speed - this.vz) * k;

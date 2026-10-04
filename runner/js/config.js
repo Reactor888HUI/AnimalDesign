@@ -1,9 +1,9 @@
 (function (R) {
   const C = {
     // city grid, meters: block + sidewalk + half of each neighbouring road = one cell
-    B: 44, SW: 4, ROAD: 12,
+    B: 44, SW: 5, ROAD: 20,
     MAX_SPEED: 16, ACCEL: 24, BRAKE: 32, COAST: 5,
-    TURN_RATE: 3.1, GRIP_LOW: 13, GRIP_HIGH: 4.6,
+    TURN_RATE: 3.4, GRIP_LOW: 13, GRIP_HIGH: 4.6,
     JUMP_V: 7.4, GRAVITY: 19,
     CAT_BASE: 7, CAT_FLEE: 12.6, CAT_RANGE: 26,
     DOG_LEN: 1.15, CAT_LEN: 0.78, CHICKEN_H: 0.62,
@@ -23,8 +23,8 @@
     },
     day: {
       skyTop: '#4d9be0', skyMid: '#8cc4ee', horizon: '#d6e9f5', fog: 0xd6e9f5, fogDensity: 0.0075,
-      hemiSky: 0xd8ecff, hemiGround: 0x9a9080, hemiI: 1.0,
-      sunColor: 0xfff0d2, sunI: 1.45, sunOffset: [34, 60, 22],
+      hemiSky: 0xd8ecff, hemiGround: 0x9a9080, hemiI: 0.85,
+      sunColor: 0xfff0d2, sunI: 1.3, sunOffset: [34, 60, 22],
       exposure: 1.0, lamps: false, stars: false, dust: 0xcfc6b4,
     },
   };

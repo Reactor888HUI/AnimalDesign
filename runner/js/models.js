@@ -199,11 +199,58 @@
         ampS = R.damp(ampS, moving ? (0.35 + 0.65 * s.speed01) * cfg.amp * sh.len : 0, 14, dt);
         sh.u.uPhase.value = phase;
         sh.u.uAmp.value = ampS;
-        sh.u.uLift.value = ampS * 0.7;
+        sh.u.uLift.value = ampS * 1.5;
         const gallop = moving ? Math.sin(phase * 2) : 0;
         inner.position.y = R.damp(inner.position.y, (moving ? Math.abs(Math.sin(phase)) * 0.045 * s.speed01 : 0) * targetLen, 18, dt);
         inner.rotation.x = R.damp(inner.rotation.x, gallop * 0.07 * s.speed01 + (s.air ? -0.12 : 0), 14, dt);
+        inner.rotation.z = R.damp(inner.rotation.z, moving ? Math.sin(phase) * 0.09 * (0.4 + s.speed01) : 0, 16, dt);
         inner.scale.y = k * (1 + (moving ? 0 : Math.sin(t * 2.2) * 0.012));
+      },
+    };
+  }
+
+  // A model with a skeleton and clips (e.g. a Quaternius animal): pick idle / walk / run / jump by name.
+  function makeAnimated(gltf, targetLen) {
+    const model = gltf.scene;
+    model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; (Array.isArray(o.material) ? o.material : [o.material]).forEach(fixMaterial); } });
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    const k = targetLen / Math.max(size.x, size.z);
+    model.position.set(-c.x, -box.min.y, -c.z);
+    const inner = new THREE.Group(); inner.add(model); inner.scale.setScalar(k);
+    const pivot = new THREE.Group(); pivot.rotation.y = C.MODEL_YAW; pivot.add(inner);
+    const root = new THREE.Group(); root.add(pivot);
+    const clips = gltf.animations;
+    const name = cl => cl.name.toLowerCase();
+    const find = (re, not) => clips.find(cl => re.test(name(cl)) && !(not && not.test(name(cl))));
+    const map = {
+      idle: find(/idle/, /eat|sit|lie|attack/) || clips[0],
+      walk: find(/walk/),
+      run: find(/gallop|run|trot/, /jump/) || find(/walk/),
+      jump: find(/jump/, /toidle|land/) || find(/jump/),
+    };
+    console.info('[runner] dog clips:', clips.map(cl => cl.name).join(', '));
+    const mixer = new THREE.AnimationMixer(model), acts = {};
+    for (const key in map) if (map[key]) acts[key] = mixer.clipAction(map[key]);
+    let cur = null;
+    const play = (key, ts) => {
+      const a = acts[key] || acts.idle;
+      if (!a) return;
+      a.timeScale = ts;
+      if (cur === a) return;
+      a.reset().fadeIn(0.18).play();
+      if (cur) cur.fadeOut(0.18);
+      cur = a;
+    };
+    return {
+      kind: 'animated', root,
+      update(dt, s) {
+        if (s.air && acts.jump) play('jump', 1);
+        else if (s.speed01 > 0.45) play('run', 0.7 + s.speed01 * 0.8);
+        else if (s.speed01 > 0.05) play('walk', 0.6 + s.speed01 * 1.6);
+        else play('idle', 1);
+        mixer.update(dt);
       },
     };
   }
@@ -213,12 +260,12 @@
 
   R.makeDog = async function () {
     const g = await load('../models/dog_runner.glb');
-    if (g) try { return makeStatic(g, C.DOG_LEN, DOG_CFG); } catch (e) { console.warn('[runner] dog model failed', e); }
+    if (g) try { return g.animations.length ? makeAnimated(g, C.DOG_LEN) : makeStatic(g, C.DOG_LEN, DOG_CFG); } catch (e) { console.warn('[runner] dog model failed', e); }
     return makeProceduralDog();
   };
   R.makeCat = async function () {
     const g = await load('../models/cat.glb');
-    if (g) try { return makeStatic(g, C.CAT_LEN, CAT_CFG); } catch (e) { console.warn('[runner] cat model failed', e); }
+    if (g) try { return g.animations.length ? makeAnimated(g, C.CAT_LEN) : makeStatic(g, C.CAT_LEN, CAT_CFG); } catch (e) { console.warn('[runner] cat model failed', e); }
     return makeProceduralCat();
   };
 

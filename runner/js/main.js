@@ -164,7 +164,7 @@
         l.position.y = lp.y;
         l.position.z = R.damp(l.position.z, lp.z, 6, dt);
       }
-      l.intensity = R.damp(l.intensity, T.lamps ? 7 : 0, 6, dt);
+      l.intensity = R.damp(l.intensity, T.lamps ? 5 : 0, 6, dt);
     }
     buddyLight.position.set(player.x - fwdX * 1.2, 2.4, player.z - fwdZ * 1.2);
     buddyLight.intensity = R.damp(buddyLight.intensity, T.lamps ? 2.4 : 0, 6, dt);
