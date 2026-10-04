@@ -30,7 +30,7 @@
 
   const buddyLight = new THREE.PointLight(0xffe2b0, 0, 12, 1.4);
   scene.add(buddyLight);
-  const lampLights = [0, 1].map(() => { const l = new THREE.PointLight(0xffb468, 0, 30, 1.6); scene.add(l); return l; });
+  const lampLights = [0, 1].map(() => { const l = new THREE.PointLight(0xffb468, 0, 22, 2); scene.add(l); return l; });
 
   // ---- theme -----------------------------------------------------------------------------
   let themeName = 'night';
@@ -71,6 +71,25 @@
   world.update(player.x, player.z, 99);
   cat.respawn(player, world, 24);
   const flock = chickenTpl ? new R.Flock(scene, chickenTpl, 7, world, player) : null;
+  const traffic = new R.Traffic(scene, world, 9);
+
+  // ---- sound -----------------------------------------------------------------------------
+  const au = R.audio;
+  const unlock = () => au.start();
+  ['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
+  const muteBtn = $('muteBtn');
+  const showMute = () => { muteBtn.setAttribute('aria-pressed', String(au.muted)); muteBtn.setAttribute('aria-label', au.muted ? 'Включить звук' : 'Выключить звук'); };
+  muteBtn.addEventListener('click', () => { au.start(); au.setMuted(!au.muted); showMute(); });
+  showMute();
+  player.onEvent = (name, v) => {
+    if (name === 'land') au.thump(v / 12);
+    else if (name === 'bump') au.thump(0.6);
+    else if (name === 'hitCar') { au.yelp(); au.thump(1); }
+    else if (name === 'jump') au.whoosh();
+  };
+  traffic.onHorn = (x, z) => au.horn(Math.max(0.2, 1 - Math.hypot(x - player.x, z - player.z) / 40));
+  let cluckCd = 0, barkCd = 0, stepT = 0, wasNear = false;
+  if (flock) flock.onCluck = () => { if (cluckCd <= 0) { au.cluck(); cluckCd = 1.2; } };
 
   // soft blob shadows (used when real shadows are switched off)
   const blobTex = R.glowTexture();
@@ -114,13 +133,31 @@
   try { best = +localStorage.getItem('runner-best') || 0; } catch (e) {}
   el.best.textContent = best;
 
+  const toast = $('toast');
+  let toastT = 0;
+  function say(text) { toast.textContent = text; toast.classList.add('on'); toastT = 1.2; }
+  function addScore(n) {
+    score += n;
+    if (score > best) { best = score; try { localStorage.setItem('runner-best', best); } catch (e) {} el.best.textContent = best; }
+    el.score.textContent = score;
+  }
+  function caughtChicken(b) {
+    addScore(1);
+    say('+1 курица');
+    fx.emit(b.x, 0.5, b.z, { color: 0xffffff, count: 14, speed: 5, up: 2.5, size: 0.22, opacity: 0.95, life: 0.8 });
+    au.cluck(); au.chime();
+    if (dogEnt.trigger) dogEnt.trigger('attack');
+    flock.respawn(b, player, 45 + Math.random() * 25);
+  }
+
   function caught() {
     comboT > 0 ? combo++ : (combo = 0);
     comboT = 8;
     const mult = Math.min(5, combo + 1);
-    score += mult;
-    if (score > best) { best = score; try { localStorage.setItem('runner-best', best); } catch (e) {} el.best.textContent = best; }
-    el.score.textContent = score;
+    addScore(mult);
+    say(mult > 1 ? '+' + mult + ' кот, комбо!' : '+1 кот');
+    au.meow(); au.chime();
+    if (dogEnt.trigger) dogEnt.trigger('attack');
     el.combo.textContent = mult > 1 ? '×' + mult : '';
     el.combo.classList.toggle('on', mult > 1);
     flashT = 0.3;
@@ -129,7 +166,7 @@
   }
 
   let started = false;
-  input.onFirst = () => { if (started) return; started = true; $('hint').classList.add('hide'); };
+  input.onFirst = () => { au.start(); if (started) return; started = true; $('hint').classList.add('hide'); };
   $('loading').classList.add('hide');
 
   // ---- loop ------------------------------------------------------------------------------
@@ -141,6 +178,7 @@
     const T = R.THEMES[themeName];
 
     input.poll();
+    traffic.update(dt, player);
     player.update(dt, input, world, fx, T);
     cat.update(dt, player, world);
     if (flock) flock.update(dt, player, world);
@@ -148,7 +186,23 @@
     fx.update(dt);
     rig.update(dt, player, now / 1000);
 
-    if (cat.dist < 2.2 && player.y < 1.1) caught();
+    if (cat.dist < 2.2 && Math.abs(player.y - cat.y) < 1.1) caught();
+    if (flock) for (const b of flock.birds) {
+      if (Math.hypot(b.x - player.x, b.z - player.z) < 1.3 && Math.abs(player.y - b.y) < 1) caughtChicken(b);
+    }
+
+    // sounds that follow the run
+    cluckCd -= dt; barkCd -= dt;
+    const gait = R.clamp(player.vel / C.MAX_SPEED, 0, 1);
+    if (!player.air && player.vel > 0.8) {
+      stepT -= dt;
+      if (stepT <= 0) { stepT = 0.34 - 0.2 * gait; au.step(gait); }
+    }
+    const near = cat.dist < 12;
+    if (near && !wasNear && barkCd <= 0) { au.bark(); barkCd = 4; }
+    wasNear = near;
+    au.update({ carDist: traffic.nearest || 99, carSpeed: traffic.nearestSpeed || 0, night: !!T.lamps });
+    if (toastT > 0) { toastT -= dt; if (toastT <= 0) toast.classList.remove('on'); }
     if (comboT > 0) { comboT -= dt; if (comboT <= 0) { combo = 0; el.combo.textContent = ''; el.combo.classList.remove('on'); } }
 
     const o = T.sunOffset;
@@ -164,12 +218,12 @@
         l.position.y = lp.y;
         l.position.z = R.damp(l.position.z, lp.z, 6, dt);
       }
-      l.intensity = R.damp(l.intensity, T.lamps ? 5 : 0, 6, dt);
+      l.intensity = R.damp(l.intensity, T.lamps ? 3.2 : 0, 6, dt);
     }
     buddyLight.position.set(player.x - fwdX * 1.2, 2.4, player.z - fwdZ * 1.2);
-    buddyLight.intensity = R.damp(buddyLight.intensity, T.lamps ? 2.4 : 0, 6, dt);
+    buddyLight.intensity = R.damp(buddyLight.intensity, T.lamps ? 1.4 : 0, 6, dt);
 
-    for (const b of blobs) if (b.m.visible) b.m.position.set(b.o.x, 0.09, b.o.z);
+    for (const b of blobs) if (b.m.visible) b.m.position.set(b.o.x, (b.o.ground || 0) + 0.09, b.o.z);
 
     // HUD
     const v = player.vel, sf = R.clamp(v / C.MAX_SPEED, 0, 1);
@@ -211,5 +265,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = { player, cat, world, flock, renderer, scene, camera, rig, setTheme, setLevel, input };
+  window.__runner = { player, cat, world, flock, traffic, renderer, scene, camera, rig, setTheme, setLevel, input };
 })(window.R);

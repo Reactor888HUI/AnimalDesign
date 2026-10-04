@@ -209,7 +209,7 @@
     };
   }
 
-  // A model with a skeleton and clips (e.g. a Quaternius animal): pick idle / walk / run / jump by name.
+  // A model with a skeleton and clips (e.g. a Quaternius animal): idle / walk / gallop / jump by name.
   function makeAnimated(gltf, targetLen) {
     const model = gltf.scene;
     model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; (Array.isArray(o.material) ? o.material : [o.material]).forEach(fixMaterial); } });
@@ -221,34 +221,45 @@
     const inner = new THREE.Group(); inner.add(model); inner.scale.setScalar(k);
     const pivot = new THREE.Group(); pivot.rotation.y = C.MODEL_YAW; pivot.add(inner);
     const root = new THREE.Group(); root.add(pivot);
+
     const clips = gltf.animations;
-    const name = cl => cl.name.toLowerCase();
-    const find = (re, not) => clips.find(cl => re.test(name(cl)) && !(not && not.test(name(cl))));
+    const base = cl => cl.name.toLowerCase().replace(/^.*\|/, '');
+    const exact = n => clips.find(cl => base(cl) === n);
+    const has = (re, not) => clips.find(cl => re.test(base(cl)) && !(not && not.test(base(cl))));
     const map = {
-      idle: find(/idle/, /eat|sit|lie|attack/) || clips[0],
-      walk: find(/walk/),
-      run: find(/gallop|run|trot/, /jump/) || find(/walk/),
-      jump: find(/jump/, /toidle|land/) || find(/jump/),
+      idle: exact('idle') || has(/idle/, /hit|eat|attack/) || clips[0],
+      walk: exact('walk') || has(/walk/),
+      run: exact('gallop') || exact('run') || has(/gallop|run|trot/, /jump/) || has(/walk/),
+      jump: exact('gallop_jump') || has(/jump/, /toidle|land/) || has(/jump/),
+      attack: exact('attack') || has(/attack|bite/),
     };
-    console.info('[runner] dog clips:', clips.map(cl => cl.name).join(', '));
+    console.info('[runner] animated model, clips:', Object.entries(map).map(([k2, v]) => k2 + '=' + (v ? v.name : '-')).join(' '));
     const mixer = new THREE.AnimationMixer(model), acts = {};
     for (const key in map) if (map[key]) acts[key] = mixer.clipAction(map[key]);
-    let cur = null;
-    const play = (key, ts) => {
+    let cur = null, oneShot = 0;
+    const play = (key, ts, fade) => {
       const a = acts[key] || acts.idle;
       if (!a) return;
       a.timeScale = ts;
       if (cur === a) return;
-      a.reset().fadeIn(0.18).play();
-      if (cur) cur.fadeOut(0.18);
+      a.reset().fadeIn(fade || 0.18).play();
+      if (cur) cur.fadeOut(fade || 0.18);
       cur = a;
     };
     return {
       kind: 'animated', root,
+      trigger(name) {
+        const a = acts[name];
+        if (!a) return;
+        a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true;
+        play(name, 1.6, 0.08);
+        oneShot = a.getClip().duration / 1.6;
+      },
       update(dt, s) {
-        if (s.air && acts.jump) play('jump', 1);
-        else if (s.speed01 > 0.45) play('run', 0.7 + s.speed01 * 0.8);
-        else if (s.speed01 > 0.05) play('walk', 0.6 + s.speed01 * 1.6);
+        if (oneShot > 0) oneShot -= dt;
+        else if (s.air && acts.jump) play('jump', acts.jump.getClip().duration / 0.85, 0.1);
+        else if (s.speed01 > 0.42) play('run', 0.75 + s.speed01 * 0.75);
+        else if (s.speed01 > 0.04) play('walk', 0.7 + s.speed01 * 2.2);
         else play('idle', 1);
         mixer.update(dt);
       },

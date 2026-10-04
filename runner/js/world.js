@@ -251,7 +251,7 @@
       }
       const n = 1 + Math.floor(rnd() * 2);
       for (let k = 0; k < n; k++) {
-        const t = rr(-HB + 5, HB - 5), off = PADH + rr(3.6, RH * 2 - 1.5);
+        const t = rr(-HB + 5, HB - 5), off = PADH + rr(3.4, 5.6);
         const [x, z] = pt(side, t, off);
         if (ci === 0 && cj === 0 && Math.abs(ox + x - HP) < 10 && Math.abs(oz + z) < 26) continue;
         const kk = pick(['cone', 'cone', 'box', 'trash_can', 'dumpster', 'planter_bushes', 'fence_piece', 'trash_bag']);
@@ -385,16 +385,44 @@
     function plaza() {
       b.rect(COL.paving, ox, oz, B, B, 0.05);
       b.rect([0.41, 0.375, 0.33], ox, oz, B - 6, B - 6, 0.06);
-      for (let k = 0; k < 9; k++) solid(place('cone', -16 + k * 4, (k % 2 ? 1.4 : -1.4), 0, 1), 'cone');
-      for (let k = 0; k < 7; k++) solid(place('cone', 10 + (k % 2 ? 1.4 : -1.4), -18 + k * 5, 0, 1), 'cone');
-      for (const [x, z] of [[-14, -14], [14, 14], [-14, 14], [14, -14]]) {
-        solid(place('planter_bushes', x, z, 0, 1.2), 'prop');
-        tree(x + 3, z + 3, 1);
+      const CONT = [[0.62, 0.22, 0.18], [0.18, 0.36, 0.55], [0.25, 0.45, 0.28], [0.8, 0.6, 0.15]];
+      const box = (col, x, z, sx, sz, h, kind) => {
+        b.box(col, ox + x, h / 2, oz + z, sx, h, sz);
+        b.box(col.map(c => c * 0.75), ox + x, h + 0.04, oz + z, sx + 0.1, 0.08, sz + 0.1);
+        obs.push({ x: ox + x, z: oz + z, hx: sx / 2, hz: sz / 2, h: h + 0.08, kind: kind || 'container' });
+      };
+      const ramp = (x, z, len, wid, h, axis, dir) => {
+        b.ramp([0.5, 0.36, 0.22], ox + x, oz + z, len, wid, h, axis, dir);
+        obs.push({ x: ox + x, z: oz + z, hx: (axis === 'x' ? len : wid) / 2, hz: (axis === 'x' ? wid : len) / 2, h, kind: 'ramp', ramp: { axis, dir } });
+      };
+      // container run: ramp up, gap jump, a higher box, drop down
+      ramp(-15.5, -10, 9, 2.6, 2.6, 'x', 1);
+      box(CONT[0], -8, -10, 6, 2.6, 2.6);
+      box(CONT[1], 1, -10, 6, 2.6, 2.6);
+      box(CONT[2], 10, -10, 6, 2.6, 3.6);
+      // crate stairs up to a container
+      for (let k = 0; k < 3; k++) {
+        for (let lv = 0; lv <= k; lv++) place('box', -17 + k * 1.1, 8, 0, 1, 1, lv * 0.85);
+        obs.push({ x: ox - 17 + k * 1.1, z: oz + 8, hx: 0.45, hz: 0.45, h: (k + 1) * 0.85, kind: 'box' });
       }
-      for (let k = 0; k < 4; k++) solid(place('box', -4 + k * 2.2, 8, 0, 1), 'box');
-      for (const [x, z, yaw] of [[0, 17, Math.PI], [0, -17, 0], [17, 0, rad(90) + Math.PI]]) solid(place('bench', x, z, yaw, 1), 'prop');
-      for (let row = 0; row < 3; row++) for (let k = 0; k < 4; k++) solid(place('fence_piece', -8 + k * 1.3, -6 - row * 4, 0, 1), 'fence');
+      box(CONT[3], -10, 8, 5, 2.6, 2.6);
+      ramp(-4.5, 8, 6, 2.6, 2.6, 'x', -1);
+      // hurdles and a slalom
+      for (let row = 0; row < 3; row++) for (let k = 0; k < 4; k++) solid(place('fence_piece', 4 + k * 1.3, 2 - row * 3.5, 0, 1), 'fence');
+      for (let k = 0; k < 8; k++) solid(place('cone', -14 + k * 4, 17 + (k % 2 ? 1.2 : -1.2), 0, 1), 'cone');
+      for (const [x, z] of [[-18, -18], [18, 18], [18, -18], [-18, 18]]) solid(place('planter_bushes', x, z, 0, 1.2), 'prop');
+      for (const [x, z, yaw] of [[14, 4, rad(90)], [14, 9, rad(90)]]) solid(place('bench', x, z, yaw, 1), 'prop');
+      tree(18, 0); tree(-20, 0);
     }
+  }
+
+  // ---- surfaces -----------------------------------------------------------------------------
+  const STEP = 0.3;                 // the dog walks up onto anything this low
+  const NOSTAND = { tree: 1, pole: 1, cone: 1, trash_bag: 1, wall: 1, traffic: 1 };
+  function topAt(o, x, z) {
+    if (!o.ramp) return o.h;
+    const along = o.ramp.axis === 'x' ? x - o.x : z - o.z, half = o.ramp.axis === 'x' ? o.hx : o.hz;
+    return o.h * R.clamp((along * o.ramp.dir + half) / (2 * half), 0, 1);
   }
 
   // ---- streaming -----------------------------------------------------------------------------
@@ -405,6 +433,7 @@
       this.start = { x: HP, z: 0 };
       this.farCells = C.FAR_CELLS;
       this.nearR = 1;
+      this.dynamic = [];            // moving cars, refreshed every frame
     }
     static cellIndex(v) { return Math.round(v / P); }
     key(ci, cj) { return ci + ',' + cj; }
@@ -458,7 +487,21 @@
           if (Math.abs(o.x - x) < range + o.hx && Math.abs(o.z - z) < range + o.hz) out.push(o);
         }
       });
+      for (const o of this.dynamic) {
+        if (Math.abs(o.x - x) < range + o.hx && Math.abs(o.z - z) < range + o.hz) out.push(o);
+      }
       return out;
+    }
+    // height of whatever is under (x, z) that something at height y can stand on
+    groundAt(x, z, y) {
+      let g = 0;
+      for (const o of this.obstaclesNear(x, z, 0.2)) {
+        if (NOSTAND[o.kind]) continue;
+        if (Math.abs(x - o.x) > o.hx + 0.15 || Math.abs(z - o.z) > o.hz + 0.15) continue;
+        const t = topAt(o, x, z);
+        if (t <= y + STEP && t > g) g = t;
+      }
+      return g;
     }
     lampsNear(x, z, n) {
       const all = [];
@@ -491,8 +534,8 @@
     resolve(p, r) {
       let hit = null;
       for (const o of this.obstaclesNear(p.x, p.z, r + 0.2)) {
-        if (p.y > o.h - 0.15) continue;
         const cx = R.clamp(p.x, o.x - o.hx, o.x + o.hx), cz = R.clamp(p.z, o.z - o.hz, o.z + o.hz);
+        if (NOSTAND[o.kind] ? p.y > o.h - 0.15 : p.y > topAt(o, cx, cz) - STEP) continue;
         let dx = p.x - cx, dz = p.z - cz;
         const d2 = dx * dx + dz * dz;
         if (d2 >= r * r) continue;
@@ -506,5 +549,6 @@
     }
   }
 
+  World.isOpen = isOpen;
   R.World = World;
 })(window.R = window.R || {});

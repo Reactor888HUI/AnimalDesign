@@ -17,6 +17,14 @@
       return m;
     },
     facade: () => new THREE.MeshLambertMaterial({ vertexColors: true, map: R.facadeTexture() }),
+    // car lights: glow in their own colour at night
+    light: () => {
+      const mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0xffffff });
+      mat.onBeforeCompile = sh => {
+        sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance *= vColor * 2.4;');
+      };
+      return mat;
+    },
     pool: () => {
       const m = new THREE.MeshBasicMaterial({
         map: R.glowTexture(), color: 0xffb468, transparent: true, opacity: 0,
@@ -33,8 +41,10 @@
       m.color.setHex(T.lamps ? 0x303038 : 0xffffff);
       m.emissive.setHex(0xff9a3c);
       m.emissiveIntensity = T.lamps ? 1.05 : 0;
+    } else if (key === 'light') {
+      m.emissiveIntensity = T.lamps ? 1 : 0;
     } else if (key === 'pool') {
-      m.opacity = T.lamps ? 0.8 : 0;
+      m.opacity = T.lamps ? 0.6 : 0;
     }
   }
 

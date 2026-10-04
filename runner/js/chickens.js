@@ -3,7 +3,7 @@
 
   class Flock {
     constructor(scene, template, n, world, player) {
-      this.world = world; this.birds = [];
+      this.world = world; this.birds = []; this.onCluck = null;
       for (let i = 0; i < n; i++) {
         const e = template.spawn();
         scene.add(e.root);
@@ -25,7 +25,7 @@
         const dx = b.x - player.x, dz = b.z - player.z, dist = Math.hypot(dx, dz);
         if (dist > 100) { this.respawn(b, player, 45 + Math.random() * 25); continue; }
 
-        if (dist < 7 && b.state !== 'flee') { b.state = 'flee'; if (dist < 3.2 && b.y === 0) { b.vy = 3.4; } }
+        if (dist < 7 && b.state !== 'flee') { b.state = 'flee'; if (this.onCluck) this.onCluck(b); if (dist < 3.2 && b.y === 0) { b.vy = 3.4; } }
         if (b.state === 'flee' && dist > 14) { b.state = 'idle'; b.t = 1 + Math.random() * 2; }
 
         let speed = 0, anim = 'idle', ts = 1;

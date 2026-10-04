@@ -104,6 +104,20 @@
       g.translate(cx, cy, cz);
       this.addPart('facade', this._color(g, col, true));
     }
+    // wedge rising along `axis` towards `dir`
+    ramp(col, cx, cz, len, wid, h, axis, dir) {
+      const g = new THREE.BoxGeometry(axis === 'x' ? len : wid, h, axis === 'x' ? wid : len);
+      g.translate(0, h / 2, 0);
+      const pos = g.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const a = axis === 'x' ? pos.getX(i) : pos.getZ(i);
+        if (pos.getY(i) > h / 2 && a * dir < 0) pos.setY(i, 0.02);
+      }
+      g.translate(cx, 0, cz);
+      const cg = this._color(g, col);
+      cg.computeVertexNormals();
+      this.addPart('solid', cg);
+    }
     poolDecal(x, z, size) {
       const g = new THREE.PlaneGeometry(size, size); g.rotateX(-Math.PI / 2); g.translate(x, 0.07, z);
       this.pool.push(g);
@@ -176,7 +190,8 @@
         for (let i = 0; i < n; i++) { col[i * 3] = m.color.r; col[i * 3 + 1] = m.color.g; col[i * 3 + 2] = m.color.b; }
         ng.setAttribute('color', new THREE.BufferAttribute(col, 3));
         const glass = /glass/i.test(m.name);
-        parts.push({ kind: glass ? 'glass' : 'solid', geo: ng, rand: glass ? componentRandom(ng) : null });
+        const light = /headlight|taillight|brakelight|bluelights|whitelights/i.test(m.name);
+        parts.push({ kind: glass ? 'glass' : 'solid', geo: ng, rand: glass ? componentRandom(ng) : null, light });
       }
     });
     return { parts, dims: { w: size.x * k, h: size.y * k, d: size.z * k } };
@@ -196,6 +211,31 @@
           onProgress && onProgress(++done, keys.length); resolve();
         }, undefined, () => { onProgress && onProgress(++done, keys.length); resolve(); });
       })));
+    },
+
+    // a standalone, movable copy of a model (merged into one mesh per material, cached per key)
+    object(key) {
+      const a = lib[key];
+      if (!a) return null;
+      if (!a.merged) {
+        const groups = { solid: [], light: [] }, tex = new Map();
+        for (const p of a.parts) {
+          if (p.kind === 'tex') { if (!tex.has(p.map.uuid)) tex.set(p.map.uuid, { map: p.map, list: [] }); tex.get(p.map.uuid).list.push(p.geo); }
+          else groups[p.light ? 'light' : 'solid'].push(p.geo);
+        }
+        a.merged = [];
+        const merge = list => THREE.BufferGeometryUtils.mergeBufferGeometries(list, false);
+        if (groups.solid.length) a.merged.push({ geo: merge(groups.solid), mat: () => R.mat('solid') });
+        if (groups.light.length) a.merged.push({ geo: merge(groups.light), mat: () => R.mat('light') });
+        for (const e of tex.values()) a.merged.push({ geo: merge(e.list), mat: () => R.texMat(e.map) });
+      }
+      const g = new THREE.Group();
+      for (const m of a.merged) {
+        const mesh = new THREE.Mesh(m.geo, m.mat());
+        mesh.castShadow = true;
+        g.add(mesh);
+      }
+      return { group: g, dims: a.dims };
     },
 
     // put a model into a batch; returns its collision footprint
