@@ -1,6 +1,7 @@
 (function (R) {
   const C = R.C, clamp = R.clamp, damp = R.damp;
   const RADIUS = C.DOG_RADIUS;
+  const STILL = { throttle: 0, steer: 0, jumpHeld: false, consumeJump: () => false };
 
   class Player {
     constructor(entity) {
@@ -16,6 +17,10 @@
       this.heading = 0; this.speed = 0; this.vx = 0; this.vz = 0;
       this.steerS = 0; this.slip = 0; this.thrS = 0; this.yawRate = 0;
       this.jumpMul = 1; this.airJumps = 0; this.maxAirJumps = 1; this.flip = -1; this.sq = 0; this.sqV = 0; this.trailT = 0;
+      // air control: how fast the dog turns and how much the flight path follows the turn
+      this.airTurn = 0.5; this.airGrip = 1.2;
+      // bad landings (runner): a nose-dive, then a limp that heals with time
+      this.canCrash = false; this.crash = -1; this.limp = 0; this.lastImpact = 0;
       this.jumpBuf = 0; this.coyote = 0; this.air = false;
       this.shake = 0; this.hitCd = 0; this.dustT = 0;
       this.onEvent = null; // (name, value) => void, used for sounds
@@ -24,6 +29,17 @@
     emit(name, v) { if (this.onEvent) this.onEvent(name, v); }
 
     update(dt, input, world, fx, theme) {
+      // while getting up after a crash the dog does not listen to the controls
+      if (this.crash >= 0) {
+        this.crash += dt / 1.4;
+        if (this.crash >= 1) this.crash = -1;
+        input.consumeJump();
+        input = STILL;
+      }
+      if (this.limp > 0) {
+        this.limp = Math.max(0, this.limp - dt / 14);
+        if (this.limp === 0) this.emit('healed');
+      }
       const sf = clamp(this.speed / C.MAX_SPEED, 0, 1);
       // steering builds up a little slower than it lets go: soft but responsive
       this.steerS = damp(this.steerS, input.steer, Math.abs(input.steer) > Math.abs(this.steerS) ? 7 : 12, dt);
@@ -38,19 +54,22 @@
         else this.speed -= C.COAST * 1.4 * dt;
       } else if (thr < 0) this.speed -= C.BRAKE * -thr * (this.steerS * this.steerS > 0.09 ? 0.35 : 1) * dt;
       else this.speed -= C.COAST * (0.6 + sf) * dt;
-      this.speed = clamp(this.speed, 0, C.MAX_SPEED);
+      // a sore paw: no galloping until it gets better
+      const cap = this.limp > 0 ? Math.min(C.MAX_SPEED * (1 - 0.62 * this.limp), this.limp > 0.4 ? 5.5 : C.MAX_SPEED) : C.MAX_SPEED;
+      this.speed = clamp(this.speed, 0, cap);
+      if (this.crash >= 0) this.speed *= Math.exp(-5 * dt);
 
       // steering: right turn lowers the heading (forward = -Z at heading 0).
       // Turning works standing still; braking while steering gives a tight sliding turn.
       // The turn rate itself is smoothed, so the dog swings into a turn instead of snapping.
       const sliding = thr < 0 && this.speed > 4 && Math.abs(this.steerS) > 0.3;
-      const turnGain = (0.75 + 0.25 * Math.min(1, this.speed / 6)) * (1 - 0.2 * sf) * (this.air ? 0.5 : 1) * (sliding ? 1.5 : 1);
+      const turnGain = (0.75 + 0.25 * Math.min(1, this.speed / 6)) * (1 - 0.2 * sf) * (this.air ? this.airTurn : 1) * (sliding ? 1.5 : 1);
       this.yawRate = damp(this.yawRate, -this.steerS * C.TURN_RATE * turnGain, 10, dt);
       this.heading += this.yawRate * dt;
 
       // velocity chases the facing direction; low grip at speed makes the dog drift
       const fx_ = -Math.sin(this.heading), fz_ = -Math.cos(this.heading);
-      const grip = this.air ? 1.2 : sliding ? 2.6 : R.lerp(C.GRIP_LOW, C.GRIP_HIGH, sf * sf);
+      const grip = this.air ? this.airGrip : sliding ? 2.6 : R.lerp(C.GRIP_LOW, C.GRIP_HIGH, sf * sf);
       const k = 1 - Math.exp(-grip * dt);
       this.vx += (fx_ * this.speed - this.vx) * k;
       this.vz += (fz_ * this.speed - this.vz) * k;
@@ -91,7 +110,7 @@
       const onGround = this.y <= ground + 0.03 && this.vy <= 0;
       this.coyote = onGround ? 0.1 : this.coyote - dt;
       if (onGround) this.airJumps = this.maxAirJumps;
-      const jv = C.JUMP_V * this.jumpMul;
+      const jv = C.JUMP_V * this.jumpMul * (1 - 0.35 * this.limp);
       if (this.jumpBuf > 0 && this.coyote > 0) {
         this.vy = jv * (1 + 0.08 * sf);
         this.y = ground + 0.03; this.jumpBuf = 0; this.coyote = 0;
@@ -113,8 +132,16 @@
         this.vy -= g * dt;
         this.y += this.vy * dt;
         if (this.y <= ground) {
-          if (this.vy < -6) {
-            const impact = -this.vy;
+          const impact = -this.vy;
+          this.lastImpact = impact;
+          // a bad landing: a huge drop, a somersault not finished, or landing sideways while turning hard
+          const bad = this.canCrash && (impact > 13.5 || (this.flip >= 0 && this.flip < 0.8) || (impact > 8 && Math.abs(this.steerS) > 0.85 && this.speed > 10));
+          if (bad) {
+            this.crash = 0; this.limp = 1; this.flip = -1; this.lean.rotation.x = 0;
+            this.vx *= 0.45; this.vz *= 0.45; this.speed *= 0.4; this.shake = 1;
+            fx.ring(this.x, ground + 0.12, this.z, { color: theme.dust, count: 16, speed: 4, up: 0.8, size: 0.6, grow: 2.6, opacity: 0.6, life: 0.7 });
+            this.emit('crash', impact);
+          } else if (this.vy < -6) {
             this.shake = Math.max(this.shake, Math.min(0.45, impact / 30));
             this.sqV -= Math.min(9, impact * 0.7);              // squash on landing
             fx.ring(this.x, ground + 0.12, this.z, { color: theme.dust, count: Math.min(16, 6 + Math.round(impact)), speed: 2 + impact * 0.3, up: 0.5, size: 0.5, grow: 2.6, opacity: 0.55, life: 0.55 });
@@ -173,7 +200,10 @@
           fx.emit(this.x, this.y + 0.45, this.z, { color: theme.spark, count: 1, speed: 0.4, up: -0.2, size: 0.18, grow: 0.3, opacity: 0.7, life: 0.4, vx: this.vx * 0.8, vz: this.vz * 0.8 });
         }
       }
-      this.ent.update(dt, { speed01: clamp(v / C.MAX_SPEED, 0, 1), air: this.air, vy: this.vy, sniff: this.sniff });
+      this.ent.update(dt, {
+        speed01: clamp(v / C.MAX_SPEED, 0, 1), speed: v, air: this.air, vy: this.vy, sniff: this.sniff,
+        turn: this.yawRate, flip: this.flip, crash: this.crash, limp: this.limp, land: this.lastImpact,
+      });
     }
   }
 

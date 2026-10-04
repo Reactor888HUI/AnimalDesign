@@ -89,17 +89,48 @@
     bonesMesh.instanceMatrix.needsUpdate = true;
   }
 
+  // ---- landing prediction: fly the dog's arc forward and mark where it meets the ground ----
+  let landRing = null;
+  function updateLanding(world) {
+    const p = player;
+    if (!p.air || p.y - p.ground < 0.8) { landRing.visible = false; return; }
+    let x = p.x, z = p.z, y = p.y, vy = p.vy;
+    const h = 1 / 30;
+    for (let i = 0; i < 90; i++) {
+      vy -= C.GRAVITY * h; x += p.vx * h; z += p.vz * h; y += vy * h;
+      const g = world.groundAt(x, z, y);
+      if (y <= g && vy < 0) {
+        landRing.visible = true;
+        landRing.position.set(x, g + 0.06, z);
+        // red when this landing would hurt: too high a drop or an unfinished somersault
+        const risky = -vy > 13.5 || (p.flip >= 0 && p.flip < 0.6);
+        landRing.material.color.setHex(risky ? 0xff5a4a : 0x7dff9a);
+        const s = 1 + 0.15 * Math.sin(performance.now() * 0.012);
+        landRing.scale.set(s, s, 1);
+        return;
+      }
+    }
+    landRing.visible = false;
+  }
+
   R.modes = R.modes || {};
   R.modes.runner = {
     title: 'Бегун',
 
     async load() {
-      [dogEnt, catEnt, chickenTpl] = await Promise.all([R.makeDog(), R.makeCat(), R.loadChicken()]);
+      // the runner is the whippet, built and animated in code (js/whippet.js)
+      [dogEnt, catEnt, chickenTpl] = await Promise.all([R.makeWhippet(), R.makeCat(), R.loadChicken()]);
     },
 
     start(ctx) {
       const { scene, world, $, au } = ctx;
       player = new R.Player(dogEnt);
+      // the whippet steers well in the air, but a bad landing hurts
+      player.airTurn = 1.0; player.airGrip = 3.2; player.canCrash = true;
+      // where the dog will land: a ring on the ground while it is high in the air
+      landRing = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.62, 28), new THREE.MeshBasicMaterial({ color: 0x7dff9a, transparent: true, opacity: 0.8, depthWrite: false }));
+      landRing.rotation.x = -Math.PI / 2; landRing.renderOrder = 3; landRing.visible = false;
+      scene.add(landRing);
       cat = new R.Cat(catEnt);
       scene.add(player.root, cat.root);
       player.x = world.start.x; player.z = world.start.z;
@@ -168,6 +199,8 @@
       wasNear = near;
 
       updateBones(dt, ctx);
+      updateLanding(world);
+      el.speedFill.style.background = player.limp > 0 ? '#ff6b6b' : '';
 
       // HUD
       const v = player.vel, sf = R.clamp(v / C.MAX_SPEED, 0, 1);

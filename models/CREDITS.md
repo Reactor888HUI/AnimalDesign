@@ -2,7 +2,8 @@
 
 | Файл | Что это | Автор | Лицензия |
 |------|---------|-------|----------|
-| `dog_runner.glb` | хаски (Бегун), со скелетом и анимациями | Quaternius, Animated Animal Pack | CC0 |
+| — | уиппет (Бегун) — своя модель, строится кодом в `runner/js/whippet.js`, файлов нет | этот проект | как весь проект |
+| `dog_runner.glb` | хаски (раньше Бегун, сейчас запасная), со скелетом и анимациями | Quaternius, Animated Animal Pack | CC0 |
 | `dog_shiba.glb` | шиба-ину (Нюхач), со скелетом и анимациями | Quaternius, Animated Animal Pack | CC0 |
 | `dog_doberman.glb` | доберман (запас для Охранника), без скелета | madtrollstudio (Poly Pizza) | см. страницу модели |
 | `dog_poodle.glb` | пудель, без скелета | Poly by Google (Poly Pizza) | CC-BY 3.0, нужно указывать автора |
