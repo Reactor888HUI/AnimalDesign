@@ -49,6 +49,58 @@
   const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.glowTexture(), color: 0xe6eeff, transparent: true, depthWrite: false, fog: false }));
   moon.scale.set(34, 34, 1); moon.position.set(-150, 150, -160);
   sky.add(moon);
+  const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.glowTexture(), color: 0xfff1c8, transparent: true, depthWrite: false, fog: false }));
+  sunGlow.scale.set(70, 70, 1);
+  sky.add(sunGlow);
+
+  // ---- post-processing: bloom (lamps, windows, sparks glow), colour grade and vignette ---------
+  const GRADE = {
+    uniforms: { tDiffuse: { value: null }, uSat: { value: 1 }, uContrast: { value: 1 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uVig: { value: 0.2 } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `
+      uniform sampler2D tDiffuse; uniform float uSat, uContrast, uVig; uniform vec3 uTint; varying vec2 vUv;
+      void main() {
+        vec3 c = texture2D(tDiffuse, vUv).rgb;
+        float l = dot(c, vec3(0.299, 0.587, 0.114));
+        c = mix(vec3(l), c, uSat);
+        c = (c - 0.5) * uContrast + 0.5;
+        c *= uTint;
+        vec2 d = (vUv - 0.5) * vec2(1.0, 0.8);
+        c *= mix(1.0 - uVig, 1.0, smoothstep(0.75, 0.2, length(d)));
+        gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+      }`,
+  };
+  let composer = null, bloomPass = null, gradePass = null;
+  function makeComposer() {
+    if (!THREE.EffectComposer || !THREE.UnrealBloomPass) return;
+    const sz = renderer.getDrawingBufferSize(new THREE.Vector2());
+    // anti-aliasing inside the composer needs WebGL2 multisampling (desktop)
+    const rt = renderer.capabilities.isWebGL2 && !coarse && THREE.WebGLMultisampleRenderTarget
+      ? new THREE.WebGLMultisampleRenderTarget(sz.x, sz.y, { format: THREE.RGBAFormat }) : undefined;
+    composer = new THREE.EffectComposer(renderer, rt);
+    if (!rt) composer.setPixelRatio(renderer.getPixelRatio());
+    composer.addPass(new THREE.RenderPass(scene, camera));
+    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(sz.x, sz.y), 0.5, 0.5, 0.8);
+    composer.addPass(bloomPass);
+    gradePass = new THREE.ShaderPass(GRADE);
+    composer.addPass(gradePass);
+    sizeComposer();
+  }
+  function sizeComposer() {
+    if (!composer) return;
+    if (composer.renderTarget1.isWebGLMultisampleRenderTarget) {
+      const sz = renderer.getDrawingBufferSize(new THREE.Vector2());
+      composer.setSize(sz.x, sz.y);
+    } else composer.setSize(innerWidth, innerHeight);
+  }
+  function applyPost(T) {
+    if (!bloomPass || !T.bloom) return;
+    bloomPass.strength = T.bloom[0]; bloomPass.radius = T.bloom[1]; bloomPass.threshold = T.bloom[2];
+    const g = T.grade, u = gradePass.uniforms;
+    u.uSat.value = g.sat; u.uContrast.value = g.contrast; u.uTint.value.set(g.tint[0], g.tint[1], g.tint[2]); u.uVig.value = g.vig;
+  }
+  let postOn = !/[?&]nopost/.test(location.search);
+  try { makeComposer(); } catch (e) { console.warn('[runner] post-processing off', e); composer = null; }
 
   // ---- theme -----------------------------------------------------------------------------
   let themeName = 'night', themeLocked = false;
@@ -66,6 +118,10 @@
     renderer.toneMappingExposure = T.exposure;
     for (const c of clouds) c.visible = !!T.clouds;
     moon.visible = !!T.stars;
+    sunGlow.visible = !T.stars;
+    { const o = T.sunOffset, l = Math.hypot(o[0], o[1], o[2]); sunGlow.position.set(o[0] / l * 240, o[1] / l * 240, o[2] / l * 240); }
+    applyPost(T);
+    scene.traverse(o => { if (o.material && o.material.userData && o.material.userData.env) o.material.envMapIntensity = T.envI; });
     document.documentElement.dataset.theme = name;
     $('themeBtn').setAttribute('aria-label', name === 'night' ? 'Включить день' : 'Включить ночь');
     if (!keep) try { localStorage.setItem('runner-theme', name); } catch (e) {}
@@ -104,6 +160,12 @@
   document.body.classList.add('mode-' + modeName);
   document.title = mode.title;
   loadText.textContent = assetsDone >= assetsTotal ? 'Собака…' : loadText.textContent;
+  // soft reflections for shiny materials (the whippet's coat)
+  if (THREE.RoomEnvironment) {
+    const pm = new THREE.PMREMGenerator(renderer);
+    R.envTexture = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+    pm.dispose();
+  }
   await Promise.all([assetsReady, mode.load()]);
 
   // ---- world -----------------------------------------------------------------------------
@@ -160,6 +222,7 @@
     world.nearR = l >= 1 ? 1 : 0;
     renderer.setPixelRatio(l === 0 ? 1 : Math.min(devicePixelRatio, coarse ? 1.5 : 1.75));
     renderer.setSize(innerWidth, innerHeight);
+    sizeComposer();
     for (const b of blobs) b.m.visible = l < 2;
     window.__quality = l;
   }
@@ -225,7 +288,7 @@
       l.intensity = R.damp(l.intensity, T.lamps ? 3.2 : 0, 6, dt);
     }
     buddyLight.position.set(player.x - fwdX * 1.2, 2.4, player.z - fwdZ * 1.2);
-    buddyLight.intensity = R.damp(buddyLight.intensity, T.lamps ? 1.4 : 0, 6, dt);
+    buddyLight.intensity = R.damp(buddyLight.intensity, T.lamps ? 0.9 : 0, 6, dt);
 
     for (const b of blobs) {
       if (!b.m.visible) continue;
@@ -239,13 +302,14 @@
     }
     lines.style.opacity = R.clamp((gait - 0.7) * 1.2, 0, 0.22).toFixed(2);   // subtle: strong speed lines made people dizzy
 
-    renderer.render(scene, camera);
+    if (composer && postOn && level >= 1) composer.render(dt);
+    else renderer.render(scene, camera);
 
     if (dbg) {
       dbgAcc += dt; dbgN++;
       if (dbgAcc > 0.5) {
         const i = renderer.info.render;
-        dbg.textContent = Math.round(dbgN / dbgAcc) + ' fps · качество ' + level + ' · ' + i.calls + ' выз · ' + Math.round(i.triangles / 1000) + 'k тр';
+        dbg.textContent = Math.round(dbgN / dbgAcc) + ' fps · качество ' + level + (composer && postOn && level >= 1 ? ' · эффекты' : '') + ' · ' + i.calls + ' выз · ' + Math.round(i.triangles / 1000) + 'k тр';
         dbgAcc = 0; dbgN = 0;
       }
     }
@@ -262,6 +326,7 @@
 
   addEventListener('resize', () => {
     renderer.setSize(innerWidth, innerHeight);
+    sizeComposer();
     rig.resize(innerWidth / innerHeight);
   });
 

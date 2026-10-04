@@ -20,12 +20,15 @@
       hemiSky: 0x5a6cc0, hemiGround: 0x20222e, hemiI: 1.05,
       sunColor: 0x8aa0ff, sunI: 0.85, sunOffset: [-26, 48, 30],
       exposure: 1.0, lamps: true, stars: true, dust: 0x8a8fa8, spark: 0x9fd4ff,
+      // post-processing: glow of lamps and windows, colour grade, reflections on the dog's coat
+      bloom: [0.5, 0.4, 0.86], grade: { sat: 1.08, contrast: 1.06, tint: [0.95, 0.98, 1.07], vig: 0.3 }, envI: 0.18,
     },
     day: {
       skyTop: '#4d9be0', skyMid: '#8cc4ee', horizon: '#d6e9f5', fog: 0xd6e9f5, fogDensity: 0.0075,
       hemiSky: 0xd8ecff, hemiGround: 0x9a9080, hemiI: 0.85,
       sunColor: 0xfff0d2, sunI: 1.3, sunOffset: [34, 60, 22],
       exposure: 1.0, lamps: false, stars: false, dust: 0xcfc6b4, spark: 0xffe9a8, clouds: true,
+      bloom: [0.22, 0.35, 0.9], grade: { sat: 1.12, contrast: 1.05, tint: [1.04, 1.0, 0.95], vig: 0.18 }, envI: 0.65,
     },
   };
 })(window.R = window.R || {});

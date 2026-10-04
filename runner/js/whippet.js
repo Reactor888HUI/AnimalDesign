@@ -26,8 +26,10 @@
   // ---- joints in the rest pose -------------------------------------------------------------------
   const J = {
     pelvis: [-0.20, 0.45], lumbar: [-0.05, 0.465], chest: [0.10, 0.45],
-    neck1: [0.28, 0.47], neck2: [0.36, 0.555], head: [0.44, 0.625], headEnd: [0.66, 0.598],
-    tail1: [-0.31, 0.445], tail2: [-0.375, 0.39], tail3: [-0.425, 0.305], tail4: [-0.45, 0.215], tailEnd: [-0.44, 0.135],
+    // a high, arched neck carrying the head above the forechest (the side-view reference photo)
+    neck1: [0.28, 0.47], neck2: [0.31, 0.56], head: [0.345, 0.62], headEnd: [0.565, 0.593],
+    // a low-set tail that hangs between the hocks and curls up at the tip
+    tail1: [-0.305, 0.415], tail2: [-0.355, 0.36], tail3: [-0.39, 0.29], tail4: [-0.405, 0.2], tailEnd: [-0.39, 0.12],
     scap: [0.20, 0.50], hum: [0.275, 0.37], fore: [0.22, 0.25], past: [0.225, 0.075], fpaw: [0.24, 0.03], ftoe: [0.272, 0.014],
     femur: [-0.235, 0.425], tibia: [-0.15, 0.265], meta: [-0.30, 0.11], hpaw: [-0.292, 0.03], htoe: [-0.262, 0.014],
   };
@@ -56,7 +58,7 @@
 
   // ---- colours -----------------------------------------------------------------------------------
   const COL = {
-    fawn: new THREE.Color(0xc99a6a), fawnDark: new THREE.Color(0xa87a4e), white: new THREE.Color(0xf3ece3),
+    fawn: new THREE.Color(0xd09a5e), fawnDark: new THREE.Color(0xa9773f), white: new THREE.Color(0xe8dfd2),
     nose: new THREE.Color(0x1d1715), pink: new THREE.Color(0xd59a86),
   };
   const mix = (a, b, t) => a.clone().lerp(b, clamp(t, 0, 1));
@@ -103,16 +105,17 @@
     // body: from the tail root to the forechest. Under the chest and belly the coat is white.
     const W = (...a) => a;
     const body = [
-      [-0.335, 0.445, 0.035, 0.035, W(['pelvis', 1])],
-      [-0.31, 0.443, 0.062, 0.058, W(['pelvis', 1])],
-      [-0.26, 0.44, 0.084, 0.072, W(['pelvis', 1])],
-      [-0.19, 0.448, 0.078, 0.066, W(['pelvis', 0.75], ['lumbar', 0.25])],
-      [-0.11, 0.457, 0.064, 0.056, W(['pelvis', 0.3], ['lumbar', 0.7])],
-      [-0.04, 0.458, 0.07, 0.058, W(['lumbar', 1])],
-      [0.03, 0.44, 0.098, 0.066, W(['lumbar', 0.55], ['chest', 0.45])],
-      [0.10, 0.405, 0.135, 0.078, W(['chest', 1])],
-      [0.17, 0.38, 0.152, 0.083, W(['chest', 1])],
-      [0.235, 0.385, 0.13, 0.08, W(['chest', 1])],
+      // croup sloping down to a low tail set, an arched loin, moderate tuck-up, chest to the elbow
+      [-0.335, 0.40, 0.034, 0.034, W(['pelvis', 1])],
+      [-0.31, 0.41, 0.058, 0.056, W(['pelvis', 1])],
+      [-0.26, 0.425, 0.078, 0.072, W(['pelvis', 1])],
+      [-0.19, 0.44, 0.075, 0.066, W(['pelvis', 0.75], ['lumbar', 0.25])],
+      [-0.11, 0.45, 0.07, 0.057, W(['pelvis', 0.3], ['lumbar', 0.7])],
+      [-0.04, 0.448, 0.078, 0.06, W(['lumbar', 1])],
+      [0.03, 0.435, 0.10, 0.067, W(['lumbar', 0.55], ['chest', 0.45])],
+      [0.10, 0.415, 0.118, 0.077, W(['chest', 1])],
+      [0.17, 0.395, 0.135, 0.082, W(['chest', 1])],
+      [0.235, 0.395, 0.118, 0.079, W(['chest', 1])],
       [0.29, 0.41, 0.09, 0.07, W(['chest', 0.8], ['neck1', 0.2])],
       [0.315, 0.45, 0.05, 0.05, W(['chest', 0.4], ['neck1', 0.6])],
     ];
@@ -128,43 +131,44 @@
 
     // neck: long and arched; white throat
     const neck = [
-      [0.25, 0.45, 0.072, 0.056, W(['chest', 0.7], ['neck1', 0.3])],
-      [0.31, 0.505, 0.06, 0.05, W(['neck1', 1])],
-      [0.36, 0.555, 0.052, 0.046, W(['neck1', 0.4], ['neck2', 0.6])],
-      [0.405, 0.597, 0.048, 0.043, W(['neck2', 0.7], ['head', 0.3])],
-      [0.44, 0.627, 0.05, 0.045, W(['head', 1])],
+      [0.25, 0.45, 0.075, 0.058, W(['chest', 0.7], ['neck1', 0.3])],
+      [0.285, 0.505, 0.064, 0.052, W(['neck1', 1])],
+      [0.305, 0.555, 0.054, 0.047, W(['neck1', 0.4], ['neck2', 0.6])],
+      [0.325, 0.595, 0.048, 0.043, W(['neck2', 0.7], ['head', 0.3])],
+      [0.345, 0.622, 0.046, 0.042, W(['head', 1])],
     ];
     tube(neck, 0, 12, (i, ca, sa, u, v, nu, nv) => mix(COL.fawn, COL.white, sstep(0.2, 0.7, nu - nv * 0.2)), false, false);
 
     // head: skull, stop, long fine muzzle; white blaze and white chin
     const head = [
-      [0.425, 0.645, 0.045, 0.042, W(['head', 1])],
-      [0.46, 0.655, 0.056, 0.051, W(['head', 1])],
-      [0.50, 0.652, 0.05, 0.046, W(['head', 1])],
-      [0.54, 0.639, 0.04, 0.037, W(['head', 1])],
-      [0.585, 0.624, 0.031, 0.028, W(['head', 1])],
-      [0.63, 0.61, 0.022, 0.02, W(['head', 1])],
-      [0.657, 0.601, 0.013, 0.012, W(['head', 1])],
+      // a long, lean, flat-skulled head (slimmer than before, like the photo)
+      [0.33, 0.64, 0.038, 0.038, W(['head', 1])],
+      [0.365, 0.65, 0.046, 0.045, W(['head', 1])],
+      [0.405, 0.647, 0.041, 0.041, W(['head', 1])],
+      [0.445, 0.634, 0.033, 0.033, W(['head', 1])],
+      [0.49, 0.619, 0.026, 0.025, W(['head', 1])],
+      [0.535, 0.605, 0.019, 0.018, W(['head', 1])],
+      [0.562, 0.596, 0.012, 0.011, W(['head', 1])],
     ];
     tube(head, 0, 14, (i, ca, sa, u, v, nu, nv, isCap) => {
-      if (isCap && u > 0.64) return COL.nose;
-      const blaze = sstep(0.6, 0.95, nv) * sstep(0.475, 0.535, u) * sstep(0.35, 0.0, Math.abs(sa));
-      const chin = sstep(0.3, 0.8, -nv) * sstep(0.505, 0.565, u);
-      const muzzle = sstep(0.555, 0.635, u) * 0.55;
+      if (isCap && u > 0.545) return COL.nose;
+      const blaze = sstep(0.6, 0.95, nv) * sstep(0.38, 0.44, u) * sstep(0.35, 0.0, Math.abs(sa));
+      const chin = sstep(0.3, 0.8, -nv) * sstep(0.39, 0.45, u);
+      const muzzle = sstep(0.46, 0.54, u) * 0.55;
       return mix(COL.fawn, COL.white, Math.max(blaze, chin, muzzle));
     }, true, true);
 
     // tail: thin, low, a slight upward curl; white tip
     const tl = [
-      [-0.30, 0.448, 0.024, 0.024, W(['pelvis', 0.5], ['tail1', 0.5])],
-      [-0.345, 0.42, 0.02, 0.02, W(['tail1', 1])],
-      [-0.375, 0.39, 0.017, 0.017, W(['tail1', 0.5], ['tail2', 0.5])],
-      [-0.405, 0.345, 0.015, 0.015, W(['tail2', 1])],
-      [-0.425, 0.305, 0.013, 0.013, W(['tail2', 0.5], ['tail3', 0.5])],
-      [-0.44, 0.26, 0.011, 0.011, W(['tail3', 1])],
-      [-0.45, 0.215, 0.009, 0.009, W(['tail3', 0.5], ['tail4', 0.5])],
-      [-0.449, 0.17, 0.007, 0.007, W(['tail4', 1])],
-      [-0.44, 0.135, 0.004, 0.004, W(['tail4', 1])],
+      [-0.30, 0.418, 0.024, 0.024, W(['pelvis', 0.5], ['tail1', 0.5])],
+      [-0.33, 0.39, 0.02, 0.02, W(['tail1', 1])],
+      [-0.355, 0.36, 0.017, 0.017, W(['tail1', 0.5], ['tail2', 0.5])],
+      [-0.375, 0.325, 0.015, 0.015, W(['tail2', 1])],
+      [-0.39, 0.29, 0.013, 0.013, W(['tail2', 0.5], ['tail3', 0.5])],
+      [-0.4, 0.245, 0.011, 0.011, W(['tail3', 1])],
+      [-0.405, 0.2, 0.009, 0.009, W(['tail3', 0.5], ['tail4', 0.5])],
+      [-0.4, 0.158, 0.007, 0.007, W(['tail4', 1])],
+      [-0.39, 0.12, 0.004, 0.004, W(['tail4', 1])],
     ];
     tube(tl, 0, 6, i => mix(COL.fawn, COL.white, sstep(5.5, 7, i)), false, true);
 
@@ -221,11 +225,11 @@
     const eyeMat = std(0x120c08, 0.15);
     for (const s of [-1, 1]) {
       const e = new THREE.Mesh(new THREE.SphereGeometry(0.0115, 10, 8), eyeMat);
-      e.position.copy(at([0.503, 0.664], 'head', s * 0.037));
+      e.position.copy(at([0.408, 0.657], 'head', s * 0.034));
       head.add(e);
     }
     const nose = new THREE.Mesh(new THREE.SphereGeometry(0.017, 10, 8), std(0x161210, 0.3));
-    nose.scale.set(1.05, 0.85, 0.9); nose.position.copy(at([0.655, 0.605], 'head'));
+    nose.scale.set(1.05, 0.85, 0.9); nose.position.copy(at([0.56, 0.6], 'head'));
     head.add(nose);
     // rose ears: a small folded flap lying back along the skull, pink inside
     const ears = [];
@@ -240,7 +244,7 @@
       const inner = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xd59a86, roughness: 0.8, side: THREE.BackSide }));
       const ear = new THREE.Group();
       ear.add(outer, inner);
-      ear.position.copy(at([0.465, 0.69], 'head', s * 0.03));
+      ear.position.copy(at([0.37, 0.675], 'head', s * 0.028));
       head.add(ear);
       ears.push({ g: ear, s });
     }
@@ -317,10 +321,10 @@
     }
     if (gait === 'walk') {
       p.dy = -0.004 + 0.005 * Math.sin(phi * TAU * 2);
-      p.neck = 0.05; p.head = -0.05; p.tail = -0.05 + 0.08 * Math.sin(phi * TAU); p.ears = 0.4;
+      p.neck = -0.12; p.head = 0.0; p.tail = -0.05 + 0.08 * Math.sin(phi * TAU); p.ears = 0.4;
     } else if (gait === 'trot') {
       p.dy = 0.004 + 0.008 * Math.sin(phi * TAU * 2 + 1);
-      p.neck = 0.0; p.head = 0.0; p.tail = 0.05 + 0.06 * Math.sin(phi * TAU * 2); p.ears = 0.1;
+      p.neck = -0.22; p.head = 0.08; p.tail = 0.05 + 0.06 * Math.sin(phi * TAU * 2); p.ears = 0.1;
       p.pitch = 0.015 * Math.sin(phi * TAU * 2);
     } else {
       // double suspension: up in both flights; the back rounds when gathered and stretches when extended
@@ -328,7 +332,7 @@
       p.dy = 0.03 * ext + 0.022 * gat - 0.015;
       p.flex = 0.32 * Math.cos(TAU * (phi - 0.88));
       p.pitch = 0.07 * Math.sin(TAU * (phi - 0.12));
-      p.neck = -0.38 + 0.06 * Math.sin(TAU * phi); p.head = 0.32;
+      p.neck = -0.62 + 0.06 * Math.sin(TAU * phi); p.head = 0.48;
       p.tail = 0.75 + 0.18 * Math.sin(TAU * phi + 1); p.ears = -1;
       p.scap = 0.18 * Math.sin(TAU * (phi - 0.5));
     }
@@ -342,7 +346,7 @@
 
   function standPose(t) {
     const p = { feet: {}, dy: 0.002 * Math.sin(t * 2.1), pitch: 0, flex: 0.02, neck: 0.03, head: -0.02, tail: -0.1, ears: 0.55, scap: 0 };
-    for (const L of LEGS) p.feet[L] = { u: 0, v: 0, fold: 0, stance: 1 };
+    for (const L of LEGS) p.feet[L] = { u: L[1] === 'H' ? -0.045 : 0, v: 0, fold: 0, stance: 1 };
     return p;
   }
 
@@ -366,7 +370,9 @@
       bones[n] = b; boneIndex[n] = list.length; list.push(b);
     }
     const geo = buildGeometry(boneIndex);
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.62, metalness: 0 });
+    // short glossy coat: a little sheen from the environment map when the game provides one
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.52, metalness: 0 });
+    if (R.envTexture) { mat.envMap = R.envTexture; mat.envMapIntensity = 0.5; mat.userData.env = true; }
     const mesh = new THREE.SkinnedMesh(geo, mat);
     mesh.castShadow = true; mesh.frustumCulled = false;
     mesh.add(bones.pelvis);
@@ -480,7 +486,7 @@
         crashW = cr >= 0 ? (cr < 0.12 ? cr / 0.12 : cr > 0.65 ? Math.max(0, 1 - (cr - 0.65) / 0.35) : 1) : R.damp(crashW, 0, 10, dt);
         if (crashW > 0.01) {
           const w = crashW;
-          P.dy = P.dy * (1 - w) - 0.17 * w; P.pitch = P.pitch * (1 - w) - 0.32 * w; P.neck = P.neck * (1 - w) - 0.6 * w; P.head = P.head * (1 - w) - 0.2 * w;
+          P.dy = P.dy * (1 - w) - 0.17 * w; P.pitch = P.pitch * (1 - w) - 0.32 * w; P.neck = P.neck * (1 - w) - 0.85 * w; P.head = P.head * (1 - w) - 0.2 * w;
           P.ears = P.ears * (1 - w) - 1 * w; P.tail = P.tail * (1 - w) - 0.3 * w; P.flex = P.flex * (1 - w) + 0.1 * w;
           for (const L of LEGS) {
             const a = P.feet[L];
@@ -492,7 +498,7 @@
         const extra = {};
         if (atkT > 0) { atkT -= dt; const k = bump(1 - atkT / 0.45); P.neck -= 0.35 * k; P.head += 0.25 * k; extra.fu = 0.06 * k; extra.fv = 0.05 * k; P.ears -= 0.8 * k; }
         if (eatT > 0) { eatT -= dt; const k = bump(1 - eatT / 0.6); P.neck -= 0.7 * k; P.head -= 0.3 * k; }
-        if (s.sniff && v < 3) { P.neck -= 0.55; P.head -= 0.2; }
+        if (s.sniff && v < 3) { P.neck -= 0.8; P.head -= 0.15; }
 
         // lean into turns like a motorbike; look where we are going
         const turn = s.turn || 0;

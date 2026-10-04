@@ -587,12 +587,21 @@
       const r = near ? nearCell(ci, cj, rnd, L) : farCell(ci, cj, rnd, L);
       const group = new THREE.Group();
       r.b.build(group);
+      if (near && r.lamps.length) {
+        const pos = [];
+        for (const l of r.lamps) pos.push(l.x, l.y, l.z);
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        const halos = new THREE.Points(g, R.mat('halo'));
+        halos.renderOrder = 4;
+        group.add(halos);
+      }
       this.scene.add(group);
       this.cells.set(k, { ci, cj, near, type: L.type, group, obstacles: r.obs, lamps: r.lamps });
     }
     drop(k, c) {
       this.scene.remove(c.group);
-      c.group.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
+      c.group.traverse(o => { if (o.isMesh || o.isPoints) o.geometry.dispose(); });
       this.cells.delete(k);
     }
     each3x3(x, z, fn) {

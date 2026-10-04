@@ -25,6 +25,11 @@
       };
       return mat;
     },
+    // soft halos round street lamps at night (one Points object per block)
+    halo: () => new THREE.PointsMaterial({
+      map: R.glowTexture(), color: 0xffc27a, size: 3.4, sizeAttenuation: true, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    }),
     pool: () => {
       const m = new THREE.MeshBasicMaterial({
         map: R.glowTexture(), color: 0xffb468, transparent: true, opacity: 0,
@@ -40,9 +45,11 @@
     if (key === 'glass') {
       m.color.setHex(T.lamps ? 0x303038 : 0xffffff);
       m.emissive.setHex(0xff9a3c);
-      m.emissiveIntensity = T.lamps ? 1.05 : 0;
+      m.emissiveIntensity = T.lamps ? 1.35 : 0;   // bright enough for the night glow (bloom)
     } else if (key === 'light') {
       m.emissiveIntensity = T.lamps ? 1 : 0;
+    } else if (key === 'halo') {
+      m.opacity = T.lamps ? 0.75 : 0;
     } else if (key === 'pool') {
       m.opacity = T.lamps ? 0.6 : 0;
     }
