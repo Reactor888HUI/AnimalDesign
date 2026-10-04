@@ -32,14 +32,40 @@
 
   // ---- what stands in which cell ---------------------------------------------------------
   const seedOf = (ci, cj) => ((ci * 73856093) ^ (cj * 19349663)) >>> 0;
-  const FORCED = { '0,0': 'city', '1,0': 'park', '1,-1': 'square', '0,-1': 'city', '0,-2': 'plaza', '-1,0': 'square' };
+  const YARD_CELL = [-1, 1];
+  const FORCED = { '0,0': 'city', '1,0': 'park', '1,-1': 'square', '0,-1': 'city', '0,-2': 'plaza', '-1,0': 'square', '-1,1': 'yard' };
   function typeOf(ci, cj) {
     const f = FORCED[ci + ',' + cj];
     if (f) return f;
     const h = R.rng(seedOf(ci, cj) ^ 0x9e3779b9)();
     return h < 0.56 ? 'city' : h < 0.72 ? 'park' : h < 0.86 ? 'square' : 'plaza';
   }
-  const isOpen = (ci, cj) => typeOf(ci, cj) !== 'city';
+  const isOpen = (ci, cj) => { const t = typeOf(ci, cj); return t !== 'city' && t !== 'yard'; };
+
+  // ---- the guarded yard (warehouse, coop, kiosk) -----------------------------------------------
+  // Everything in yard-local metres; the block spans -22..22, the gate opens to the +Z street.
+  const YARD = {
+    fence: HB, fenceH: 2.4, gateHalf: 4,
+    warehouse: { x: -6, z: -17, w: 24, d: 8, h: 7 },
+    crates: { x: -9, z: -7.5 },            // where a thief grabs a crate
+    coop: { x: 15, z: -15, pen: [9.5, 22, -22, -9.5] },
+    coopTarget: { x: 15, z: -11.5 },
+    stall: { x: 13, z: 15 }, stallTarget: { x: 13, z: 12.2 },
+    doghouse: { x: -4, z: 5 }, dogStart: { x: 0, z: 9 },
+    door: { x: -9, z: -12.3 },
+    checkpoints: [[-19, 18], [19, 4], [2, -10], [-19, -9]],
+  };
+  function yardWorld() {
+    const ox = YARD_CELL[0] * P, oz = YARD_CELL[1] * P, w = (p) => ({ x: ox + p.x, z: oz + p.z });
+    return {
+      ox, oz, fence: YARD.fence, fenceH: YARD.fenceH, gateHalf: YARD.gateHalf,
+      gate: { x: ox, z: oz + YARD.fence }, outside: { x: ox, z: oz + YARD.fence + 6 },
+      crates: w(YARD.crates), coop: w(YARD.coopTarget), stall: w(YARD.stallTarget),
+      door: w(YARD.door), doghouse: w({ x: YARD.doghouse.x + 1.6, z: YARD.doghouse.z + 0.5 }), dogStart: w(YARD.dogStart),
+      pen: { x0: ox + YARD.coop.pen[0], x1: ox + YARD.coop.pen[1], z0: oz + YARD.coop.pen[2], z1: oz + YARD.coop.pen[3] },
+      checkpoints: YARD.checkpoints.map(([x, z]) => ({ x: ox + x, z: oz + z })),
+    };
+  }
 
   function layout(ci, cj) {
     const type = typeOf(ci, cj), open = type !== 'city';
@@ -185,6 +211,11 @@
         b.cone([0.2, 0.42, 0.18], ox + x, 3.5, oz + z, 1.9, 6);
         b.cyl([0.35, 0.24, 0.15], ox + x, 0.8, oz + z, 0.15, 0.2, 1.6, 5);
       }
+    } else if (L.type === 'yard') {
+      b.rect([0.25, 0.25, 0.24], ox, oz, B, B, 0.05);
+      const W = YARD.warehouse;
+      b.facadeBox([0.5, 0.47, 0.42], ox + W.x, W.h / 2, oz + W.z, W.w, W.h, W.d);
+      obs.push({ x: ox + W.x, z: oz + W.z, hx: W.w / 2, hz: W.d / 2, h: 99, kind: 'wall' });
     } else if (L.type === 'square') {
       b.cyl(COL.stone, ox, 0.4, oz, 6, 6.2, 0.8, 16);
       b.box(COL.stone, ox, 8, oz, 1.4, 16, 1.4);
@@ -213,6 +244,7 @@
       }
       for (let t = -HB + 4; t < HB - 3; t += 8 + rnd() * 4) {
         if (Math.abs(Math.abs(t) - 12) < 3 || rnd() < 0.3 || inGap(side, t)) continue;
+        if (L.type === 'yard' && side.nz === 1 && Math.abs(t) < 8) continue; // keep the gate clear
         const [x, z] = pt(side, t, PADH - 1.2);
         tree(x, z);
       }
@@ -243,6 +275,7 @@
       if (L.ped[i]) return;
       for (const t0 of [-15, 0, 15]) {
         if (rnd() < 0.45 || inGap(side, t0)) continue;
+        if (L.type === 'yard' && side.nz === 1 && t0 === 0) continue;
         const t = t0 + rr(-3, 3);
         const key = rnd() < 0.08 ? 'bus' : pick(cars);
         const [x, z] = pt(side, t, PADH + 1.7);
@@ -266,6 +299,7 @@
     });
 
     if (L.type === 'city') cityBlock();
+    else if (L.type === 'yard') yard();
     else if (L.type === 'park') park();
     else if (L.type === 'square') square();
     else plaza();
@@ -315,6 +349,93 @@
         const [lx, lz] = plan.alley === 'z' ? [AW - 0.4, 0] : [0, AW - 0.4];
         lamp(b, obs, lamps, ox + lx, oz + lz, plan.alley === 'z' ? -1 : 0, plan.alley === 'z' ? 0 : -1);
       }
+    }
+
+    function yard() {
+      const Y = YARD, F = Y.fence, H = Y.fenceH;
+      b.rect([0.25, 0.25, 0.24], ox, oz, B, B, 0.05);
+      // fence: concrete posts + mesh panels, gate on the +Z side
+      const postCol = [0.6, 0.6, 0.58], meshCol = [0.25, 0.27, 0.3];
+      const run = (x0, z0, x1, z1) => {
+        const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 3.5));
+        for (let k = 0; k <= n; k++) {
+          const t = k / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
+          b.box(postCol, ox + x, H / 2, oz + z, 0.25, H, 0.25);
+        }
+        const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0);
+        b.box(meshCol, ox + cx, H - 0.1, oz + cz, alongX ? len : 0.06, 0.08, alongX ? 0.06 : len);
+        for (let y = 0.35; y < H - 0.2; y += 0.42) b.box(meshCol, ox + cx, y, oz + cz, alongX ? len : 0.04, 0.04, alongX ? 0.04 : len);
+        for (let k = 0; k < len / 0.5; k++) {
+          const t = (k + 0.5) / (len / 0.5), x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
+          b.box(meshCol, ox + x, H / 2, oz + z, 0.03, H - 0.2, 0.03);
+        }
+        obs.push({ x: ox + cx, z: oz + cz, hx: alongX ? len / 2 : 0.15, hz: alongX ? 0.15 : len / 2, h: H, kind: 'fence_tall' });
+      };
+      run(-F, -F, F, -F); run(-F, -F, -F, F); run(F, -F, F, F);
+      run(-F, F, -Y.gateHalf, F); run(Y.gateHalf, F, F, F);
+      for (const s of [-1, 1]) {
+        b.box([0.7, 0.62, 0.2], ox + s * Y.gateHalf, 1.5, oz + F, 0.5, 3, 0.5);
+        b.sph(COL.globe, ox + s * Y.gateHalf, 3.2, oz + F, 0.25, 'glass');
+      }
+      // warehouse with roller doors
+      const W = Y.warehouse;
+      b.box([0.5, 0.47, 0.42], ox + W.x, W.h / 2, oz + W.z, W.w, W.h, W.d);
+      b.box([0.32, 0.3, 0.28], ox + W.x, W.h + 0.2, oz + W.z, W.w + 0.4, 0.4, W.d + 0.4);
+      for (const dx of [-6, 6]) {
+        b.box([0.28, 0.3, 0.33], ox + W.x + dx, 1.9, oz + W.z + W.d / 2 + 0.03, 4.4, 3.8, 0.06);
+        for (let y = 0.4; y < 3.8; y += 0.35) b.box([0.38, 0.4, 0.43], ox + W.x + dx, y, oz + W.z + W.d / 2 + 0.07, 4.4, 0.05, 0.03);
+        b.box(COL.pole, ox + W.x + dx, 4.4, oz + W.z + W.d / 2 + 0.4, 0.5, 0.15, 0.8);
+        b.sph(COL.globe, ox + W.x + dx, 4.25, oz + W.z + W.d / 2 + 0.7, 0.2, 'glass');
+        b.poolDecal(ox + W.x + dx, oz + W.z + W.d / 2 + 3, 10);
+        lamps.push({ x: ox + W.x + dx, y: 4.3, z: oz + W.z + W.d / 2 + 0.7 });
+      }
+      b.box([0.75, 0.7, 0.2], ox + W.x, 5.6, oz + W.z + W.d / 2 + 0.05, 7, 1, 0.1);
+      obs.push({ x: ox + W.x, z: oz + W.z, hx: W.w / 2, hz: W.d / 2, h: 99, kind: 'wall' });
+      // crates in front of the warehouse
+      const crate = [0.55, 0.4, 0.24];
+      for (const [x, z, n] of [[-14, -10, 2], [-12.6, -10, 1], [-11, -10, 3], [-6.5, -10, 2], [-5, -10, 1], [-3.4, -10.2, 2], [-14, -8.6, 1]]) {
+        for (let k = 0; k < n; k++) b.box(k % 2 ? crate.map(c => c * 0.85) : crate, ox + x, 0.6 + k * 1.2, oz + z, 1.2, 1.2, 1.2);
+        obs.push({ x: ox + x, z: oz + z, hx: 0.6, hz: 0.6, h: n * 1.2, kind: 'box' });
+      }
+      // chicken coop with a low pen
+      const cp = Y.coop, [x0, x1, z0, z1] = cp.pen;
+      b.box([0.62, 0.3, 0.22], ox + cp.x + 2, 1.2, oz + cp.z - 3.5, 4, 2.4, 2.6);
+      b.ramp([0.35, 0.18, 0.14], ox + cp.x + 2, oz + cp.z - 3.5, 4.4, 3.0, 0.9, 'z', 1, 2.4);
+      b.box([0.2, 0.12, 0.08], ox + cp.x + 2, 0.5, oz + cp.z - 2.18, 0.8, 1.0, 0.05);
+      obs.push({ x: ox + cp.x + 2, z: oz + cp.z - 3.5, hx: 2, hz: 1.3, h: 2.4, kind: 'box' });
+      const penRun = (ax, az, bx2, bz2) => {
+        const alongX = Math.abs(bx2 - ax) > 0.01, len = alongX ? Math.abs(bx2 - ax) : Math.abs(bz2 - az);
+        const cx = (ax + bx2) / 2, cz = (az + bz2) / 2;
+        b.box([0.55, 0.5, 0.42], ox + cx, 1.0, oz + cz, alongX ? len : 0.05, 0.06, alongX ? 0.05 : len);
+        b.box([0.55, 0.5, 0.42], ox + cx, 0.5, oz + cz, alongX ? len : 0.04, 0.04, alongX ? 0.04 : len);
+        for (let k = 0; k <= len / 2; k++) {
+          const t = Math.min(1, k * 2 / len);
+          b.box([0.45, 0.38, 0.3], ox + ax + (bx2 - ax) * t, 0.55, oz + az + (bz2 - az) * t, 0.1, 1.1, 0.1);
+        }
+        obs.push({ x: ox + cx, z: oz + cz, hx: alongX ? len / 2 : 0.1, hz: alongX ? 0.1 : len / 2, h: 1.05, kind: 'pen' });
+      };
+      penRun(x0, z1, x1, z1); penRun(x0, z0, x0, z1);
+      b.rect([0.42, 0.36, 0.22], ox + (x0 + x1) / 2, oz + (z0 + z1) / 2, x1 - x0, z1 - z0, 0.06);
+      // kiosk with sausages
+      const st = Y.stall;
+      b.box([0.75, 0.72, 0.62], ox + st.x, 1.3, oz + st.z, 4.2, 2.6, 2.6);
+      b.box([0.75, 0.2, 0.18], ox + st.x, 2.75, oz + st.z - 1.7, 4.6, 0.12, 1.4);
+      b.box([0.5, 0.36, 0.22], ox + st.x, 1.05, oz + st.z - 1.45, 4.2, 0.1, 0.5);
+      for (let k = 0; k < 6; k++) b.cyl([0.62, 0.18, 0.12], ox + st.x - 1.5 + k * 0.6, 1.16, oz + st.z - 1.45, 0.07, 0.07, 0.4, 6);
+      b.box([0.95, 0.85, 0.5], ox + st.x, 2.95, oz + st.z - 1.31, 2.4, 0.4, 0.05, 'glass');
+      obs.push({ x: ox + st.x, z: oz + st.z, hx: 2.1, hz: 1.3, h: 2.6, kind: 'box' });
+      // doghouse
+      const dh = Y.doghouse;
+      b.box([0.55, 0.38, 0.24], ox + dh.x, 0.6, oz + dh.z, 1.6, 1.2, 1.8);
+      b.ramp([0.4, 0.2, 0.15], ox + dh.x, oz + dh.z, 2.0, 1.9, 0.5, 'x', 1, 1.2);
+      b.box([0.08, 0.06, 0.05], ox + dh.x + 0.81, 0.45, oz + dh.z, 0.03, 0.75, 0.6);
+      obs.push({ x: ox + dh.x, z: oz + dh.z, hx: 0.8, hz: 0.9, h: 1.2, kind: 'box' });
+      // patrol posts and lamps
+      for (const [x, z] of Y.checkpoints) {
+        b.cyl([0.3, 0.3, 0.32], ox + x, 0.6, oz + z, 0.12, 0.15, 1.2, 8);
+        obs.push({ x: ox + x, z: oz + z, hx: 0.18, hz: 0.18, h: 1.2, kind: 'pole' });
+      }
+      for (const [x, z] of [[-19, 19], [19, 19], [19, -3], [-19, 0], [3, 0]]) lamp(b, obs, lamps, ox + x, oz + z, 0, 0);
     }
 
     function park() {
@@ -418,7 +539,7 @@
 
   // ---- surfaces -----------------------------------------------------------------------------
   const STEP = 0.3;                 // the dog walks up onto anything this low
-  const NOSTAND = { tree: 1, pole: 1, cone: 1, trash_bag: 1, wall: 1, traffic: 1 };
+  const NOSTAND = { tree: 1, pole: 1, cone: 1, trash_bag: 1, wall: 1, traffic: 1, fence_tall: 1, pen: 1 };
   function topAt(o, x, z) {
     if (!o.ramp) return o.h;
     const along = o.ramp.axis === 'x' ? x - o.x : z - o.z, half = o.ramp.axis === 'x' ? o.hx : o.hz;
@@ -531,10 +652,11 @@
     }
 
     // push p out of obstacles; returns the strongest hit (normal points away from the obstacle)
-    resolve(p, r) {
+    resolve(p, r, skip) {
       let hit = null;
       for (const o of this.obstaclesNear(p.x, p.z, r + 0.2)) {
         const cx = R.clamp(p.x, o.x - o.hx, o.x + o.hx), cz = R.clamp(p.z, o.z - o.hz, o.z + o.hz);
+        if (skip && skip[o.kind]) continue;
         if (NOSTAND[o.kind] ? p.y > o.h - 0.15 : p.y > topAt(o, cx, cz) - STEP) continue;
         let dx = p.x - cx, dz = p.z - cz;
         const d2 = dx * dx + dz * dz;
@@ -550,5 +672,6 @@
   }
 
   World.isOpen = isOpen;
+  World.yard = yardWorld();
   R.World = World;
 })(window.R = window.R || {});

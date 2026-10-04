@@ -8,9 +8,11 @@
     touch: false,
     onTheme: null,
     onFirst: null,
-    _jumpEdge: false,
+    _jumpEdge: false, _barkEdge: false, _scentEdge: false,
     _k: {},
     consumeJump() { const j = this._jumpEdge; this._jumpEdge = false; return j; },
+    consumeBark() { const j = this._barkEdge; this._barkEdge = false; return j; },
+    consumeScent() { const j = this._scentEdge; this._scentEdge = false; return j; },
   };
 
   // ---- keyboard ---------------------------------------------------------------------------
@@ -22,6 +24,8 @@
     k[e.code] = true;
     if (e.code === 'Space') { input._jumpEdge = true; input.jumpHeld = true; }
     if (e.code === 'KeyN' && input.onTheme) input.onTheme();
+    if (e.code === 'KeyF') input._barkEdge = true;
+    if (e.code === 'KeyE') input._scentEdge = true;
     if (input.onFirst) input.onFirst();
   });
   addEventListener('keyup', e => {
@@ -96,6 +100,14 @@
   };
   jumpZone.addEventListener('pointerup', jumpUp);
   jumpZone.addEventListener('pointercancel', jumpUp);
+
+  for (const [id, key] of [['barkBtn', '_barkEdge'], ['scentBtn', '_scentEdge']]) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    btn.addEventListener('pointerdown', e => { input[key] = true; btn.classList.add('on'); e.preventDefault(); e.stopPropagation(); });
+    const off = () => btn.classList.remove('on');
+    btn.addEventListener('pointerup', off); btn.addEventListener('pointercancel', off); btn.addEventListener('pointerleave', off);
+  }
 
   autoBtn.addEventListener('click', () => {
     input.autoRun = !input.autoRun;

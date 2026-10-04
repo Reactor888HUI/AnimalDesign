@@ -93,6 +93,12 @@
     tone('sine', [[0, 1320], [0.4, 1320]], 0.09, 0.4, 0.07);
   };
   A.whoosh = () => { if (ok()) noise(700, 0.6, 0.08, 0.25); };
+  A.alarm = () => {
+    if (!ok()) return;
+    tone('square', [[0, 660], [0.18, 660]], 0.08, 0.18, 0, 1500, 0.8);
+    tone('square', [[0, 440], [0.3, 380]], 0.08, 0.3, 0.2, 1200, 0.8);
+  };
+  A.alert = () => { if (ok()) tone('triangle', [[0, 520], [0.1, 900]], 0.08, 0.12); };
 
   // continuous sounds follow the game state
   A.update = function (s) {

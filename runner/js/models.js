@@ -280,6 +280,82 @@
     return makeProceduralCat();
   };
 
+  // Guard dog: the Quaternius wolf repainted black and tan, like a doberman.
+  R.makeGuardDog = async function () {
+    const g = await load('../models/dog_guard.glb');
+    if (g) try {
+      g.scene.traverse(o => {
+        if (!o.isMesh) return;
+        for (const mt of Array.isArray(o.material) ? o.material : [o.material]) {
+          if (mt.name === 'Main') mt.color.setHex(0x171412);
+          else if (mt.name === 'Main_Light') mt.color.setHex(0x8f4f1e);
+        }
+      });
+      return makeAnimated(g, 1.25);
+    } catch (e) { console.warn('[runner] guard dog failed', e); }
+    return makeProceduralDog();
+  };
+
+  // A skinned model used as a template: every spawn is a clone with its own colours and mixer.
+  R.loadSkinned = async function (url, opt) {
+    const g = await load(url);
+    if (!g) return null;
+    g.scene.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.castShadow = true; } });
+    g.scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(g.scene);
+    const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    const k = opt.height ? opt.height / size.y : opt.len / Math.max(size.x, size.z);
+    const clips = {};
+    for (const cl of g.animations) {
+      const n = cl.name.toLowerCase().replace(/^.*\|/, '').replace(/^man_/, '');
+      if (!clips[n]) clips[n] = cl;
+    }
+    return {
+      clips: Object.keys(clips),
+      spawn(colors) {
+        const scene = THREE.SkeletonUtils.clone(g.scene);
+        const mats = [];
+        scene.traverse(o => {
+          if (!o.isMesh) return;
+          const one = mt => {
+            const cm = mt.clone();
+            fixMaterial(cm);
+            if (colors && colors[cm.name] !== undefined) cm.color.setHex(colors[cm.name]);
+            mats.push(cm);
+            return cm;
+          };
+          o.material = Array.isArray(o.material) ? o.material.map(one) : one(o.material);
+        });
+        scene.position.set(-c.x, -box.min.y, -c.z);
+        const inner = new THREE.Group(); inner.add(scene); inner.scale.setScalar(k);
+        const pivot = new THREE.Group(); pivot.rotation.y = C.MODEL_YAW; pivot.add(inner);
+        const root = new THREE.Group(); root.add(pivot);
+        const mixer = new THREE.AnimationMixer(scene), acts = {};
+        let cur = null;
+        return {
+          root, mixer, inner,
+          has: name => !!clips[name],
+          play(name, ts, once) {
+            const cl = clips[name];
+            if (!cl) return;
+            const a = acts[name] || (acts[name] = mixer.clipAction(cl));
+            a.timeScale = ts || 1;
+            if (cur === a) return;
+            if (once) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; } else a.setLoop(THREE.LoopRepeat, Infinity);
+            a.reset().fadeIn(0.15).play();
+            if (cur) cur.fadeOut(0.15);
+            cur = a;
+          },
+          // tint used by the guard's "scent" pulse
+          highlight(hex, amount) {
+            for (const mt of mats) { if (mt.emissive) { mt.emissive.setHex(hex); mt.emissiveIntensity = amount; } }
+          },
+          update(dt) { mixer.update(dt); },
+        };
+      },
+    };
+  };
+
   // Chicken: skinned model with its own animations, cloned per bird.
   R.loadChicken = async function () {
     const g = await load('../models/chicken.glb');

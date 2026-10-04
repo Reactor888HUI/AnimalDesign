@@ -105,7 +105,7 @@
       this.addPart('facade', this._color(g, col, true));
     }
     // wedge rising along `axis` towards `dir`
-    ramp(col, cx, cz, len, wid, h, axis, dir) {
+    ramp(col, cx, cz, len, wid, h, axis, dir, y0) {
       const g = new THREE.BoxGeometry(axis === 'x' ? len : wid, h, axis === 'x' ? wid : len);
       g.translate(0, h / 2, 0);
       const pos = g.attributes.position;
@@ -113,7 +113,7 @@
         const a = axis === 'x' ? pos.getX(i) : pos.getZ(i);
         if (pos.getY(i) > h / 2 && a * dir < 0) pos.setY(i, 0.02);
       }
-      g.translate(cx, 0, cz);
+      g.translate(cx, y0 || 0, cz);
       const cg = this._color(g, col);
       cg.computeVertexNormals();
       this.addPart('solid', cg);

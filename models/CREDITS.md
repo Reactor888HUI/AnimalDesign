@@ -8,6 +8,9 @@
 | `dog_poodle.glb` | пудель, без скелета | Poly by Google (Poly Pizza) | CC-BY 3.0, нужно указывать автора |
 | `cat.glb` | кот, без скелета | madtrollstudio (Poly Pizza) | см. страницу модели |
 | `chicken.glb` | курица, со скелетом и анимациями | Quaternius | CC0 |
+| `dog_guard.glb` | волк, перекрашенный игрой в добермана (Охранник), со скелетом | Quaternius, Animated Animal Pack | CC0 |
+| `fox.glb` | лиса (Охранник), со скелетом | Quaternius, Animated Animal Pack | CC0 |
+| `man.glb` | человек (вор, почтальон, хозяин), со скелетом | из набора «City Pack» (Poly Pizza) | см. страницу модели |
 | `city/*.glb` | городской набор «City Pack» | разные авторы (Poly Pizza) | у каждой модели своя |
 
 Лицензии на Poly Pizza у каждой модели свои (CC0 или CC-BY). Для CC-BY нужно указывать автора.
