@@ -9,6 +9,10 @@
     onTheme: null,
     onFirst: null,
     _jumpEdge: false, _barkEdge: false, _scentEdge: false, _biteEdge: false,
+    // direction controls: where to run on the screen (x right, y up/away), 0..1 strength
+    dirMode: false, mx: 0, my: 0, mag: 0,
+    camTurn: 0,      // camera turned by the player: Z/X keys (-1..1) and drags (radians, applied once)
+    camDrag: 0,
     _k: {},
     consumeJump() { const j = this._jumpEdge; this._jumpEdge = false; return j; },
     consumeBark() { const j = this._barkEdge; this._barkEdge = false; return j; },
@@ -125,8 +129,36 @@
   });
   document.addEventListener('contextmenu', e => e.preventDefault());
 
+  // ---- turning the camera by hand: drag on the open part of the screen --------------------
+  let camId = null, camX = 0;
+  addEventListener('pointerdown', e => {
+    if (e.target.tagName !== 'CANVAS' || camId !== null) return;
+    camId = e.pointerId; camX = e.clientX;
+  });
+  addEventListener('pointermove', e => {
+    if (e.pointerId !== camId) return;
+    input.camDrag += (e.clientX - camX) * 0.006; camX = e.clientX;
+  });
+  const camUp = e => { if (e.pointerId === camId) camId = null; };
+  addEventListener('pointerup', camUp); addEventListener('pointercancel', camUp);
+
   // ---- per-frame read ---------------------------------------------------------------------
   input.poll = function () {
+    // direction: stick or keys, relative to the screen
+    let mx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
+    let my = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0);
+    let mag = Math.min(1, Math.hypot(mx, my));
+    if (mag > 0) { const l = Math.hypot(mx, my); mx /= l; my /= l; }
+    if (T.id !== null) {
+      const d = Math.hypot(T.x, T.y);
+      if (d > 0.12) {
+        mx = T.x / d; my = -T.y / d;
+        mag = Math.min(1, (d - 0.12) / 0.7);   // a light push walks, the edge gallops
+      }
+    }
+    this.mx = mx; this.my = my; this.mag = mag; this.dirMode = true;
+    // Z / X turn the camera (E, F, G are taken by the dogs' actions)
+    this.camTurn = (k.KeyX ? 1 : 0) - (k.KeyZ ? 1 : 0);
     const ks = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
     const kt = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0);
     let ts = 0, tt = 0;

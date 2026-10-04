@@ -158,7 +158,7 @@ body.is-touch #hint { display: none; }
 }
 #autoBtn[aria-pressed="true"] { color: var(--ink); border-color: var(--speed); }
 #autoBtn[aria-pressed="true"]::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--speed); }
-body:not(.is-touch) #autoBtn { display: none; }
+#autoBtn { display: none !important; }   /* direction controls: the stick itself sets the speed */
 
 #loading {
   position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;

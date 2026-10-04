@@ -242,6 +242,21 @@
     setTimeout(() => { for (const id of ['ghint', 'shint']) $(id).classList.add('hide'); }, 25000);
   };
   $('loading').classList.add('hide');
+  if (coarse) setTimeout(() => ctx.say('Стик — куда бежать. Проведи по экрану сверху — повернуть камеру', 'long'), 2500);
+
+  // ---- where the stick points, in the world ------------------------------------------------
+  // The stick is read relative to the camera. While it is held steadily one way, the reference
+  // is kept, so the dog does not curve when the camera slowly comes round behind it.
+  let refYaw = 0, lockAng = null;
+  function worldDir() {
+    if (!(input.mag > 0)) { lockAng = null; input.dirMag = 0; return; }
+    const a = Math.atan2(input.mx, input.my);
+    if (lockAng === null || Math.abs(R.angDiff(lockAng, a)) > 0.5 || input.camDrag || input.camTurn) { lockAng = a; refYaw = rig.heading; }
+    const h = refYaw, s = Math.sin(h), c = Math.cos(h);
+    input.dirX = -s * input.my + c * input.mx;
+    input.dirZ = -c * input.my - s * input.mx;
+    input.dirMag = input.mag;
+  }
 
   // ---- loop ------------------------------------------------------------------------------
   const lines = $('lines');
@@ -253,11 +268,12 @@
     const T = R.THEMES[themeName];
 
     input.poll();
+    worldDir();
     traffic.update(dt, player);
     mode.update(dt, ctx);
     world.update(player.x, player.z, 1);
     fx.update(dt);
-    rig.update(dt, player, now / 1000);
+    rig.update(dt, player, now / 1000, input);
 
     const gait = R.clamp(player.vel / C.MAX_SPEED, 0, 1);
     if (!player.air && player.vel > 0.8) {
@@ -330,5 +346,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir }, mode.debug ? mode.debug() : {});
 })(window.R);

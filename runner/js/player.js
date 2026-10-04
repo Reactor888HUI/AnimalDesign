@@ -60,10 +60,24 @@
         if (this.limp === 0) this.emit('healed');
       }
       const sf = clamp(this.speed / C.MAX_SPEED, 0, 1);
-      // steering builds up a little slower than it lets go: soft but responsive
-      this.steerS = damp(this.steerS, input.steer, Math.abs(input.steer) > Math.abs(this.steerS) ? 7 : 12, dt);
-      // the gas pedal is smoothed too, so starts and stops are not jerky
-      const thr = input.throttle;
+      // Direction controls (the game): the stick says where to run on the screen; the dog turns
+      // there itself and runs as fast as the stick is pushed. Let go and it stops.
+      // Tank controls (tests, bots): throttle + steer.
+      const dirMode = !!input.dirMode;
+      let thr, diff = 0;
+      if (dirMode) {
+        const mag = input.dirMag || 0;
+        if (mag > 0.05) {
+          diff = R.angDiff(this.heading, Math.atan2(-input.dirX, -input.dirZ));
+          // asked to go the other way at speed: brake into a skid first
+          thr = Math.abs(diff) > 2.2 && this.speed > 7 ? -0.7 : mag;
+        } else thr = this.speed > 0.5 ? -0.25 : 0;
+      } else {
+        thr = input.throttle;
+        // steering builds up a little slower than it lets go: soft but responsive
+        this.steerS = damp(this.steerS, input.steer, Math.abs(input.steer) > Math.abs(this.steerS) ? 7 : 12, dt);
+      }
+      // the gas pedal is smoothed, so starts and stops are not jerky
       this.thrS = damp(this.thrS, thr, thr > this.thrS ? 5 : 10, dt);
 
       // throttle: ease towards the speed asked for (half stick = half speed), brake hard, coast softly
@@ -82,8 +96,17 @@
       // Turning works standing still; braking while steering gives a tight sliding turn.
       // The turn rate itself is smoothed, so the dog swings into a turn instead of snapping.
       const sliding = thr < 0 && this.speed > 4 && Math.abs(this.steerS) > 0.3;
-      const turnGain = (0.75 + 0.25 * Math.min(1, this.speed / 6)) * (1 - 0.1 * sf) * (this.air ? this.airTurn : 1) * (sliding ? 1.5 : 1);
-      this.yawRate = damp(this.yawRate, -this.steerS * C.TURN_RATE * turnGain, 10, dt);
+      if (dirMode) {
+        // turn towards the stick: quick when slow, wider arcs at a gallop, a little in the air
+        const maxRate = R.lerp(6.5, 3.6, sf) * (this.air ? this.airTurn * 0.85 : 1);
+        this.yawRate = damp(this.yawRate, clamp(diff * 7, -maxRate, maxRate), 12, dt);
+        this.steerS = clamp(-this.yawRate / C.TURN_RATE, -1, 1);
+        // a sharp turn at speed costs some speed (paws skid)
+        if (!this.air && Math.abs(diff) > 1 && this.speed > 6) this.speed *= 1 - 0.7 * dt;
+      } else {
+        const turnGain = (0.75 + 0.25 * Math.min(1, this.speed / 6)) * (1 - 0.1 * sf) * (this.air ? this.airTurn : 1) * (sliding ? 1.5 : 1);
+        this.yawRate = damp(this.yawRate, -this.steerS * C.TURN_RATE * turnGain, 10, dt);
+      }
       this.heading += this.yawRate * dt;
 
       // velocity chases the facing direction; low grip at speed makes the dog drift

@@ -449,7 +449,8 @@
   // with the nose down near the trail, the dog follows it by itself unless steered hard
   function noseAssist(input) {
     const c = S.c;
-    if (!c || c.state !== 'track' || S.noseA < 0.5 || Math.abs(input.steer) > 0.5) return;
+    if (!c || c.state !== 'track' || S.noseA < 0.5) return;
+    if (input.dirMode ? !(input.dirMag > 0.15) : Math.abs(input.steer) > 0.5) return;
     const pts = c.trail.pts;
     let best = -1, bd = 1e9;
     for (let i = Math.max(0, c.prog - 3); i < Math.min(c.trail.swirl, c.prog + 12); i++) {
@@ -460,6 +461,13 @@
     if (best < 0 || bd > 4) return;
     const q = pts[Math.min(c.trail.swirl - 1, best + 2)];
     const want = Math.atan2(-(q.x - player.x), -(q.z - player.z));
+    if (input.dirMode) {
+      // the stick points roughly along the trail: the nose keeps the dog exactly on it
+      const stick = Math.atan2(-input.dirX, -input.dirZ);
+      if (Math.abs(R.angDiff(stick, want)) > 1.0) return;
+      input.dirX = -Math.sin(want); input.dirZ = -Math.cos(want);
+      return;
+    }
     const d = R.angDiff(player.heading, want);
     input.steer = R.clamp(input.steer - d * 1.6, -1, 1);
   }
