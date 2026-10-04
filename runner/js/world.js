@@ -665,7 +665,7 @@
         if (d < 1e-5) { dx = p.x - o.x; dz = p.z - o.z; d = Math.hypot(dx, dz) || 1; }
         const nx = dx / d, nz = dz / d;
         p.x = cx + nx * r; p.z = cz + nz * r;
-        hit = { nx, nz, h: o.h, kind: o.kind, ox: o.x };
+        hit = { nx, nz, h: o.h, kind: o.kind, ox: o.x, oz: o.z };
       }
       return hit;
     }

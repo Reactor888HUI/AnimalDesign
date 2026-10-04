@@ -14,6 +14,14 @@
     return THREE.BufferGeometryUtils.mergeBufferGeometries(parts, false);
   }
   const STAND = { car: 1, box: 1, dumpster: 1, prop: 1, planter_bushes: 1, bench: 1, container: 1, parkour: 1, fence_piece: 1 };
+  // is a bone at this height stuck inside something (a parked car, a bench, a bin)?
+  function inside(world, x, z, y) {
+    for (const o of world.obstaclesNear(x, z, 0.5)) {
+      if (o.kind === 'traffic' || o.h < 0.3) continue;
+      if (Math.abs(x - o.x) < o.hx + 0.35 && Math.abs(z - o.z) < o.hz + 0.35 && y < o.h + 0.35) return true;
+    }
+    return false;
+  }
   function spawnCluster(world) {
     const a = player.heading + (Math.random() - 0.5) * 1.2, d = 26 + Math.random() * 20;
     const cx = player.x - Math.sin(a) * d, cz = player.z - Math.cos(a) * d;
@@ -38,9 +46,9 @@
       const n = 7, peak = kind === 'high' ? 3.4 : kind === 'arc' ? 2.0 : 0;
       for (let i = 0; i < n; i++) {
         const t = (i - (n - 1) / 2) * 1.3, u = i / (n - 1);
-        const x = cx + along.x * t, z = cz + along.z * t;
-        if (world.solidAt(x, z, 0.5)) return;
-        pts.push({ x, y: 0.7 + peak * Math.sin(Math.PI * u), z });
+        const x = cx + along.x * t, z = cz + along.z * t, y = 0.7 + peak * Math.sin(Math.PI * u);
+        if (world.solidAt(x, z, 0.5) || inside(world, x, z, y)) return;
+        pts.push({ x, y, z });
       }
     }
     clusters.push({ bones: pts.map(p => Object.assign(p, { alive: true, ph: Math.random() * 6 })), left: pts.length, total: pts.length });

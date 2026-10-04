@@ -28,7 +28,7 @@
   const ITEM_NAME = { keys: 'ключи', ball: 'мячик', basket: 'корзину', kitten: 'котёнка' };
 
   let dogEnt, humanTpl, foxEnt, kitEnt;
-  let player, el, S = null, scentMat, ctxRef;
+  let player, el, S = null, scentMat;
   const rnd = (a, b) => a + Math.random() * (b - a);
 
   // ---- little props -----------------------------------------------------------------------
@@ -175,25 +175,41 @@
     for (const f of tr.fakes) { sets.push({ pts: f.pts, base }); base += f.pts.length; }
     const pos = c.points.geometry.attributes.position;
     for (const st of sets) {
-      let side = 1;
-      st.pts.forEach((p, i) => {
-        if (p.ok || !builtAt(world, p.x, p.z)) return;
+      const Q = st.pts;
+      const put = (k, x, z) => { Q[k].x = x; Q[k].z = z; pos.setXYZ(st.base + k, x, 0, z); changed = true; };
+      let i = 0;
+      while (i < Q.length) {
+        const p = Q[i];
+        if (p.ok || !builtAt(world, p.x, p.z)) { i++; continue; }
         p.ok = true;
-        if (!blocked(world, p.x, p.z)) return;
-        const a = st.pts[Math.max(0, i - 1)], b = st.pts[Math.min(st.pts.length - 1, i + 1)];
+        if (!blocked(world, p.x, p.z)) { i++; continue; }
+        // a run of puffs inside the same thing: move the whole run to one side, by one distance
+        let j = i;
+        while (j + 1 < Q.length && !Q[j + 1].ok && builtAt(world, Q[j + 1].x, Q[j + 1].z) && blocked(world, Q[j + 1].x, Q[j + 1].z)) { j++; Q[j].ok = true; }
+        const a = Q[Math.max(0, i - 1)], b = Q[Math.min(Q.length - 1, j + 1)];
         let ux = b.x - a.x, uz = b.z - a.z;
-        const L = Math.hypot(ux, uz) || 1; ux /= L; uz /= L;
+        const L = Math.hypot(ux, uz);
+        if (L < 0.01) { ux = 1; uz = 0; } else { ux /= L; uz /= L; }
+        let best = null;
         for (const d of SHIFTS) {
-          let done = false;
-          for (const sg of [side, -side]) {
-            const x = p.x - uz * d * sg, z = p.z + ux * d * sg;
-            if (!blocked(world, x, z)) { p.x = x; p.z = z; side = sg; done = true; break; }
+          for (const sg of [1, -1]) {
+            let free = true;
+            for (let k = i; k <= j && free; k++) if (blocked(world, Q[k].x - uz * d * sg, Q[k].z + ux * d * sg)) free = false;
+            if (free) { best = { ox: -uz * d * sg, oz: ux * d * sg }; break; }
           }
-          if (done) break;
+          if (best) break;
         }
-        pos.setXYZ(st.base + i, p.x, 0, p.z);
-        changed = true;
-      });
+        if (best) {
+          for (let k = i; k <= j; k++) put(k, Q[k].x + best.ox, Q[k].z + best.oz);
+          // ease into and out of the detour
+          for (const [k, f] of [[i - 1, 0.6], [i - 2, 0.3], [j + 1, 0.6], [j + 2, 0.3]]) {
+            if (k < 0 || k >= Q.length) continue;
+            const x = Q[k].x + best.ox * f, z = Q[k].z + best.oz * f;
+            if (!blocked(world, x, z)) put(k, x, z);
+          }
+        }
+        i = j + 1;
+      }
     }
     if (changed) {
       tr.pts.forEach((p, i) => pos.setXYZ(i, p.x, 0, p.z));
@@ -260,20 +276,27 @@
     constructor(ent) {
       this.ent = ent; this.root = new THREE.Group(); this.root.add(ent.root); this.root.scale.setScalar(0.62);
       this.x = 0; this.z = 0; this.y = 0; this.h = 0; this.speed = 0; this.state = 'hide'; this.meowT = 2;
+      this.crumbs = [];   // where the dog has been: the kitten walks the same way (round corners, not through walls)
     }
+    follow() { this.state = 'follow'; this.crumbs = [{ x: player.x, z: player.z }]; }
     update(dt, world, au, say) {
-      const dx = player.x - this.x, dz = player.z - this.z, d = Math.hypot(dx, dz);
+      const d = Math.hypot(player.x - this.x, player.z - this.z);
       this.meowT -= dt;
       if (this.state === 'hide' || this.state === 'lost') {
         this.speed = 0;
         if (this.meowT <= 0 && d < 28) { this.meowT = rnd(2.5, 4); au.meow(); }
-        if (this.state === 'lost' && d < 3) { this.state = 'follow'; say('Пушок снова с тобой'); }
+        if (this.state === 'lost' && d < 3) { this.follow(); say('Пушок снова с тобой'); }
       } else if (this.state === 'follow') {
-        if (d > 20) { this.state = 'lost'; this.meowT = 0.3; say('Пушок отстал! Вернись за ним', 'bad'); }
-        // walk to a spot just behind the dog
-        const bx = player.x + Math.sin(player.heading) * 1.4, bz = player.z + Math.cos(player.heading) * 1.4;
-        const ex = bx - this.x, ez = bz - this.z, e = Math.hypot(ex, ez);
-        const want = R.clamp((e - 0.3) * 3, 0, 9.5);
+        const cr = this.crumbs, last = cr[cr.length - 1];
+        if (!player.air && Math.hypot(player.x - last.x, player.z - last.z) > 0.7) cr.push({ x: player.x, z: player.z });
+        while (cr.length > 1 && Math.hypot(cr[0].x - this.x, cr[0].z - this.z) < 0.6) cr.shift();
+        // too far behind along the dog's path: it sits down and waits
+        let behind = Math.hypot(cr[0].x - this.x, cr[0].z - this.z);
+        for (let i = 1; i < cr.length; i++) behind += Math.hypot(cr[i].x - cr[i - 1].x, cr[i].z - cr[i - 1].z);
+        if (behind > 24) { this.state = 'lost'; this.meowT = 0.3; say('Пушок отстал! Вернись за ним', 'bad'); }
+        // catch up along the crumbs, keep a little gap to the dog
+        const q = cr[0], ex = q.x - this.x, ez = q.z - this.z, e = Math.hypot(ex, ez);
+        const want = d < 1.6 ? 0 : R.clamp(behind * 1.6, 2, 10);
         this.speed = R.damp(this.speed, want, 6, dt);
         if (e > 0.05) this.h += R.angDiff(this.h, Math.atan2(-ex, -ez)) * (1 - Math.exp(-10 * dt));
         this.x += -Math.sin(this.h) * this.speed * dt; this.z += -Math.cos(this.h) * this.speed * dt;
@@ -403,7 +426,6 @@
 
     start(ctx) {
       const { scene, world, $ } = ctx;
-      ctxRef = ctx;
       ctx.lockTheme('day');
       // sniffing needs a careful pace: no auto-run by default
       if (ctx.input.touch) { ctx.input.autoRun = false; const ab = $('autoBtn'); if (ab) ab.setAttribute('aria-pressed', 'false'); }
@@ -511,7 +533,7 @@
           } else if (f === 'grab' && dEnd < 1.8) {
             ctx.scene.remove(c.thing); c.thing = null; carry(ctx, c.def.item); c.state = 'back'; ctx.say(c.def.got, 'long'); au.chime();
           } else if (f === 'kitten' && dEnd < 2.6 && c.kitten.state === 'hide') {
-            c.kitten.state = 'follow'; c.state = 'back'; ctx.say(c.def.got, 'long'); au.meow(); au.chime();
+            c.kitten.follow(); c.state = 'back'; ctx.say(c.def.got, 'long'); au.meow(); au.chime();
           } else if (f === 'fox' && c.foxState === 'eat' && dEnd < 13) {
             c.foxState = 'run'; c.state = 'chase'; S.nose = false;
             ctx.say('Лиса с корзиной! Догони её', 'long'); au.yelp();

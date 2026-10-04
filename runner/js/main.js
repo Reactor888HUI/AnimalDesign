@@ -168,7 +168,14 @@
   let dbgN = 0, dbgAcc = 0;
 
   let started = false;
-  input.onFirst = () => { au.start(); if (started) return; started = true; $('hint').classList.add('hide'); };
+  input.onFirst = () => {
+    au.start();
+    if (started) return;
+    started = true;
+    $('hint').classList.add('hide');
+    // the guard's and sniffer's key lists stay a little longer: there are more keys to learn
+    setTimeout(() => { for (const id of ['ghint', 'shint']) $(id).classList.add('hide'); }, 25000);
+  };
   $('loading').classList.add('hide');
 
   // ---- loop ------------------------------------------------------------------------------

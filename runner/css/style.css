@@ -203,6 +203,7 @@ body.mode-guard #muteBtn, body.mode-sniffer #muteBtn { right: calc(14px + env(sa
   padding: 8px 16px; color: var(--ink-dim); font-size: 11.5px; letter-spacing: .03em; white-space: nowrap; transition: opacity .6s;
 }
 #ghint kbd { font: inherit; font-weight: 700; color: var(--ink); }
+#ghint.hide, #shint.hide { opacity: 0; transition: opacity .8s; }
 body.is-touch #ghint { display: none; }
 
 #shud {

@@ -162,7 +162,7 @@
     if (!ok()) return;
     for (const dl of [0, 0.1, 0.24]) tone('square', [[0, 720], [0.06, 470]], 0.07, 0.06, dl, 1200, 1.5);
   };
-  A.thump = s => { if (ok()) tone('sine', [[0, 130], [0.18, 45]], 0.35 * Math.min(1, s), 0.2); };
+  A.thump = s => { if (ok()) tone('sine', [[0, 130], [0.18, 45]], 0.35 * Math.min(1, s === undefined ? 1 : s), 0.2); };
   A.yelp = () => { if (ok()) tone('triangle', [[0, 900], [0.08, 1500], [0.2, 1100]], 0.25, 0.22, 0, 1400, 1); };
   A.horn = vol => {
     if (!ok()) return;

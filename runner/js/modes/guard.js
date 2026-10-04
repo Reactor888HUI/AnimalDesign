@@ -253,7 +253,7 @@
     seesDog() { return Math.hypot(player.x - this.x, player.z - this.z) < this.sight && player.y < 2.4; }
 
     flee() {
-      if (['flee', 'out', 'caught', 'leave', 'gone', 'approach', 'climb', 'tug'].includes(this.state)) return;
+      if (['flee', 'out', 'caught', 'leave', 'gone', 'approach', 'climb', 'tug', 'retreat'].includes(this.state)) return;
       const skip = PEN;
       let best = null;
       for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -333,6 +333,11 @@
           this.t -= dt;
           if (this.t <= 0) this.leaveByGate();
           break;
+        case 'retreat':
+          // scared off by a bark before climbing the fence: runs back down the street
+          this.play('run', 1.1);
+          if (this.follow(this.run, dt, OVER)) { this.state = 'gone'; G.scared++; }
+          break;
         case 'leave':
           // walk out through the gate, nobody stops them
           this.play('walk', 1);
@@ -409,12 +414,14 @@
     if (G.tug) { G.tug.n.state = 'caught'; G.tug.n.t = 99; G.tug = null; }
     ctx.au.growl && ctx.au.growl(false);
     el.tug.hidden = true;
+    for (const m of el.pool) m.hidden = true;
     let best = 0;
     try { best = +localStorage.getItem('guard-best') || 0; } catch (e) {}
-    if (ok && G.n > best) { try { localStorage.setItem('guard-best', G.n); } catch (e) {} }
+    if (ok && G.n > best) { best = G.n; try { localStorage.setItem('guard-best', G.n); } catch (e) {} }
     el.resTitle.textContent = ok ? 'Рассвет! Ночь ' + G.n + ' пройдена' : 'Хозяин недоволен';
     el.resText.textContent = (ok ? 'Звёзды доверия: ' + '★'.repeat(G.stars) + '☆'.repeat(3 - G.stars) + '. ' : '') +
-      'Поймано: ' + G.caught + ', прогнано: ' + G.scared + (G.saved ? ', отбито ящиков: ' + G.saved : '') + '.';
+      'Поймано: ' + G.caught + ', прогнано: ' + G.scared + (G.saved ? ', отбито ящиков: ' + G.saved : '') + '.' +
+      (best ? ' Рекорд: ' + best + '-я ночь.' : '');
     el.resNext.textContent = ok ? 'Следующая ночь' : 'Ещё раз';
     el.resNext.onclick = () => newNight(ctx, ok ? G.n + 1 : G.n);
     el.result.hidden = false;
@@ -425,7 +432,7 @@
   // can the dog get its teeth into n right now?
   function biteable(n) {
     if (!n.foe) return n.state !== 'gone' && inside(n.x, n.z) && Math.abs(n.y - player.y) < 1.3;
-    if (n.released || ['gone', 'leave', 'caught', 'approach', 'tug'].includes(n.state)) return false;
+    if (n.released || ['gone', 'leave', 'caught', 'approach', 'tug', 'retreat'].includes(n.state)) return false;
     // half way over the fence he can still be pulled down by the legs
     if (n.state === 'climb') return n.t > 0.4;
     if (n.state === 'out') return n.t < 0.6;
@@ -689,7 +696,11 @@
           if (d > BARK_R || n.state === 'gone' || n.state === 'tug') continue;
           if (n.foe) {
             if (n.kind !== 'thief' && n.loot) { n.dropLoot(true); G.scared++; ctx.say(n.kind === 'fox' ? 'Лиса бросила курицу!' : 'Кот бросил колбасу!'); }
-            if (n.kind === 'thief' && ['sneak', 'steal', 'flee'].includes(n.state)) { n.state = 'frozen'; n.t = 1.4; ctx.say('Вор замер!'); }
+            if (n.state === 'approach') {
+              // still outside: a bark is enough to make anyone think twice
+              n.state = 'retreat'; n.path = [{ x: n.x + n.cross.nx * 14, z: n.z + n.cross.nz * 14 }];
+              ctx.say(n.kind === 'thief' ? 'Вор передумал лезть!' : n.kind === 'fox' ? 'Лиса убежала от забора' : 'Кот передумал');
+            } else if (n.kind === 'thief' && ['sneak', 'steal', 'flee', 'frozen'].includes(n.state)) { n.state = 'frozen'; n.t = 1.4; ctx.say('Вор замер!'); }
             else n.flee();
           } else if (inside(n.x, n.z) && d < 7 && !n.flagged.bark) {
             n.flagged.bark = true; G.lose('Это ' + NAME[n.kind] + '! Своих не облаивают');

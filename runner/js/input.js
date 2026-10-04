@@ -34,7 +34,15 @@
     k[e.code] = false;
     if (e.code === 'Space') input.jumpHeld = false;
   });
-  addEventListener('blur', () => { for (const c in k) k[c] = false; input.jumpHeld = false; });
+  const releaseAll = () => {
+    for (const c in k) k[c] = false;
+    input.jumpHeld = false;
+    T.id = null; T.x = 0; T.y = 0;      // declared below; this only runs on later events
+    jumpId = null;
+    document.querySelectorAll('#stick.on, #jumpBtn.on').forEach(e => e.classList.remove('on'));
+  };
+  addEventListener('blur', () => releaseAll());
+  document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
 
   // ---- touch ------------------------------------------------------------------------------
   const stickZone = document.getElementById('stickZone');

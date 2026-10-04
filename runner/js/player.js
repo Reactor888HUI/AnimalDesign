@@ -75,7 +75,11 @@
             fx.emit(this.x, this.y + 0.6, this.z, { color: 0xffd36a, count: 6, speed: 4, up: 1.5, size: 0.28, opacity: 0.9, life: 0.4 });
             this.emit('bump', impact);
           } else if (this.speed > 3) this.speed *= 1 - 1.5 * dt;
-          if (hit.kind !== 'wall' && Math.abs(hit.nx) < 0.3) this.x += (this.x >= hit.ox ? 1 : -1) * 2.2 * dt;
+          // glance off a small obstacle hit head-on: slip round it on the side the dog is already on
+          if (hit.kind !== 'wall') {
+            if (Math.abs(hit.nx) < 0.3) this.x += (this.x >= hit.ox ? 1 : -1) * 2.2 * dt;
+            else if (Math.abs(hit.nz) < 0.3) this.z += (this.z >= hit.oz ? 1 : -1) * 2.2 * dt;
+          }
         }
       }
       this.shake = Math.max(0, this.shake - dt * 2.2);
@@ -86,11 +90,11 @@
       this.jumpBuf -= dt;
       const onGround = this.y <= ground + 0.03 && this.vy <= 0;
       this.coyote = onGround ? 0.1 : this.coyote - dt;
+      if (onGround) this.airJumps = this.maxAirJumps;
       const jv = C.JUMP_V * this.jumpMul;
       if (this.jumpBuf > 0 && this.coyote > 0) {
         this.vy = jv * (1 + 0.08 * sf);
         this.y = ground + 0.03; this.jumpBuf = 0; this.coyote = 0;
-        this.airJumps = this.maxAirJumps;
         this.sqV += 7;                                         // stretch on take-off
         fx.ring(this.x, ground + 0.12, this.z, { color: theme.dust, count: 10, speed: 3.6, up: 0.4, size: 0.42, grow: 2.4, opacity: 0.5, life: 0.5 });
         this.emit('jump', sf);
@@ -116,7 +120,8 @@
             fx.ring(this.x, ground + 0.12, this.z, { color: theme.dust, count: Math.min(16, 6 + Math.round(impact)), speed: 2 + impact * 0.3, up: 0.5, size: 0.5, grow: 2.6, opacity: 0.55, life: 0.55 });
             this.emit('land', impact);
           }
-          this.y = ground; this.vy = 0; this.flip = -1;
+          this.y = ground; this.vy = 0;
+          if (this.flip >= 0) { this.flip = -1; this.lean.rotation.x = R.angDiff(0, this.lean.rotation.x); }
         }
       } else {
         this.y = damp(this.y, ground, 30, dt); // small steps up and down
