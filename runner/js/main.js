@@ -237,7 +237,7 @@
       b.m.material.opacity = hidden ? 0 : 0.55 * (1 - Math.min(0.6, up * 0.22));
       b.m.position.set(b.o.x, (b.o.ground || 0) + 0.09, b.o.z);
     }
-    lines.style.opacity = R.clamp((gait - 0.6) * 1.6, 0, 0.5).toFixed(2);
+    lines.style.opacity = R.clamp((gait - 0.7) * 1.2, 0, 0.22).toFixed(2);   // subtle: strong speed lines made people dizzy
 
     renderer.render(scene, camera);
 

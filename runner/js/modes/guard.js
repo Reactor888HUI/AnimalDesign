@@ -3,6 +3,8 @@
   const NIGHT_LEN = 150;            // seconds until dawn
   const BARK_R = 11, BARK_CD = 1.4, SCENT_CD = 9, SCENT_T = 4;
   const BITE_CD = 0.6, BITE_R = 2.3, LUNGE_T = 0.3;   // bite: reach and the short leap forward
+  const AIM_R = 7;                                      // a bite press leaps at a foe this close
+  let aimRing = null;
   const TUG_HIT = 0.12, TUG_MAX_T = 6;                // tug of war over a box
   const ROLE = {
     thief:   { Shirt: 0x141519, Pants: 0x0c0c0f, Hair: 0x0a0a0a, Socks: 0x1a1a1a },
@@ -439,7 +441,7 @@
     return Math.abs(n.y - player.y) < 1.3;
   }
   // whoever is closest in front of the dog
-  function biteTarget(range, foes) {
+  function biteTarget(range, foes, cone) {
     const fx = -Math.sin(player.heading), fz = -Math.cos(player.heading);
     let best = null, bs = 1e9;
     for (const n of G.npcs) {
@@ -447,7 +449,7 @@
       const dx = n.x - player.x, dz = n.z - player.z, d = Math.hypot(dx, dz);
       if (d > range) continue;
       const dot = d > 1e-3 ? (dx * fx + dz * fz) / d : 1;
-      if (dot < 0.25 && d > 1.1) continue;
+      if (dot < (cone === undefined ? 0.25 : cone) && d > 1.1) continue;
       const score = d * (1.6 - dot);
       if (score < bs) { bs = score; best = n; }
     }
@@ -564,6 +566,12 @@
       player = new R.Player(dogEnt);
       // a guard dog jumps lower and has no air jump: the 2.4 m fence must hold it
       player.jumpMul = 0.86; player.maxAirJumps = 0;
+      // the yard is small: a calmer top speed, so the dog does not overshoot whoever it chases
+      player.maxSpeed = 12.5; player.halfLen = 0.42;
+      // a red ring under whoever the dog can go for right now
+      aimRing = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 28), new THREE.MeshBasicMaterial({ color: 0xff4040, transparent: true, opacity: 0.85, depthWrite: false }));
+      aimRing.rotation.x = -Math.PI / 2; aimRing.renderOrder = 3; aimRing.visible = false;
+      scene.add(aimRing);
       scene.add(player.root);
       ctx.addBlob(player, 2.1);
       player.x = Y.dogStart.x; player.z = Y.dogStart.z;
@@ -606,6 +614,7 @@
       }
       if (G.over) {
         input.consumeBark(); input.consumeScent(); input.consumeBite();
+        aimRing.visible = false;
         player.update(dt, input, world, fx, T);
         return;
       }
@@ -624,14 +633,20 @@
         else holdTug(dt);
       } else if (biting && G.biteCd <= 0 && G.daze <= 0) {
         G.biteCd = BITE_CD;
-        const n = biteTarget(BITE_R);
+        let n = biteTarget(BITE_R);
         let d = 9;
-        if (n) {
+        const far = !n && biteTarget(AIM_R, true, -0.2);
+        if (far) {
+          // a foe a few metres away: leap at him and bite on contact
+          G.lunge = Math.min(0.6, Math.hypot(far.x - player.x, far.z - player.z) / 14 + 0.15); G.lungeAt = far;
+          if (dogEnt.trigger) dogEnt.trigger('attack');
+          au.snap(); n = null; d = 0;
+        } else if (n) {
           d = Math.hypot(n.x - player.x, n.z - player.z);
           if (d > 0.05) player.heading = Math.atan2(-(n.x - player.x), -(n.z - player.z));
           bite(n, ctx);
-        } else {
-          G.lunge = LUNGE_T;
+        } else if (!far) {
+          G.lunge = LUNGE_T; G.lungeAt = null;
           if (dogEnt.trigger) dogEnt.trigger('attack');
           au.snap();
         }
@@ -641,6 +656,14 @@
           player.vx = fx_ * Math.max(player.vel, 11); player.vz = fz_ * Math.max(player.vel, 11);
           if (!player.air) player.vy = Math.max(player.vy, 3);
         }
+      }
+      // the leap homes in on its target
+      if (G.lunge > 0 && G.lungeAt && !G.tug) {
+        const t = G.lungeAt, dx = t.x - player.x, dz = t.z - player.z, dd = Math.hypot(dx, dz) || 1;
+        player.heading = Math.atan2(-dx, -dz);
+        player.speed = Math.max(player.speed, 12);
+        player.vx = dx / dd * 14; player.vz = dz / dd * 14;
+        if (!biteable(t)) G.lunge = 0;
       }
       if (G.tug || G.daze > 0) {
         input.consumeJump();
@@ -655,8 +678,9 @@
       }
       // the leap itself catches whoever it lands on
       if (G.lunge > 0 && !G.tug) {
-        const n = biteTarget(1.4);
-        if (n) { G.lunge = 0; bite(n, ctx); }
+        const t = G.lungeAt;
+        const n = t ? (Math.hypot(t.x - player.x, t.z - player.z) < 1.7 && biteable(t) ? t : null) : biteTarget(1.4);
+        if (n) { G.lunge = 0; G.lungeAt = null; bite(n, ctx); }
       }
       coop.update(dt, player, world);
 
@@ -750,10 +774,17 @@
       el.barkBtn.style.setProperty('--cd', Math.max(0, G.barkCd / BARK_CD).toFixed(2));
       el.scentBtn.style.setProperty('--cd', Math.max(0, G.scentCd / SCENT_CD).toFixed(2));
       el.biteBtn.style.setProperty('--cd', G.tug ? '0' : Math.max(0, G.biteCd / BITE_CD).toFixed(2));
-      el.biteBtn.classList.toggle('hot', !!G.tug || !!biteTarget(BITE_R + 0.5, true));
+      const aim = !G.tug && (biteTarget(BITE_R + 0.5, true) || biteTarget(AIM_R, true, -0.2));
+      el.biteBtn.classList.toggle('hot', !!G.tug || !!aim);
+      aimRing.visible = !!aim;
+      if (aim) {
+        aimRing.position.set(aim.x, (aim.y || 0) + 0.05, aim.z);
+        const k = 1 + 0.12 * Math.sin(performance.now() * 0.012);
+        aimRing.scale.set(k, k, 1);
+      }
       if (G.tug) el.tugFill.style.transform = 'scaleX(' + R.clamp(G.tug.m, 0, 1).toFixed(3) + ')';
     },
 
-    debug() { return { guard: () => G, Y: () => Y }; },
+    debug() { return { guard: () => G, Y: () => Y, aim: () => biteTarget(AIM_R, true, -0.2), ring: () => aimRing }; },
   };
 })(window.R = window.R || {});

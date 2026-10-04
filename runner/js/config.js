@@ -3,7 +3,7 @@
     // city grid, meters: block + sidewalk + half of each neighbouring road = one cell
     B: 44, SW: 5, ROAD: 20,
     MAX_SPEED: 16, ACCEL: 24, BRAKE: 32, COAST: 5,
-    TURN_RATE: 3.4, GRIP_LOW: 13, GRIP_HIGH: 4.6,
+    TURN_RATE: 3.8, GRIP_LOW: 14, GRIP_HIGH: 7.5,
     JUMP_V: 9.4, GRAVITY: 22,
     CAT_BASE: 7, CAT_FLEE: 12.6, CAT_RANGE: 26,
     DOG_LEN: 1.15, CAT_LEN: 0.78, CHICKEN_H: 0.62,

@@ -474,8 +474,9 @@
         b.cyl(COL.stone, ox, 2.8, oz, 2.0, 1.2, 0.5, 14);
         b.cyl(COL.water, ox, 3.05, oz, 1.8, 1.8, 0.06, 14);
         b.sph(COL.stone2, ox, 3.6, oz, 0.45);
-        obs.push({ x: ox, z: oz, hx: 4.8, hz: 4.8, h: 0.8, kind: 'fountain' });
-        obs.push({ x: ox, z: oz, hx: 0.8, hz: 0.8, h: 3.4, kind: 'fountain' });
+        // round, like the stone basin itself (a square box let the dog sink half way into the rim)
+        obs.push({ x: ox, z: oz, hx: 6.3, hz: 6.3, r: 6.3, h: 0.8, kind: 'fountain' });
+        obs.push({ x: ox, z: oz, hx: 0.8, hz: 0.8, r: 0.8, h: 3.4, kind: 'fountain' });
       } else {
         // landmark obelisk, visible from far streets
         b.box(COL.stone2, ox, 0.6, oz, 5, 1.2, 5);
@@ -619,6 +620,7 @@
       for (const o of this.obstaclesNear(x, z, 0.2)) {
         if (NOSTAND[o.kind]) continue;
         if (Math.abs(x - o.x) > o.hx + 0.15 || Math.abs(z - o.z) > o.hz + 0.15) continue;
+        if (o.r && Math.hypot(x - o.x, z - o.z) > o.r + 0.15) continue;
         const t = topAt(o, x, z);
         if (t <= y + STEP && t > g) g = t;
       }
@@ -633,7 +635,7 @@
     // is a tall, unjumpable thing within r of this point?
     solidAt(x, z, r) {
       for (const o of this.obstaclesNear(x, z, r)) {
-        if (o.h > 1.5 && Math.abs(o.x - x) < o.hx + r && Math.abs(o.z - z) < o.hz + r) return true;
+        if (o.h > 1.5 && Math.abs(o.x - x) < o.hx + r && Math.abs(o.z - z) < o.hz + r && (!o.r || Math.hypot(o.x - x, o.z - z) < o.r + r)) return true;
       }
       return false;
     }
@@ -655,8 +657,21 @@
     resolve(p, r, skip) {
       let hit = null;
       for (const o of this.obstaclesNear(p.x, p.z, r + 0.2)) {
-        const cx = R.clamp(p.x, o.x - o.hx, o.x + o.hx), cz = R.clamp(p.z, o.z - o.hz, o.z + o.hz);
         if (skip && skip[o.kind]) continue;
+        let cx = R.clamp(p.x, o.x - o.hx, o.x + o.hx), cz = R.clamp(p.z, o.z - o.hz, o.z + o.hz);
+        if (o.r) {
+          // round obstacle: the closest point on the circle
+          const ddx = p.x - o.x, ddz = p.z - o.z, dd = Math.hypot(ddx, ddz) || 1;
+          if (dd <= o.r) { cx = p.x; cz = p.z; } else { cx = o.x + ddx / dd * o.r; cz = o.z + ddz / dd * o.r; }
+          if (dd < o.r) {
+            // inside the circle: push straight out through the rim
+            if (NOSTAND[o.kind] ? p.y > o.h - 0.15 : p.y > o.h - STEP) continue;
+            const nx = ddx / dd, nz = ddz / dd;
+            p.x = o.x + nx * (o.r + r); p.z = o.z + nz * (o.r + r);
+            hit = { nx, nz, h: o.h, kind: o.kind, ox: o.x, oz: o.z };
+            continue;
+          }
+        }
         if (NOSTAND[o.kind] ? p.y > o.h - 0.15 : p.y > topAt(o, cx, cz) - STEP) continue;
         let dx = p.x - cx, dz = p.z - cz;
         const d2 = dx * dx + dz * dz;

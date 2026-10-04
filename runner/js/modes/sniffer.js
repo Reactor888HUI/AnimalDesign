@@ -222,10 +222,10 @@
     return new THREE.ShaderMaterial({
       // normal blending: additive glow is lost on a sunny sidewalk
       transparent: true, depthWrite: false,
-      uniforms: { uTime: { value: 0 }, uNose: { value: 0 }, uProg: { value: 0 }, uDog: { value: new THREE.Vector3() }, uScale: { value: 400 } },
+      uniforms: { uTime: { value: 0 }, uNose: { value: 0 }, uProg: { value: 0 }, uDog: { value: new THREE.Vector3() }, uScale: { value: 400 }, uSee: { value: SEE } },
       vertexShader: `
-        attribute vec3 color; attribute float aIdx; attribute float aKind;
-        uniform float uTime, uNose, uProg, uScale; uniform vec3 uDog;
+        attribute vec3 color; attribute float aIdx; attribute float aKind; attribute float aGone;
+        uniform float uTime, uNose, uProg, uScale, uSee; uniform vec3 uDog;
         varying vec3 vCol; varying float vA;
         void main() {
           vec3 p = position;
@@ -234,7 +234,7 @@
           p.x += 0.14 * sin(uTime * 1.3 + ph * 2.1);
           p.z += 0.14 * cos(uTime * 1.1 + ph * 1.7);
           float d = distance(p.xz, uDog.xz);
-          float a = uNose * (1.0 - smoothstep(${(SEE * 0.55).toFixed(1)}, ${SEE.toFixed(1)}, d));
+          float a = uNose * (1.0 - smoothstep(uSee * 0.55, uSee, d)) * (1.0 - aGone);
           // a wave running towards the end of the trail shows the way
           a *= 0.45 + 0.55 * (0.5 + 0.5 * sin(uTime * 5.0 - aIdx * 0.55));
           if (aKind < 0.5 && aIdx < uProg - 8.0) a *= 0.3;
@@ -264,6 +264,7 @@
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.setAttribute('aIdx', new THREE.Float32BufferAttribute(idx, 1));
     g.setAttribute('aKind', new THREE.Float32BufferAttribute(kind, 1));
+    g.setAttribute('aGone', new THREE.Float32BufferAttribute(new Float32Array(idx.length), 1));
     const pts = new THREE.Points(g, scentMat);
     pts.frustumCulled = false; pts.renderOrder = 3;
     return pts;
@@ -358,7 +359,9 @@
     c.color = col;
     const tr = makeTrail(spot, 3 + Math.min(lvl, 5), Math.min(1 + Math.floor(lvl / 2), 4));
     c.trail = tr;
-    c.freshMax = Math.round(30 + tr.len / 3.6 - Math.min(lvl, 6) * 2);
+    // freshness only runs out while the dog is off the trail (following it keeps the scent fresh)
+    c.freshMax = Math.round(Math.max(16, 28 - Math.min(lvl, 8) * 1.5));
+    c.lastGot = 0;
     c.fresh = c.freshMax;
     const others = COLORS.filter(x => x !== col);
     tr.fakes.forEach((f, i) => { f.color = others[(i + S.k) % others.length]; });
@@ -413,6 +416,54 @@
     S.nose = false;
   }
 
+  // ---- scent you pick up like coins: experience, levels of the nose -------------------------------
+  // level n -> n+1 costs 100, 160, 220, ... puffs
+  function levelOf(xp) { let L = 1, need = 100; while (xp >= need) { xp -= need; L++; need += 60; } return { L, xp, need }; }
+  function perk() {
+    const L = levelOf(S.xp).L - 1;
+    return { see: SEE * Math.min(1.6, 1 + 0.08 * L), drain: Math.max(0.5, 1 - 0.07 * L), reach: Math.min(2.4, 1.7 + 0.1 * L) };
+  }
+  function collect(c, ctx) {
+    if (S.noseA < 0.5) return;
+    const pts = c.trail.pts, gone = c.points.geometry.attributes.aGone, reach = perk().reach;
+    let got = 0;
+    for (let i = 0; i < c.trail.swirl; i++) {
+      const p = pts[i];
+      if (p.got || Math.abs(p.x - player.x) > reach || Math.abs(p.z - player.z) > reach) continue;
+      if (Math.hypot(p.x - player.x, p.z - player.z) > reach) continue;
+      p.got = true; gone.setX(i, 1); got++;
+      ctx.fx.emit(p.x, 0.35, p.z, { color: c.color[0], count: 2, speed: 1.2, up: 1.6, size: 0.18, opacity: 0.9, life: 0.35 });
+    }
+    if (!got) return;
+    gone.needsUpdate = true;
+    const before = levelOf(S.xp).L;
+    S.xp += got; c.lastGot = S.time;
+    c.fresh = Math.min(c.freshMax, c.fresh + 0.5 * got);
+    S.streak = S.time - (S.lastPick || 0) < 1.2 ? (S.streak || 0) + got : 0;
+    S.lastPick = S.time;
+    ctx.au.pick(S.streak % 12);
+    const after = levelOf(S.xp).L;
+    if (after > before) { ctx.say('Нюх стал сильнее! Уровень ' + after, 'long'); ctx.au.chime(); }
+    try { localStorage.setItem('sniffer-xp', S.xp); } catch (e) {}
+  }
+  // with the nose down near the trail, the dog follows it by itself unless steered hard
+  function noseAssist(input) {
+    const c = S.c;
+    if (!c || c.state !== 'track' || S.noseA < 0.5 || Math.abs(input.steer) > 0.5) return;
+    const pts = c.trail.pts;
+    let best = -1, bd = 1e9;
+    for (let i = Math.max(0, c.prog - 3); i < Math.min(c.trail.swirl, c.prog + 12); i++) {
+      if (pts[i].got) continue;
+      const d = Math.hypot(pts[i].x - player.x, pts[i].z - player.z);
+      if (d < bd) { bd = d; best = i; }
+    }
+    if (best < 0 || bd > 4) return;
+    const q = pts[Math.min(c.trail.swirl - 1, best + 2)];
+    const want = Math.atan2(-(q.x - player.x), -(q.z - player.z));
+    const d = R.angDiff(player.heading, want);
+    input.steer = R.clamp(input.steer - d * 1.6, -1, 1);
+  }
+
   R.modes = R.modes || {};
   R.modes.sniffer = {
     title: 'Нюхач',
@@ -430,6 +481,7 @@
       // sniffing needs a careful pace: no auto-run by default
       if (ctx.input.touch) { ctx.input.autoRun = false; const ab = $('autoBtn'); if (ab) ab.setAttribute('aria-pressed', 'false'); }
       player = new R.Player(dogEnt);
+      player.halfLen = 0.33;
       scene.add(player.root);
       ctx.addBlob(player, 1.8);
       // the shiba lives by the park east of the runner's start
@@ -439,13 +491,15 @@
       el = {
         caseN: $('sCaseN'), caseT: $('sCaseT'), task: $('sTask'), fresh: $('sFresh'), bones: $('sBones'), best: $('sBest'),
         warm: $('sWarm'), warmBar: $('sWarmBar'), chip: $('sChip'), marks: $('marks'), noseFx: $('noseFx'),
-        noseBtn: $('noseBtn'), digBtn: $('digBtn'),
+        noseBtn: $('noseBtn'), digBtn: $('digBtn'), lvl: $('sLvl'), xp: $('sXp'), xpBar: $('sXpBar'),
       };
       const d = document.createElement('div'); d.className = 'mk'; d.hidden = true; d.innerHTML = '<i></i><b>!</b>';
       el.marks.appendChild(d); el.mark = d;
       let best = 0;
       try { best = +localStorage.getItem('sniffer-best') || 0; } catch (e) {}
-      S = { k: 0, solved: 0, bones: 0, best, nose: false, noseA: 0, sniffT: 0, c: null, time: 0 };
+      let xp = 0;
+      try { xp = +localStorage.getItem('sniffer-xp') || 0; } catch (e) {}
+      S = { k: 0, solved: 0, bones: 0, best, nose: false, noseA: 0, sniffT: 0, c: null, time: 0, xp, streak: 0, lastPick: 0 };
       el.best.textContent = best;
       newCase(ctx, { x: player.x, z: player.z - 10 });
       ctx.say('Нюхач. Помогай соседям: ищи по запаху', 'long');
@@ -464,6 +518,7 @@
       const cap = R.lerp(C.MAX_SPEED, NOSE_SPEED, S.noseA);
       if (player.speed > cap) player.speed = cap;
       player.sniff = S.nose;
+      noseAssist(input);
       player.update(dt, input, world, fx, T);
       const v = player.vel;
       if (v > cap) { player.vx *= cap / v; player.vz *= cap / v; }
@@ -473,6 +528,7 @@
       scentMat.uniforms.uTime.value = S.time;
       scentMat.uniforms.uNose.value = S.noseA;
       scentMat.uniforms.uDog.value.set(player.x, 0, player.z);
+      scentMat.uniforms.uSee.value = perk().see;
       scentMat.uniforms.uScale.value = ctx.renderer.getContext().drawingBufferHeight / (2 * Math.tan(camera.fov * Math.PI / 360));
       el.noseFx.style.opacity = (S.noseA * 0.9).toFixed(2);
       el.noseBtn.setAttribute('aria-pressed', String(S.nose));
@@ -499,8 +555,10 @@
             ctx.scene.remove(c.clue); c.clue = null;
           }
         } else if (c.state === 'track') {
-          c.fresh -= dt;
+          // the scent fades only while the dog is away from it
+          if (S.time - c.lastGot > 2.5) c.fresh -= dt * perk().drain;
           settle(c, world);
+          collect(c, ctx);
           task = 'Иди по ' + c.color[1] + ' следу. Нюх: ' + (ctx.coarse ? '«Нюх»' : 'E');
           // how far along the trail the dog has got, and how warm it is
           const pts = c.trail.pts;
@@ -584,6 +642,9 @@
       const cc = S.c;
       el.task.textContent = task;
       el.bones.textContent = S.bones;
+      const lv = levelOf(S.xp);
+      el.lvl.textContent = lv.L; el.xp.textContent = lv.xp + ' / ' + lv.need;
+      el.xpBar.style.transform = 'scaleX(' + (lv.xp / lv.need).toFixed(3) + ')';
       el.best.textContent = S.best;
       const fr = cc && (cc.state === 'track' || cc.state === 'clue' || cc.state === 'meet') ? cc.fresh / cc.freshMax : cc && cc.state !== 'over' ? 1 : 0;
       el.fresh.style.transform = 'scaleX(' + R.clamp(fr, 0, 1).toFixed(3) + ')';

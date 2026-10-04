@@ -126,7 +126,7 @@
       const { scene, world, $, au } = ctx;
       player = new R.Player(dogEnt);
       // the whippet steers well in the air, but a bad landing hurts
-      player.airTurn = 1.0; player.airGrip = 3.2; player.canCrash = true;
+      player.airTurn = 1.0; player.airGrip = 3.2; player.canCrash = true; player.halfLen = 0.6;
       // where the dog will land: a ring on the ground while it is high in the air
       landRing = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.62, 28), new THREE.MeshBasicMaterial({ color: 0x7dff9a, transparent: true, opacity: 0.8, depthWrite: false }));
       landRing.rotation.x = -Math.PI / 2; landRing.renderOrder = 3; landRing.visible = false;

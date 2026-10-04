@@ -21,11 +21,30 @@
       this.airTurn = 0.5; this.airGrip = 1.2;
       // bad landings (runner): a nose-dive, then a limp that heals with time
       this.canCrash = false; this.crash = -1; this.limp = 0; this.lastImpact = 0;
+      // the body is long: besides the middle, the chest and the rump are kept out of things too
+      this.halfLen = 0.45;
+      this.maxSpeed = C.MAX_SPEED;      // a mode can ask for a calmer dog
       this.jumpBuf = 0; this.coyote = 0; this.air = false;
       this.shake = 0; this.hitCd = 0; this.dustT = 0;
       this.onEvent = null; // (name, value) => void, used for sounds
     }
     get vel() { return Math.hypot(this.vx, this.vz); }
+    // keep the head end and the tail end of the body out of walls, boxes and fountains as well
+    bodyResolve(world) {
+      const fx = -Math.sin(this.heading), fz = -Math.cos(this.heading);
+      for (const k of [1, -1]) {
+        const q = this.q || (this.q = { x: 0, y: 0, z: 0 });
+        q.x = this.x + fx * this.halfLen * k; q.z = this.z + fz * this.halfLen * k; q.y = this.y;
+        const ox = q.x, oz = q.z;
+        if (world.resolve(q, 0.26)) {
+          const dx = q.x - ox, dz = q.z - oz;
+          this.x += dx; this.z += dz;
+          // lose the speed going into the obstacle
+          const d = Math.hypot(dx, dz);
+          if (d > 1e-4) { const nx = dx / d, nz = dz / d, vn = this.vx * nx + this.vz * nz; if (vn < 0) { this.vx -= nx * vn; this.vz -= nz * vn; } }
+        }
+      }
+    }
     emit(name, v) { if (this.onEvent) this.onEvent(name, v); }
 
     update(dt, input, world, fx, theme) {
@@ -49,13 +68,13 @@
 
       // throttle: ease towards the speed asked for (half stick = half speed), brake hard, coast softly
       if (this.thrS > 0.02) {
-        const target = C.MAX_SPEED * Math.min(1, this.thrS * 1.08);
+        const target = this.maxSpeed * Math.min(1, this.thrS * 1.08);
         if (this.speed < target) this.speed += C.ACCEL * (0.35 + 0.65 * this.thrS) * (1 - 0.7 * sf * sf) * dt;
         else this.speed -= C.COAST * 1.4 * dt;
       } else if (thr < 0) this.speed -= C.BRAKE * -thr * (this.steerS * this.steerS > 0.09 ? 0.35 : 1) * dt;
       else this.speed -= C.COAST * (0.6 + sf) * dt;
       // a sore paw: no galloping until it gets better
-      const cap = this.limp > 0 ? Math.min(C.MAX_SPEED * (1 - 0.62 * this.limp), this.limp > 0.4 ? 5.5 : C.MAX_SPEED) : C.MAX_SPEED;
+      const cap = this.limp > 0 ? Math.min(this.maxSpeed * (1 - 0.62 * this.limp), this.limp > 0.4 ? 5.5 : this.maxSpeed) : this.maxSpeed;
       this.speed = clamp(this.speed, 0, cap);
       if (this.crash >= 0) this.speed *= Math.exp(-5 * dt);
 
@@ -63,7 +82,7 @@
       // Turning works standing still; braking while steering gives a tight sliding turn.
       // The turn rate itself is smoothed, so the dog swings into a turn instead of snapping.
       const sliding = thr < 0 && this.speed > 4 && Math.abs(this.steerS) > 0.3;
-      const turnGain = (0.75 + 0.25 * Math.min(1, this.speed / 6)) * (1 - 0.2 * sf) * (this.air ? this.airTurn : 1) * (sliding ? 1.5 : 1);
+      const turnGain = (0.75 + 0.25 * Math.min(1, this.speed / 6)) * (1 - 0.1 * sf) * (this.air ? this.airTurn : 1) * (sliding ? 1.5 : 1);
       this.yawRate = damp(this.yawRate, -this.steerS * C.TURN_RATE * turnGain, 10, dt);
       this.heading += this.yawRate * dt;
 
@@ -101,6 +120,7 @@
           }
         }
       }
+      this.bodyResolve(world);
       this.shake = Math.max(0, this.shake - dt * 2.2);
 
       // vertical: ground can be the street, a bench, a car roof, a container or a ramp
