@@ -102,6 +102,9 @@
       dyn.length = 0;
       let nearest = 1e9, nearestSpeed = 0;
       for (const car of this.cars) {
+        // a car with no street yet (all streets near the dog are pedestrian): keep it hidden, try again
+        if (!car.s && !this.spawn(car, player.x, player.z, 25, 150)) { car.o.group.visible = false; continue; }
+        car.o.group.visible = true;
         const p = car.pos;
         // brake for the dog and for cars ahead
         let target = car.max * (car.mode === 'turn' ? 0.6 : 1);
@@ -132,7 +135,7 @@
         dyn.push(ob);
 
         const d = Math.hypot(p.x - player.x, p.z - player.z);
-        if (d > 170) this.spawn(car, player.x, player.z, 90, 150);
+        if (d > 170 && !this.spawn(car, player.x, player.z, 90, 150)) { car.s = null; car.o.group.visible = false; }
         if (d < nearest) { nearest = d; nearestSpeed = car.speed; }
       }
       this.nearest = nearest; this.nearestSpeed = nearestSpeed;
