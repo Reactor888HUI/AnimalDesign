@@ -242,6 +242,7 @@
     const tree = (x, z, s) => { place('tree', x, z, rnd() * 6.28, s || rr(0.9, 1.25)); obs.push({ x: ox + x, z: oz + z, hx: 0.32, hz: 0.32, h: 8, kind: 'tree' }); };
     const plan = L.type === 'city' ? ringPlan(rnd) : null;
     const arcs = [];   // bone arcs over the jumps (garages), picked up by the runner
+    const rings = [];  // hoops in the air to fly through: { x, y, z, r, axis } (axis = direction of flight)
     const inGap = (side, t) => plan && plan.alley && ((plan.alley === 'z' && side.nz) || (plan.alley === 'x' && side.nx)) && Math.abs(t) < AW + 1.2;
 
     // lamps and trees along the curb
@@ -313,7 +314,7 @@
     else if (L.type === 'square') square();
     else if (L.type === 'garages') garages();
     else plaza();
-    return { b, obs, lamps, arcs };
+    return { b, obs, lamps, arcs, rings };
 
     function cityBlock() {
       blockCore(b, obs, ox, oz, plan.alley);
@@ -548,6 +549,10 @@
       // bones over the gaps
       arcs.push({ from: [ox - 1, oz - 12], to: [ox + 4.5, oz - 12], y0: 3.4, peak: 2.0 });
       arcs.push({ from: [ox + 2, oz + 10], to: [ox - 5.5, oz + 10], y0: 4.1, peak: 2.2 });
+      // rings on the flight lines: one over each gap, and a high one that needs the second jump
+      rings.push({ x: ox + 1.5, y: 4.6, z: oz - 12, r: 1.3, axis: 'x' });
+      rings.push({ x: ox + 7.5, y: 5.3, z: oz - 12, r: 1.2, axis: 'x' });
+      rings.push({ x: ox - 1.8, y: 5.5, z: oz + 10, r: 1.35, axis: 'x' });
       // the driveway: a couple of parked cars, tyres, lamps
       solid(place('car', -9, -1, rad(90), 1), 'car', 0.5);
       solid(place('van', 12, 1.5, rad(270), 1), 'car', 0.5);
@@ -569,6 +574,8 @@
         b.ramp([0.5, 0.36, 0.22], ox + x, oz + z, len, wid, h, axis, dir);
         obs.push({ x: ox + x, z: oz + z, hx: (axis === 'x' ? len : wid) / 2, hz: (axis === 'x' ? wid : len) / 2, h, kind: 'ramp', ramp: { axis, dir } });
       };
+      // a ring over the gap between the first two containers
+      rings.push({ x: ox - 3.5, y: 4.0, z: oz - 10, r: 1.3, axis: 'x' });
       // container run: ramp up, gap jump, a higher box, drop down
       ramp(-15.5, -10, 9, 2.6, 2.6, 'x', 1);
       box(CONT[0], -8, -10, 6, 2.6, 2.6);
@@ -652,7 +659,7 @@
         group.add(halos);
       }
       this.scene.add(group);
-      this.cells.set(k, { ci, cj, near, type: L.type, group, obstacles: r.obs, lamps: r.lamps, arcs: r.arcs || [] });
+      this.cells.set(k, { ci, cj, near, type: L.type, group, obstacles: r.obs, lamps: r.lamps, arcs: r.arcs || [], rings: r.rings || [] });
     }
     drop(k, c) {
       this.scene.remove(c.group);

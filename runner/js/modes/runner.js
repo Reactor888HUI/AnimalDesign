@@ -110,6 +110,85 @@
     bonesMesh.instanceMatrix.needsUpdate = true;
   }
 
+  // ---- rings in the air: fly through for bones; several in one flight multiply ---------------
+  const ringObjs = new Map();          // key -> { mesh, d, active, t, prev }
+  let ringGeo = null, flightRings = 0;
+  function ringMesh() {
+    if (!ringGeo) ringGeo = new THREE.TorusGeometry(1, 0.08, 8, 40);
+    const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffc23a, transparent: true, opacity: 0.95, toneMapped: false }));
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.96, 32), new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+    m.add(glow);
+    return m;
+  }
+  function updateRings(dt, ctx) {
+    const { world, fx, au, scene } = ctx;
+    const seen = new Set();
+    for (const c of world.cells.values()) {
+      if (!c.near || !c.rings || !c.rings.length) continue;
+      for (let i = 0; i < c.rings.length; i++) {
+        const d = c.rings[i], key = c.ci + ',' + c.cj + ':' + i;
+        if (Math.hypot(d.x - player.x, d.z - player.z) > 90) continue;
+        seen.add(key);
+        let o = ringObjs.get(key);
+        if (!o) {
+          const mesh = ringMesh();
+          mesh.position.set(d.x, d.y, d.z);
+          mesh.scale.setScalar(d.r);
+          if (d.axis === 'x') mesh.rotation.y = Math.PI / 2;
+          scene.add(mesh);
+          o = { mesh, d, active: true, t: 0, prev: null };
+          ringObjs.set(key, o);
+        }
+        // which side of the ring's plane the dog's body is on
+        const by = player.y + 0.45, side = d.axis === 'x' ? player.x - d.x : player.z - d.z;
+        const lat = d.axis === 'x' ? Math.hypot(player.z - d.z, by - d.y) : Math.hypot(player.x - d.x, by - d.y);
+        if (o.active && o.prev !== null && Math.sign(side) !== Math.sign(o.prev) && lat < d.r * 0.95) {
+          o.active = false; o.t = 25;
+          flightRings++;
+          const mult = Math.min(4, flightRings), bonus = 10 * mult;
+          bonesN += bonus; el.bonesN.textContent = bonesN;
+          ctx.say(mult > 1 ? 'Кольцо ×' + mult + '! +' + bonus : 'Кольцо! +' + bonus);
+          au.chime(); au.pick(6 + mult * 2);
+          fx.ring(d.x, d.y, d.z, { color: 0xffe27a, count: 16, speed: 4, up: 0.2, size: 0.3, grow: 1.6, opacity: 0.95, life: 0.6 });
+        }
+        o.prev = side;
+        // looks: spins slowly and pulses; a used ring is a faint ghost until it comes back
+        if (!o.active) { o.t -= dt; if (o.t <= 0) o.active = true; }
+        const pulse = 1 + 0.06 * Math.sin(performance.now() * 0.005 + i);
+        o.mesh.scale.setScalar(d.r * (o.active ? pulse : 1));
+        o.mesh.material.opacity = o.active ? 0.95 : 0.18;
+        o.mesh.children[0].material.opacity = o.active ? 0.12 : 0.02;
+      }
+    }
+    for (const [key, o] of ringObjs) if (!seen.has(key)) { scene.remove(o.mesh); ringObjs.delete(key); }
+  }
+
+  // ---- jump record: distance from take-off to landing ------------------------------------------
+  let takeoff = null, jumpBest = 0;
+  function trackJump(ctx) {
+    const p = player;
+    if (p.air && !takeoff) takeoff = { x: p.x, z: p.z, y: p.y, top: p.y, lx: p.x, lz: p.z };
+    if (!takeoff) return;
+    // a respawn or a restart moves the dog at once: that is not a jump
+    if (Math.hypot(p.x - takeoff.lx, p.z - takeoff.lz) > 4) { takeoff = null; flightRings = 0; return; }
+    takeoff.lx = p.x; takeoff.lz = p.z;
+    if (p.air) takeoff.top = Math.max(takeoff.top, p.y);
+    if (takeoff && !p.air) {
+      const dist = Math.hypot(p.x - takeoff.x, p.z - takeoff.z), height = takeoff.top - Math.max(takeoff.y, p.y);
+      const rings = flightRings;
+      takeoff = null; flightRings = 0;
+      if (p.crash >= 0 || dist < 3) return;
+      el.jumpLast.textContent = dist.toFixed(1);
+      if (dist > jumpBest) {
+        const first = jumpBest === 0;
+        jumpBest = dist;
+        try { localStorage.setItem('runner-jump-best', jumpBest.toFixed(2)); } catch (e) {}
+        el.jumpBest.textContent = jumpBest.toFixed(1);
+        if (!first && dist > 6) { ctx.say('Рекорд прыжка: ' + dist.toFixed(1) + ' м!', 'long'); ctx.au.chime(); }
+      } else if (dist > 8 && !rings) ctx.say('Прыжок ' + dist.toFixed(1) + ' м' + (height > 2 ? ', высота ' + height.toFixed(1) + ' м' : ''));
+    }
+  }
+
   // ---- landing prediction: fly the dog's arc forward and mark where it meets the ground ----
   let landRing = null;
   function updateLanding(world) {
@@ -165,14 +244,15 @@
       bonesMesh = new THREE.InstancedMesh(boneGeometry(), new THREE.MeshLambertMaterial({ color: 0xf3ead2, emissive: 0x4a3c22 }), MAXB);
       bonesMesh.count = 0; bonesMesh.frustumCulled = false;
       scene.add(bonesMesh);
+      try { jumpBest = +localStorage.getItem('runner-jump-best') || 0; } catch (e) {}
       el = {
-        bonesN: $('bonesN'),
+        bonesN: $('bonesN'), jumpLast: $('jumpLast'), jumpBest: $('jumpBest'),
         speedFill: $('speedFill'), speedNum: $('speedNum'), chaseFill: $('chaseFill'),
         score: $('score'), combo: $('combo'), banner: $('banner'), flash: $('flash'),
         best: $('best'), arrow: $('arrow'), cdist: $('cdist'),
       };
       try { best = +localStorage.getItem('runner-best') || 0; } catch (e) {}
-      el.best.textContent = best;
+      el.best.textContent = best; el.jumpBest.textContent = jumpBest.toFixed(1); el.jumpLast.textContent = "0";
       return player;
     },
 
@@ -220,6 +300,8 @@
       wasNear = near;
 
       updateBones(dt, ctx);
+      updateRings(dt, ctx);
+      trackJump(ctx);
       updateLanding(world);
       el.speedFill.style.background = player.limp > 0 ? '#ff6b6b' : '';
 
@@ -237,6 +319,6 @@
       el.cdist.textContent = Math.round(cat.dist) + ' м';
     },
 
-    debug() { return { player, cat, flock, bones: () => ({ clusters, bonesN }) }; },
+    debug() { return { player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }) }; },
   };
 })(window.R = window.R || {});
