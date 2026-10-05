@@ -670,8 +670,44 @@
       }
     }
 
+    // the city worker (if the browser can run one): blocks are built there, the page only makes meshes
+    startWorker() {
+      if (this.worker !== undefined) return;
+      this.worker = null;
+      if (typeof Worker === 'undefined' || /[?&]noworker/.test(location.search)) return;
+      try {
+        const w = new Worker('js/cityworker.js');
+        w.onmessage = e => this.onWorker(e.data);
+        w.onerror = e => { console.warn('[runner] city worker off', e.message || e); this.worker = null; if (this.job && this.job.stage === 'wait') this.job.stage = 0; };
+        w.postMessage({ type: 'lib', lib: R.assets.exportLib() });
+        this.maps = new Map(R.assets.maps().map(m => [m.uuid, m]));
+        this.worker = w; this.reqId = 0;
+      } catch (e) { console.warn('[runner] city worker off', e); }
+    }
+    onWorker(m) {
+      const j = this.job;
+      if (m.type !== 'cell' || !j || j.id !== m.id) return;    // a block nobody waits for any more
+      j.msg = m; j.stage = 'meshes';
+    }
+
     stepJob(deadline) {
       const j = this.job;
+      if (j.stage === 0 && this.worker) {
+        j.id = ++this.reqId;
+        this.worker.postMessage({ type: 'cell', id: j.id, ci: j.ci, cj: j.cj, near: true });
+        j.stage = 'wait';
+        return;
+      }
+      if (j.stage === 'wait') return;
+      if (j.stage === 'meshes') {  // arrays from the worker -> meshes (quick), then upload as usual
+        if (!j.group) { j.group = new THREE.Group(); j.n = 0; j.L = { type: j.msg.cellType }; j.r = j.msg.r; }
+        const ps = j.msg.pieces;
+        while (j.n < ps.length) {
+          j.group.add(R.Batch.fromArrays(ps[j.n++], this.maps));
+          if (performance.now() > deadline) return;
+        }
+        j.stage = 2;
+      }
       if (j.stage === 0) {         // lay the block out (cheap: the geometry work is queued)
         j.L = layout(j.ci, j.cj);
         j.r = nearCell(j.ci, j.cj, R.rng(seedOf(j.ci, j.cj)), j.L);
@@ -685,7 +721,10 @@
       }
       if (j.stage === 2) {         // send it to the graphics card while it is still hidden, a piece per frame
         if (j.up === undefined) { this.addHalos(j.group, j.r.lamps); j.parts = j.group.children.slice(); j.up = 0; }
-        if (j.up < j.parts.length) { this.upload(j.parts[j.up++]); return; }
+        while (j.up < j.parts.length) {
+          this.upload(j.parts[j.up++]);
+          if (performance.now() > deadline) return;
+        }
         j.stage = 3;
       }
       // swap it in for the simple block
@@ -843,4 +882,5 @@
   World.isOpen = isOpen;
   World.yard = yardWorld();
   R.World = World;
+  R.worldGen = { nearCell, farCell, layout, seedOf };
 })(window.R = window.R || {});

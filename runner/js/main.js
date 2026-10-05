@@ -197,6 +197,7 @@
   // ---- world -----------------------------------------------------------------------------
   const world = new R.World(scene);
   world.renderer = renderer;
+  world.startWorker();
   const fx = new R.FX(scene);
   const traffic = new R.Traffic(scene, world, 9);
   const rig = new R.CameraRig(camera, world);

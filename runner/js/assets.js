@@ -170,16 +170,54 @@
     // ... or a step at a time: true when the last mesh is in the group
     buildStep(group, o, deadline) {
       if (!this.run(deadline)) return false;
-      if (!this.lists) {
-        const cast = !o || o.cast !== false;
-        this.lists = [[this.solid, () => R.mat('solid'), cast, true], [this.glass, () => R.mat('glass'), false, false],
-          [this.facade, () => R.mat('facade'), false, false], [this.pool, () => R.mat('pool'), false, false]];
-        for (const e of this.tex.values()) this.lists.push([e.list, () => R.texMat(e.map), cast, true]);
-      }
-      // merge in pieces of up to ~40k vertices: each piece is a short step, and a small upload
+      this._lists(o);
       while (this.lists.length) {
         if (performance.now() > deadline) return false;
-        const [list, mat, cast, recv] = this.lists[0];
+        const p = this._piece();
+        if (p) group.add(Batch.mesh(p));
+      }
+      return true;
+    }
+    // ... or as plain arrays (in the city worker), to be turned into meshes on the page
+    toArrays(o) {
+      this.run(Infinity);
+      this._lists(o);
+      const pieces = [], transfer = new Set();
+      let p;
+      while ((p = this._piece())) {
+        const attrs = {};
+        for (const n in p.geo.attributes) {
+          const at = p.geo.attributes[n];
+          attrs[n] = { array: at.array, itemSize: at.itemSize, normalized: at.normalized };
+          transfer.add(at.array.buffer);
+        }
+        pieces.push({ kind: p.kind, map: p.map ? p.map.uuid : null, cast: p.cast, recv: p.recv, attrs });
+      }
+      return { pieces, transfer: [...transfer] };
+    }
+    static fromArrays(piece, maps) {
+      const g = new THREE.BufferGeometry();
+      for (const n in piece.attrs) { const a = piece.attrs[n]; g.setAttribute(n, new THREE.BufferAttribute(a.array, a.itemSize, a.normalized)); }
+      g.computeBoundingSphere();
+      return Batch.mesh({ geo: g, kind: piece.kind, map: maps.get(piece.map), cast: piece.cast, recv: piece.recv });
+    }
+    static mesh(p) {
+      const mesh = new THREE.Mesh(p.geo, p.kind === 'tex' ? R.texMat(p.map) : R.mat(p.kind));
+      mesh.castShadow = p.cast; mesh.receiveShadow = p.recv;
+      mesh.matrixAutoUpdate = false;
+      return mesh;
+    }
+    _lists(o) {
+      if (this.lists) return;
+      const cast = !o || o.cast !== false;
+      this.lists = [[this.solid, 'solid', null, cast, true], [this.glass, 'glass', null, false, false],
+        [this.facade, 'facade', null, false, false], [this.pool, 'pool', null, false, false]];
+      for (const e of this.tex.values()) this.lists.push([e.list, 'tex', e.map, cast, true]);
+    }
+    // the next merged piece: up to ~40k vertices (a short step, and a small upload)
+    _piece() {
+      while (this.lists.length) {
+        const [list, kind, map, cast, recv] = this.lists[0];
         if (!list.length) { this.lists.shift(); continue; }
         let n = 0, k = 0;
         while (k < list.length && (k === 0 || n + list[k].attributes.position.count <= CHUNK)) n += list[k++].attributes.position.count;
@@ -188,12 +226,9 @@
         part.forEach(g => g.dispose());
         if (!merged) continue;
         compact(merged);
-        const mesh = new THREE.Mesh(merged, mat());
-        mesh.castShadow = cast; mesh.receiveShadow = recv;
-        mesh.matrixAutoUpdate = false;
-        group.add(mesh);
+        return { geo: merged, kind, map, cast, recv };
       }
-      return true;
+      return null;
     }
   }
 
@@ -255,6 +290,24 @@
 
   R.assets = {
     has: key => !!lib[key],
+    // the baked models as plain arrays, for the city worker ...
+    exportLib() {
+      const out = {};
+      for (const k in lib) out[k] = { dims: lib[k].dims, parts: lib[k].parts.map(p => {
+        const attrs = {};
+        for (const n in p.geo.attributes) attrs[n] = { array: p.geo.attributes[n].array, itemSize: p.geo.attributes[n].itemSize };
+        return { kind: p.kind, map: p.map ? p.map.uuid : null, rand: p.rand, light: p.light, attrs };
+      }) };
+      return out;
+    },
+    // ... and back (in the worker; a texture is only its id there)
+    importLib(data) {
+      for (const k in data) lib[k] = { dims: data[k].dims, parts: data[k].parts.map(p => {
+        const geo = new THREE.BufferGeometry();
+        for (const n in p.attrs) geo.setAttribute(n, new THREE.BufferAttribute(p.attrs[n].array, p.attrs[n].itemSize));
+        return { kind: p.kind, map: p.map ? { uuid: p.map } : null, rand: p.rand, light: p.light, geo };
+      }) };
+    },
     // every texture the models use (to upload them all at start)
     maps() {
       const out = new Map();
