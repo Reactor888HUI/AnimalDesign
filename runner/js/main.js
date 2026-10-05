@@ -242,7 +242,7 @@
     setTimeout(() => { for (const id of ['ghint', 'shint']) $(id).classList.add('hide'); }, 25000);
   };
   $('loading').classList.add('hide');
-  if (coarse) setTimeout(() => ctx.say('Стик — куда бежать. Проведи по экрану сверху — повернуть камеру', 'long'), 2500);
+  if (coarse) setTimeout(() => ctx.say('Стик — куда бежать. Веди пальцем справа — повернуть камеру', 'long'), 2500);
 
   // ---- where the stick points, in the world ------------------------------------------------
   // The stick is read relative to the camera. While it is held steadily one way, the reference

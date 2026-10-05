@@ -99,15 +99,28 @@
   stickZone.addEventListener('pointercancel', stickUp);
 
   let jumpId = null;
+  // Right half: a touch on (or near) the jump button jumps; a touch anywhere else there turns the
+  // camera when it slides left or right — so the right thumb can look round while the left one runs.
+  let camTouch = null, camTX = 0;
   jumpZone.addEventListener('pointerdown', e => {
-    if (jumpId !== null) return;
-    jumpId = e.pointerId;
-    jumpZone.setPointerCapture(e.pointerId);
-    input._jumpEdge = true; input.jumpHeld = true;
-    jumpBtn.classList.add('on');
     if (input.onFirst) input.onFirst();
     e.preventDefault();
+    const r = jumpBtn.getBoundingClientRect(), pad = 34;
+    const onJump = e.clientX > r.left - pad && e.clientX < r.right + pad && e.clientY > r.top - pad && e.clientY < r.bottom + pad;
+    jumpZone.setPointerCapture(e.pointerId);
+    if (onJump && jumpId === null) {
+      jumpId = e.pointerId;
+      input._jumpEdge = true; input.jumpHeld = true;
+      jumpBtn.classList.add('on');
+    } else if (camTouch === null) { camTouch = e.pointerId; camTX = e.clientX; }
   });
+  jumpZone.addEventListener('pointermove', e => {
+    if (e.pointerId !== camTouch) return;
+    input.camDrag += (e.clientX - camTX) * 0.007; camTX = e.clientX;
+  });
+  const camTouchUp = e => { if (e.pointerId === camTouch) camTouch = null; };
+  jumpZone.addEventListener('pointerup', camTouchUp);
+  jumpZone.addEventListener('pointercancel', camTouchUp);
   const jumpUp = e => {
     if (e.pointerId !== jumpId) return;
     jumpId = null; input.jumpHeld = false; jumpBtn.classList.remove('on');

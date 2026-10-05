@@ -49,10 +49,16 @@
   const UP = new THREE.Vector3(0, 1, 0);
 
   // Collects geometry and merges it into one mesh per kind: solid, glass, facade, pool and one per texture.
+  // buildings get the wall detail (bricks / plaster) in the solid material
+  const WALLS = new Set(['building_red', 'building_green', 'gb_blank', 'rb_blank', 'brown_building', 'big_building', 'pizza_corner', 'building_red_corner']);
+
   class Batch {
-    constructor() { this.solid = []; this.glass = []; this.facade = []; this.pool = []; this.tex = new Map(); }
+    constructor() { this.solid = []; this.glass = []; this.facade = []; this.pool = []; this.tex = new Map(); this.surf = 0; }
 
     addPart(kind, geo, map) {
+      // every solid piece carries its surface type (they are merged, so all need the attribute)
+      if (kind === 'solid' && !geo.attributes.aSurf) geo.setAttribute('aSurf', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count).fill(this.surf), 1));
+      else if (kind !== 'solid' && geo.attributes.aSurf) geo.deleteAttribute('aSurf');
       if (kind === 'tex') {
         let e = this.tex.get(map.uuid);
         if (!e) { e = { map, list: [] }; this.tex.set(map.uuid, e); }
@@ -70,6 +76,9 @@
       for (let i = 0; i < n; i++) { c[i * 3] = col[0]; c[i * 3 + 1] = col[1]; c[i * 3 + 2] = col[2]; }
       g.setAttribute('color', new THREE.BufferAttribute(c, 3));
       if (!uv) g.deleteAttribute('uv');
+      // the surface type comes from the colour (asphalt, slabs, grass ...), see world.js
+      const s = (R.SURF && R.SURF.get(col)) || 0;
+      g.setAttribute('aSurf', new THREE.BufferAttribute(new Float32Array(n).fill(s), 1));
       return g;
     }
     box(col, cx, cy, cz, sx, sy, sz, kind) {
@@ -245,6 +254,7 @@
       s = s || 1; sy = sy || 1; yaw = yaw || 0;
       M.compose(V.set(x, y || 0, z), Q.setFromAxisAngle(UP, yaw), S.set(s, s * sy, s));
       const inst = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
+      batch.surf = WALLS.has(key) ? 5 : 0;
       for (const p of a.parts) {
         const g = p.geo.clone();
         g.applyMatrix4(M);
@@ -255,6 +265,7 @@
         }
         batch.addPart(p.kind, g, p.map);
       }
+      batch.surf = 0;
       const w = a.dims.w * s, d = a.dims.d * s;
       const turned = Math.abs(Math.sin(yaw)) > 0.7071;
       return { x, z, hx: (turned ? d : w) / 2, hz: (turned ? w : d) / 2, h: a.dims.h * s * sy };

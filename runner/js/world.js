@@ -10,8 +10,13 @@
     paint: [0.9, 0.88, 0.78], yellow: [0.86, 0.68, 0.2], grass: [0.27, 0.5, 0.2], grass2: [0.34, 0.58, 0.25],
     paving: [0.45, 0.41, 0.36], paving2: [0.39, 0.355, 0.315], path: [0.55, 0.5, 0.42], fill: [0.42, 0.3, 0.26],
     pole: [0.27, 0.29, 0.33], globe: [1.0, 0.92, 0.65], stone: [0.72, 0.7, 0.66], stone2: [0.58, 0.56, 0.53],
-    water: [0.25, 0.5, 0.66], gold: [0.85, 0.66, 0.25],
+    water: [0.25, 0.5, 0.66], gold: [0.85, 0.66, 0.25], yard: [0.25, 0.25, 0.24],
   };
+  // which surface detail each colour gets (materials.js): 1 asphalt, 2 slabs, 3 paving, 4 grass, 6 gravel, 7 concrete
+  R.SURF = new Map([
+    [COL.asphalt, 1], [COL.alley, 1], [COL.sidewalk, 2], [COL.paving, 3], [COL.paving2, 3], [COL.grass, 4], [COL.grass2, 4],
+    [COL.path, 6], [COL.curb, 7], [COL.fill, 7], [COL.stone, 7], [COL.stone2, 7], [COL.yard, 7],
+  ]);
   const FAR_TINT = [[0.6, 0.2, 0.17], [0.5, 0.48, 0.35], [0.52, 0.3, 0.2], [0.58, 0.52, 0.42], [0.45, 0.25, 0.2]];
 
   const SIDES = [
@@ -212,7 +217,7 @@
         b.cyl([0.35, 0.24, 0.15], ox + x, 0.8, oz + z, 0.15, 0.2, 1.6, 5);
       }
     } else if (L.type === 'yard') {
-      b.rect([0.25, 0.25, 0.24], ox, oz, B, B, 0.05);
+      b.rect(COL.yard, ox, oz, B, B, 0.05);
       const W = YARD.warehouse;
       b.facadeBox([0.5, 0.47, 0.42], ox + W.x, W.h / 2, oz + W.z, W.w, W.h, W.d);
       obs.push({ x: ox + W.x, z: oz + W.z, hx: W.w / 2, hz: W.d / 2, h: 99, kind: 'wall' });
@@ -353,7 +358,7 @@
 
     function yard() {
       const Y = YARD, F = Y.fence, H = Y.fenceH;
-      b.rect([0.25, 0.25, 0.24], ox, oz, B, B, 0.05);
+      b.rect(COL.yard, ox, oz, B, B, 0.05);
       // fence: concrete posts + mesh panels, gate on the +Z side
       const postCol = [0.6, 0.6, 0.58], meshCol = [0.25, 0.27, 0.3];
       const run = (x0, z0, x1, z1) => {
