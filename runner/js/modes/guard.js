@@ -785,6 +785,16 @@
       if (G.tug) el.tugFill.style.transform = 'scaleX(' + R.clamp(G.tug.m, 0, 1).toFixed(3) + ')';
     },
 
+    // music: calm while the yard is quiet, tense with a thief or a fox about, most when near one
+    tension() {
+      if (!G) return 0.15;
+      let t = 0.15;
+      for (const n of G.npcs) {
+        if (!n.foe || ['gone', 'out'].includes(n.state)) continue;
+        t = Math.max(t, n.state === 'steal' || n.state === 'tug' || Math.hypot(n.x - player.x, n.z - player.z) < 14 ? 0.9 : 0.55);
+      }
+      return t;
+    },
     debug() { return { guard: () => G, Y: () => Y, aim: () => biteTarget(AIM_R, true, -0.2), ring: () => aimRing }; },
   };
 })(window.R = window.R || {});

@@ -209,8 +209,22 @@
   const unlock = () => au.start();
   ['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
   const muteBtn = $('muteBtn');
-  const showMute = () => { muteBtn.setAttribute('aria-pressed', String(au.muted)); muteBtn.setAttribute('aria-label', au.muted ? 'Включить звук' : 'Выключить звук'); };
-  muteBtn.addEventListener('click', () => { au.start(); au.setMuted(!au.muted); showMute(); });
+  // three states: sound and music -> sound only -> silence -> ...
+  const music = R.music;
+  const showMute = () => {
+    muteBtn.setAttribute('aria-pressed', String(au.muted));
+    muteBtn.dataset.music = String(!au.muted && music.on);
+    muteBtn.setAttribute('aria-label', au.muted ? 'Звук выключен. Включить звук и музыку' : music.on ? 'Звук и музыка. Выключить музыку' : 'Только звук. Выключить всё');
+  };
+  muteBtn.addEventListener('click', () => {
+    au.start();
+    if (au.muted) { au.setMuted(false); music.setOn(true); }
+    else if (music.on) music.setOn(false);
+    else au.setMuted(true);
+    showMute();
+    try { ctx.say(au.muted ? 'Тишина' : music.on ? 'Звук и музыка' : 'Только звук, без музыки'); } catch (e) {}
+  });
+  addEventListener('keydown', e => { if (e.code === 'KeyM' && !e.repeat) { au.start(); music.setOn(!music.on); showMute(); try { ctx.say(music.on ? 'Музыка включена' : 'Музыка выключена'); } catch (er) {} } });
   showMute();
   $('menuBtn').addEventListener('click', () => { location.hash = ''; location.reload(); });
 
@@ -376,6 +390,7 @@
       if (stepT <= 0) { stepT = 0.34 - 0.2 * gait; au.step(gait); }
     }
     au.update({ carDist: traffic.nearest || 99, carSpeed: traffic.nearestSpeed || 0, night: T.lampK > 0.5 });
+    music.update(R.clamp(0.08 + 0.22 * gait + 0.75 * (mode.tension ? mode.tension() : 0.2), 0, 1), T.lampK > 0.5);
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) toast.classList.remove('on'); }
 
     sky.position.set(camera.position.x, 0, camera.position.z);

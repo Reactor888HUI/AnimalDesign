@@ -27,7 +27,7 @@ function serve() {
   const filter = process.argv[2] || '';
   const srv = await serve();
   const base = 'http://127.0.0.1:' + srv.address().port + '/';
-  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
   const files = fs.readdirSync(path.join(__dirname, 'specs')).filter(f => f.endsWith('.js') && f.includes(filter)).sort();
   let failed = 0;
   for (const file of files) {

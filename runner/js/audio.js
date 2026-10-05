@@ -32,6 +32,7 @@
     const elp = c.createBiquadFilter(); elp.type = 'lowpass'; elp.frequency.value = 240;
     A.engG = c.createGain(); A.engG.gain.value = 0;
     A.eng.connect(elp); elp.connect(A.engG); A.engG.connect(A.master); A.eng.start();
+    if (R.music) R.music.init(A);
   };
 
   A.setMuted = function (m) {

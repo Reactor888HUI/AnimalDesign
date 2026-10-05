@@ -361,6 +361,8 @@
       el.cdist.textContent = Math.round(cat.dist) + ' м';
     },
 
+    // how tense the game is now (0..1), for the music: the cat close, a long chain going
+    tension() { return R.clamp((cat.dist < 32 ? 0.35 + 0.6 * (1 - cat.dist / 32) : 0.1) + (chain ? 0.12 : 0), 0, 1); },
     debug() { return { player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }), chain: () => chain }; },
   };
 })(window.R = window.R || {});
