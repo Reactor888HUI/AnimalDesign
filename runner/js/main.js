@@ -42,12 +42,26 @@
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, opacity: 0.75 + rnd() * 0.2 }));
       const w = 60 + rnd() * 70;
       s.scale.set(w, w * 0.42, 1);
-      s.userData = { a: rnd() * Math.PI * 2, r: 190 + rnd() * 60, y: 55 + rnd() * 50 };
+      s.userData = { a: rnd() * Math.PI * 2, r: 190 + rnd() * 60, y: 55 + rnd() * 50, op: s.material.opacity };
       sky.add(s); clouds.push(s);
     }
   }
+  // stars on the dome (they fade in at dusk)
+  const stars = (() => {
+    const rnd = R.rng(99), pos = [];
+    for (let i = 0; i < 700; i++) {
+      const a = rnd() * Math.PI * 2, e = 0.1 + Math.pow(rnd(), 1.8) * 1.3, r = 260;   // more of them low, where the camera looks
+      pos.push(Math.cos(a) * Math.cos(e) * r, Math.sin(e) * r, Math.sin(a) * Math.cos(e) * r);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const m = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, transparent: true, depthWrite: false, fog: false }));
+    m.renderOrder = -5; m.frustumCulled = false;
+    sky.add(m);
+    return m;
+  })();
   const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.glowTexture(), color: 0xe6eeff, transparent: true, depthWrite: false, fog: false }));
-  moon.scale.set(34, 34, 1); moon.position.set(-150, 150, -160);
+  moon.scale.set(34, 34, 1); moon.material.transparent = true; moon.position.set(-150, 150, -160);
   sky.add(moon);
   const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.glowTexture(), color: 0xfff1c8, transparent: true, depthWrite: false, fog: false }));
   sunGlow.scale.set(70, 70, 1);
@@ -122,37 +136,72 @@
   let postOn = !/[?&]nopost/.test(location.search);
   try { makeComposer(); } catch (e) { console.warn('[runner] post-processing off', e); composer = null; }
 
-  // ---- theme -----------------------------------------------------------------------------
-  let themeName = 'night', themeLocked = false;
-  try { themeName = localStorage.getItem('runner-theme') || 'night'; } catch (e) {}
-  if (!R.THEMES[themeName]) themeName = 'night';
-
-  function setTheme(name, keep) {
-    themeName = name;
-    const T = R.THEMES[name];
-    R.applyMaterialTheme(name);
-    scene.background = R.skyTexture(name);
+  // ---- time of day ---------------------------------------------------------------------------
+  // auto: day -> sunset -> night -> dawn, a few minutes each round; or a fixed time picked with the button
+  let themeLocked = false, mode0 = 'auto';
+  try { mode0 = localStorage.getItem('runner-theme') || 'auto'; } catch (e) {}
+  const daytime = new R.DayTime(mode0);
+  const skyCanvas = document.createElement('canvas');
+  skyCanvas.width = 2; skyCanvas.height = 256;
+  const skyTex = new THREE.CanvasTexture(skyCanvas);
+  scene.background = skyTex;
+  let skyKey = '', heavyT = 0;
+  function drawSky(T) {
+    const key = T.skyTop + T.skyMid + T.horizon;
+    if (key === skyKey) return;
+    skyKey = key;
+    const g = skyCanvas.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+    gr.addColorStop(0, T.skyTop); gr.addColorStop(0.32, T.skyMid); gr.addColorStop(0.52, T.horizon); gr.addColorStop(1, T.horizon);
+    g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
+    skyTex.needsUpdate = true;
+  }
+  // everything that follows the time of day; `heavy` (a few times a second) also does the slow parts
+  function applyLive(T, heavy) {
+    R.applyMaterialTheme(T);
     scene.fog.color.setHex(T.fog); scene.fog.density = T.fogDensity;
     hemi.color.setHex(T.hemiSky); hemi.groundColor.setHex(T.hemiGround); hemi.intensity = T.hemiI;
     sun.color.setHex(T.sunColor); sun.intensity = T.sunI;
     renderer.toneMappingExposure = T.exposure;
-    for (const c of clouds) c.visible = !!T.clouds;
+    for (const c of clouds) { c.visible = T.cloudK > 0.02; c.material.opacity = c.userData.op * T.cloudK; c.material.color.setHex(T.cloudCol); }
     skyline.forEach((l, i) => {
       // the far ring is lost in the haze more than the near one
       const sl = T.skyline[i];
-      l.body.material.color.setHex(T.fog).lerp(new THREE.Color(sl[0]), sl[1]);
-      l.win.visible = !!T.lamps; l.win.material.opacity = sl[2] || 0;
+      l.body.material.color.setHex(T.fog).lerp(skylineCol.setHex(sl[0]), sl[1]);
+      l.win.visible = sl[2] > 0.01; l.win.material.opacity = sl[2];
     });
-    moon.visible = !!T.stars;
-    sunGlow.visible = !T.stars;
+    moon.visible = stars.visible = T.starK > 0.02;
+    moon.material.opacity = stars.material.opacity = T.starK;
+    sunGlow.visible = T.starK < 0.98;
+    sunGlow.material.opacity = 1 - T.starK; sunGlow.material.color.setHex(T.sunGlowCol); sunGlow.scale.set(T.sunGlowS, T.sunGlowS, 1);
     { const o = T.sunOffset, l = Math.hypot(o[0], o[1], o[2]); sunGlow.position.set(o[0] / l * 240, o[1] / l * 240, o[2] / l * 240); }
     applyPost(T);
-    scene.traverse(o => { if (o.material && o.material.userData && o.material.userData.env) o.material.envMapIntensity = T.envI; });
-    document.documentElement.dataset.theme = name;
-    $('themeBtn').setAttribute('aria-label', name === 'night' ? 'Включить день' : 'Включить ночь');
-    if (!keep) try { localStorage.setItem('runner-theme', name); } catch (e) {}
+    if (heavy) {
+      drawSky(T);
+      scene.traverse(o => { if (o.material && o.material.userData && o.material.userData.env) o.material.envMapIntensity = T.envI; });
+      document.documentElement.dataset.theme = T.lampK > 0.5 ? 'night' : 'day';
+    }
   }
-  const toggleTheme = () => { if (!themeLocked) setTheme(themeName === 'night' ? 'day' : 'night'); };
+  const skylineCol = new THREE.Color();
+  const TOD_NAMES = { auto: 'авто (день, закат, ночь, рассвет)', day: 'день', sunset: 'закат', night: 'ночь' };
+  function showMode() {
+    const b = $('themeBtn');
+    b.dataset.tod = daytime.mode;
+    b.setAttribute('aria-label', 'Время суток: ' + TOD_NAMES[daytime.mode] + '. Переключить');
+  }
+  // tests and modes: set a time of day at once
+  function setTheme(name, keep) {
+    daytime.set(name === 'auto' || R.THEMES[name] ? name : 'night', true);
+    applyLive(daytime.update(0), true);
+    showMode();
+    if (!keep) try { localStorage.setItem('runner-theme', daytime.mode); } catch (e) {}
+  }
+  const toggleTheme = () => {
+    if (themeLocked) return;
+    daytime.set(daytime.next());
+    showMode();
+    try { localStorage.setItem('runner-theme', daytime.mode); } catch (e) {}
+    try { ctx.say('Время суток: ' + TOD_NAMES[daytime.mode]); } catch (e) {}
+  };
   $('themeBtn').addEventListener('click', toggleTheme);
   input.onTheme = toggleTheme;
 
@@ -208,8 +257,8 @@
   let toastT = 0;
   const ctx = {
     scene, camera, renderer, world, fx, traffic, rig, input, au, $, coarse,
-    theme: () => R.THEMES[themeName],
-    setTheme, lockTheme(name) { setTheme(name, true); themeLocked = true; },
+    theme: () => daytime.live || daytime.update(0),
+    setTheme, daytime, lockTheme(name) { setTheme(name, true); themeLocked = true; },
     say(text, kind) {
       toast.textContent = text;
       toast.className = 'ui on' + (kind ? ' ' + kind : '');
@@ -223,11 +272,11 @@
       m.visible = level < 2;
     },
   };
-  if (!themeLocked) setTheme(themeName);
+  if (!themeLocked) setTheme(daytime.mode, true);
 
   let level = coarse ? 1 : 2;
   const player = ctx.player = mode.start(ctx);
-  if (themeLocked === false) setTheme(themeName);
+  if (themeLocked === false) setTheme(daytime.mode, true);
   world.update(player.x, player.z, 99);
   rig.resize(innerWidth / innerHeight);
   rig.snap(player);
@@ -307,7 +356,10 @@
     requestAnimationFrame(frame);
     const dt = last < 0 ? 1 / 60 : R.clamp((now - last) / 1000, 0, 0.05);
     last = now;
-    const T = R.THEMES[themeName];
+    const T = daytime.update(dt);
+    heavyT -= dt;
+    applyLive(T, heavyT <= 0);
+    if (heavyT <= 0) heavyT = 0.35;
 
     input.poll();
     worldDir();
@@ -323,11 +375,11 @@
       stepT -= dt;
       if (stepT <= 0) { stepT = 0.34 - 0.2 * gait; au.step(gait); }
     }
-    au.update({ carDist: traffic.nearest || 99, carSpeed: traffic.nearestSpeed || 0, night: !!T.lamps });
+    au.update({ carDist: traffic.nearest || 99, carSpeed: traffic.nearestSpeed || 0, night: T.lampK > 0.5 });
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) toast.classList.remove('on'); }
 
     sky.position.set(camera.position.x, 0, camera.position.z);
-    if (T.clouds) for (const c of clouds) {
+    if (T.cloudK > 0.02) for (const c of clouds) {
       const u = c.userData; u.a += dt * 0.0035;
       c.position.set(Math.cos(u.a) * u.r, u.y, Math.sin(u.a) * u.r);
     }
@@ -344,10 +396,10 @@
         l.position.y = lp.y;
         l.position.z = R.damp(l.position.z, lp.z, 6, dt);
       }
-      l.intensity = R.damp(l.intensity, T.lamps ? 3.2 : 0, 6, dt);
+      l.intensity = R.damp(l.intensity, 3.2 * T.lampK, 6, dt);
     }
     buddyLight.position.set(player.x - fwdX * 1.2, 2.4, player.z - fwdZ * 1.2);
-    buddyLight.intensity = R.damp(buddyLight.intensity, T.lamps ? 0.9 : 0, 6, dt);
+    buddyLight.intensity = R.damp(buddyLight.intensity, 0.9 * T.lampK, 6, dt);
 
     for (const b of blobs) {
       if (!b.m.visible) continue;
@@ -389,5 +441,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime }, mode.debug ? mode.debug() : {});
 })(window.R);

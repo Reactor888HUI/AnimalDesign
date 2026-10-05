@@ -164,18 +164,19 @@
     },
   };
 
+  // theme: a theme object (or name); lampK 0..1 says how much the city is lit (0 day .. 1 night)
   function paint(key, m) {
-    const T = R.THEMES[theme];
+    const T = typeof theme === 'string' ? R.THEMES[theme] : theme, k = T.lampK;
     if (key === 'glass') {
-      m.color.setHex(T.lamps ? 0x303038 : 0xffffff);
+      m.color.setRGB(1 - 0.81 * k, 1 - 0.81 * k, 1 - 0.78 * k);
       m.emissive.setHex(0xff9a3c);
-      m.emissiveIntensity = T.lamps ? 1.35 : 0;   // bright enough for the night glow (bloom)
+      m.emissiveIntensity = 1.35 * k;   // bright enough for the night glow (bloom)
     } else if (key === 'light') {
-      m.emissiveIntensity = T.lamps ? 1 : 0;
+      m.emissiveIntensity = k;
     } else if (key === 'halo') {
-      m.opacity = T.lamps ? 0.75 : 0;
+      m.opacity = 0.75 * k;
     } else if (key === 'pool') {
-      m.opacity = T.lamps ? 0.6 : 0;
+      m.opacity = 0.6 * k;
     }
   }
 
@@ -195,8 +196,8 @@
     return cache[key];
   };
 
-  R.applyMaterialTheme = function (name) {
-    theme = name;
+  R.applyMaterialTheme = function (T) {
+    theme = T;
     for (const key in cache) paint(key, cache[key]);
   };
 
