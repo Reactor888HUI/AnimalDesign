@@ -53,6 +53,12 @@
   const WALLS = new Set(['building_red', 'building_green', 'gb_blank', 'rb_blank', 'brown_building', 'big_building', 'pizza_corner', 'building_red_corner']);
 
   const CHUNK = 40000;
+  function aoGeo(P, D) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    g.setAttribute('aDark', new THREE.Float32BufferAttribute(D, 1));
+    return g;
+  }
   // smaller vertex data for the graphics card: normals and colours in bytes, the surface id as a byte
   function compact(g) {
     const nr = g.attributes.normal, col = g.attributes.color, sf = g.attributes.aSurf;
@@ -74,7 +80,7 @@
   }
 
   class Batch {
-    constructor() { this.solid = []; this.glass = []; this.facade = []; this.pool = []; this.tex = new Map(); this.surf = 0; this.ops = []; this.opi = 0; }
+    constructor() { this.solid = []; this.glass = []; this.facade = []; this.pool = []; this.ao = []; this.tex = new Map(); this.surf = 0; this.ops = []; this.opi = 0; }
 
     // The geometry work is queued, not done at once: the world builds a city block a few
     // milliseconds per frame (run / buildStep) instead of freezing for one long frame.
@@ -165,6 +171,30 @@
       this.pool.push(g);
     }); }
 
+    // ambient occlusion on the ground: a dark patch (aDark 1) under a footprint, fading out over m metres
+    aoRect(cx, cz, hx, hz, m, a) { this._op(() => {
+      const y = 0.075, ix = [cx - hx, cx + hx], iz = [cz - hz, cz + hz], ox = [cx - hx - m, cx + hx + m], oz = [cz - hz - m, cz + hz + m];
+      const P = [], D = [];
+      const quad = (p, d) => { for (const k of [0, 1, 2, 0, 2, 3]) { P.push(p[k][0], y, p[k][1]); D.push(d[k]); } };
+      quad([[ix[0], iz[0]], [ix[0], iz[1]], [ix[1], iz[1]], [ix[1], iz[0]]], [a, a, a, a]);
+      quad([[ox[0], oz[0]], [ox[0], oz[1]], [ix[0], iz[1]], [ix[0], iz[0]]], [0, 0, a, a]);   // west
+      quad([[ix[1], iz[0]], [ix[1], iz[1]], [ox[1], oz[1]], [ox[1], oz[0]]], [a, a, 0, 0]);   // east
+      quad([[ox[0], oz[0]], [ix[0], iz[0]], [ix[1], iz[0]], [ox[1], oz[0]]], [0, a, a, 0]);   // north
+      quad([[ix[0], iz[1]], [ox[0], oz[1]], [ox[1], oz[1]], [ix[1], iz[1]]], [a, 0, 0, a]);   // south
+      this.ao.push(aoGeo(P, D));
+    }); }
+    aoDisc(cx, cz, r0, r1, a, seg) { this._op(() => {
+      const y = 0.075, n = seg || 14, P = [], D = [];
+      for (let i = 0; i < n; i++) {
+        const a0 = i / n * Math.PI * 2, a1 = (i + 1) / n * Math.PI * 2;
+        const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+        P.push(cx, y, cz, cx + c1 * r0, y, cz + s1 * r0, cx + c0 * r0, y, cz + s0 * r0); D.push(a, a, a);
+        P.push(cx + c0 * r0, y, cz + s0 * r0, cx + c1 * r0, y, cz + s1 * r0, cx + c1 * r1, y, cz + s1 * r1); D.push(a, a, 0);
+        P.push(cx + c0 * r0, y, cz + s0 * r0, cx + c1 * r1, y, cz + s1 * r1, cx + c0 * r1, y, cz + s0 * r1); D.push(a, 0, 0);
+      }
+      this.ao.push(aoGeo(P, D));
+    }); }
+
     // all at once (far cells, start-up) ...
     build(group, o) { this.run(Infinity); while (!this.buildStep(group, o, Infinity)); }
     // ... or a step at a time: true when the last mesh is in the group
@@ -211,7 +241,7 @@
       if (this.lists) return;
       const cast = !o || o.cast !== false;
       this.lists = [[this.solid, 'solid', null, cast, true], [this.glass, 'glass', null, false, false],
-        [this.facade, 'facade', null, false, false], [this.pool, 'pool', null, false, false]];
+        [this.facade, 'facade', null, false, false], [this.pool, 'pool', null, false, false], [this.ao, 'ao', null, false, false]];
       for (const e of this.tex.values()) this.lists.push([e.list, 'tex', e.map, cast, true]);
     }
     // the next merged piece: up to ~40k vertices (a short step, and a small upload)

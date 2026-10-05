@@ -156,6 +156,22 @@
     obs.push({ x, z, hx: ax ? len / 2 : 0.1, hz: ax ? 0.1 : len / 2, h: BAR_TOP, low: BAR_LOW, kind: 'bar' });
   }
 
+  // ambient occlusion on the ground: soft dark patches at the foot of things, so they stand on the
+  // ground instead of floating over it (walls get a wide one, cars a dark one under them, trees a round one)
+  const AO_SKIP = { ramp: 1, kicker: 1, bar: 1, traffic: 1, npc: 1, pen: 1 };
+  function groundAO(b, obs) {
+    for (const o of obs) {
+      if (AO_SKIP[o.kind] || o.h < 0.25 || o.low !== undefined) continue;
+      if (o.kind === 'tree') b.aoDisc(o.x, o.z, 0.45, 2.4, 0.4);
+      else if (o.kind === 'pole') b.aoDisc(o.x, o.z, 0.1, 0.55, 0.45, 8);
+      else if (o.r) b.aoDisc(o.x, o.z, o.r, o.r + 1.3, 0.38, 24);
+      else {
+        const big = Math.max(o.hx, o.hz) > 3 || o.h > 3, car = o.kind === 'car';
+        b.aoRect(o.x, o.z, o.hx, o.hz, big ? 1.7 : car ? 0.9 : 0.5, big ? 0.4 : car ? 0.62 : 0.42);
+      }
+    }
+  }
+
   function lamp(b, obs, lamps, x, z, towardX, towardZ) {
     b.cyl(COL.pole, x, 2.75, z, 0.08, 0.11, 5.5, 6);
     b.box(COL.pole, x + towardX * 0.5, 5.45, z + towardZ * 0.5, towardX ? 1.0 : 0.07, 0.07, towardZ ? 1.0 : 0.07);
@@ -331,6 +347,7 @@
     else if (L.type === 'square') square();
     else if (L.type === 'garages') garages();
     else plaza();
+    groundAO(b, obs);
     return { b, obs, lamps, arcs, rings };
 
     function cityBlock() {

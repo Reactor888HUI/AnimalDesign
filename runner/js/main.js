@@ -175,13 +175,20 @@
     sunGlow.material.opacity = 1 - T.starK; sunGlow.material.color.setHex(T.sunGlowCol); sunGlow.scale.set(T.sunGlowS, T.sunGlowS, 1);
     { const o = T.sunOffset, l = Math.hypot(o[0], o[1], o[2]); sunGlow.position.set(o[0] / l * 240, o[1] / l * 240, o[2] / l * 240); }
     applyPost(T);
+    // wet streets: how wet, the lamps' share, the low sun's glare path and the sky's sheen
+    const W = R.wet;
+    W.uWet.value = window.__quality === 0 ? 0 : T.wet;      // the lowest quality skips it (slow phones)
+    W.uLampK.value = T.lampK; W.uGlare.value = T.sunGlare;
+    { const o = T.sunOffset, l = Math.hypot(o[0], o[1], o[2]); W.uSunDir.value.set(o[0] / l, o[1] / l, o[2] / l); }
+    // the sheen: the sky by day; at night the glow of the city (warmer, brighter than the dark fog)
+    W.uSunCol.value.setHex(T.sunGlowCol); W.uSky.value.setHex(T.fog).multiplyScalar(0.5).add(skyGlow.copy(W.uLampCol.value).multiplyScalar(0.12 * T.lampK));   // kept under the glow threshold
     if (heavy) {
       drawSky(T);
       scene.traverse(o => { if (o.material && o.material.userData && o.material.userData.env) o.material.envMapIntensity = T.envI; });
       document.documentElement.dataset.theme = T.lampK > 0.5 ? 'night' : 'day';
     }
   }
-  const skylineCol = new THREE.Color();
+  const skylineCol = new THREE.Color(), skyGlow = new THREE.Color(), lampDir = new THREE.Vector3();
   const TOD_NAMES = { auto: 'авто (день, закат, ночь, рассвет)', day: 'день', sunset: 'закат', night: 'ночь' };
   function showMode() {
     const b = $('themeBtn');
@@ -402,6 +409,15 @@
     sun.position.set(player.x + o[0], o[1], player.z + o[2]);
     sun.target.position.set(player.x, 0, player.z);
 
+    R.wet.uCam.value.copy(camera.position);
+    // the street lamps nearest the camera shine on the wet asphalt
+    if (T.wet > 0.01 && T.lampK > 0.01) {
+      // the ones ahead of the camera: those are the reflections you can see
+      const cp = camera.position, cd = camera.getWorldDirection(lampDir);
+      const near = world.lampsNear(cp.x + cd.x * 25, cp.z + cd.z * 25, R.wet.count);
+      const U = R.wet.uLamps.value;
+      for (let i = 0; i < U.length; i++) { const l = near[i]; if (l) U[i].set(l.x, l.y, l.z); else U[i].set(0, -1e4, 0); }
+    }
     const fwdX = -Math.sin(player.heading), fwdZ = -Math.cos(player.heading);
     const lamps = world.lampsNear(player.x + fwdX * 10, player.z + fwdZ * 10, 2);
     for (let i = 0; i < 2; i++) {

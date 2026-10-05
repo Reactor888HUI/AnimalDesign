@@ -87,6 +87,20 @@
   };
 
   // the city's main material with the surface detail added in the fragment shader
+  // Wet streets (shared by the city material, set every frame by main.js): how wet, the nearest
+  // street lamps (their reflections run as long streaks towards the camera), the low sun's glare
+  // path at sunset and dawn, and the sky colour that shines on the asphalt at a grazing angle.
+  const LAMPS = 8;
+  R.wet = {
+    uWet: { value: 0 }, uLampK: { value: 0 }, uGlare: { value: 0 },
+    uLamps: { value: Array.from({ length: LAMPS }, () => new THREE.Vector3(0, -1e4, 0)) },
+    uLampCol: { value: new THREE.Color(1.0, 0.72, 0.42) },
+    uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uSunCol: { value: new THREE.Color(1, 0.8, 0.5) },
+    uSky: { value: new THREE.Color(0.5, 0.6, 0.8) },
+    uCam: { value: new THREE.Vector3() },       // (three does not pass cameraPosition to Lambert materials)
+  };
+  R.wet.count = LAMPS;
+
   function solidMaterial() {
     const m = new THREE.MeshLambertMaterial({ vertexColors: true });
     const T = R.surfaceTextures();
@@ -94,7 +108,7 @@
       Object.assign(sh.uniforms, {
         tAsph: { value: T.asph }, tSlab: { value: T.slab }, tPave: { value: T.pave }, tGrass: { value: T.grass },
         tBrick: { value: T.brick }, tGravel: { value: T.gravel }, tConc: { value: T.conc },
-      });
+      }, R.wet);
       sh.vertexShader = 'attribute float aSurf;\nvarying float vSurf;\nvarying vec3 vWPos;\nvarying vec3 vWNorm;\n' +
         sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
           vSurf = aSurf;
@@ -122,14 +136,73 @@
             else if (s < 6.5) d = texture2D(tGravel, g / 2.0).r;
             else d = texture2D(tConc, g / 3.0).r;
             diffuseColor.rgb *= d * 1.595;
-          }`);
+          }
+          // ambient occlusion at the foot of walls, cars, boxes, poles: darker near the ground
+          if (abs(vWNorm.y) < 0.6) diffuseColor.rgb *= mix(0.58, 1.0, smoothstep(0.0, 1.3, vWPos.y));`)
+        .replace('#include <tonemapping_fragment>', `
+          // wet asphalt: darker, a sheen of the sky at a grazing angle, streaks of the lamps, puddles
+          // how wet each ground surface gets: asphalt most (with puddles), road paint, slabs and paving
+          // less, grass and gravel not at all
+          float sf = floor(vSurf + 0.5);
+          float wetK = sf == 1.0 ? 1.0 : sf == 0.0 ? 0.8 : (sf == 2.0 || sf == 3.0 || sf == 7.0) ? 0.55 : 0.0;
+          if (uWet > 0.01 && wetK > 0.0 && vWNorm.y > 0.7 && vWPos.y < 0.25) {
+            float puddle = sf == 1.0 ? smoothstep(0.56, 0.7, texture2D(tConc, vWPos.xz / 9.0 + 0.11).r) : 0.0;
+            float w = uWet * wetK * mix(0.5, 1.0, puddle);
+            vec3 V = normalize(vWPos - uCam);
+            vec3 Rr = vec3(V.x, -V.y, V.z);
+            vec3 S = cross(Rr, vec3(0.0, 1.0, 0.0));
+            S = length(S) > 1e-3 ? normalize(S) : vec3(1.0, 0.0, 0.0);
+            vec3 U = cross(S, Rr);
+            float sharp = mix(1.0, 0.45, puddle);
+            // rough asphalt breaks a reflection into bits; a puddle keeps it smooth
+            float grain = mix(mix(0.85, 1.12, texture2D(tAsph, vWPos.xz / 1.4).r), 1.0, puddle);
+            vec3 add = uSky * pow(1.0 - max(0.0, -V.y), 3.0) * w * mix(0.35, 0.7, puddle);
+            for (int i = 0; i < ${LAMPS}; i++) {
+              vec3 d = uLamps[i] - vWPos;
+              float t = dot(d, Rr);
+              if (t <= 0.5 || t > 70.0) continue;
+              float es = dot(d, S) / t, eu = dot(d, U) / t;
+              add += uLampCol * exp(-es * es / (0.0008 * sharp) - eu * eu / (0.02 * sharp)) * grain * w * uLampK * 3.0 / (1.0 + 0.015 * t);
+            }
+            float ts = dot(uSunDir, Rr);
+            if (ts > 0.0) {
+              float es = dot(uSunDir, S) / ts, eu = dot(uSunDir, U) / ts;
+              add += uSunCol * exp(-es * es / (0.0015 * sharp) - eu * eu / (0.05 * sharp)) * grain * w * uGlare * 1.6;
+            }
+            gl_FragColor.rgb = gl_FragColor.rgb * (1.0 - 0.3 * w) + add;
+          }
+          #include <tonemapping_fragment>`);
+      sh.fragmentShader = `uniform float uWet, uLampK, uGlare;\nuniform vec3 uLamps[${LAMPS}];\nuniform vec3 uLampCol, uSunDir, uSunCol, uSky, uCam;\n` + sh.fragmentShader;
     };
-    m.customProgramCacheKey = () => 'solid-surf';
+    m.customProgramCacheKey = () => 'solid-surf-wet';
     return m;
   }
 
   const mk = {
     solid: solidMaterial,
+    // soft dark patches on the ground under and around things (aDark: 1 at the foot .. 0 at the edge)
+    ao: () => {
+      const m = new THREE.ShaderMaterial({
+        uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uStrength: { value: 1 } }]),
+        vertexShader: `attribute float aDark; varying float vDark;
+          #include <fog_pars_vertex>
+          void main() { vDark = aDark; vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mvPosition;
+          #include <fog_vertex>
+          }`,
+        fragmentShader: `uniform float uStrength; varying float vDark;
+          #include <fog_pars_fragment>
+          void main() {
+            float a = vDark * vDark * (3.0 - 2.0 * vDark) * uStrength;
+            #ifdef USE_FOG
+              a *= exp(-fogDensity * fogDensity * fogDepth * fogDepth);
+            #endif
+            gl_FragColor = vec4(0.0, 0.0, 0.0, a);
+          }`,
+        transparent: true, depthWrite: false, fog: true, side: THREE.DoubleSide,
+      });
+      m.polygonOffset = true; m.polygonOffsetFactor = -1; m.polygonOffsetUnits = -4;
+      return m;
+    },
     glass: () => {
       const m = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x000000 });
       // every window gets a random on/off from its position in the world
@@ -177,6 +250,8 @@
       m.opacity = 0.75 * k;
     } else if (key === 'pool') {
       m.opacity = 0.6 * k;
+    } else if (key === 'ao') {
+      m.uniforms.uStrength.value = 1 - 0.35 * k;
     }
   }
 

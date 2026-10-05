@@ -2,7 +2,7 @@
   // Time of day: themes blend smoothly into each other. In "auto" the clock goes round
   // day -> sunset -> night -> dawn -> day in a few minutes; or a time is picked and kept.
   const COLORS = ['fog', 'hemiSky', 'hemiGround', 'sunColor', 'dust', 'spark', 'cloudCol', 'sunGlowCol'];
-  const NUMS = ['fogDensity', 'hemiI', 'sunI', 'exposure', 'envI', 'lampK', 'starK', 'cloudK', 'sunGlowS'];
+  const NUMS = ['fogDensity', 'hemiI', 'sunI', 'exposure', 'envI', 'lampK', 'starK', 'cloudK', 'sunGlowS', 'wet', 'sunGlare'];
   const SKY = ['skyTop', 'skyMid', 'horizon'];
   const ca = new THREE.Color(), cb = new THREE.Color();
   const lerp = (a, b, k) => a + (b - a) * k;
