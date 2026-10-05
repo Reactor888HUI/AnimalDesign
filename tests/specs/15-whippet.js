@@ -20,9 +20,10 @@ exports.run = async t => {
     out.badWeights = bad;
     // degenerate triangles
     const p = g.attributes.position, ix = g.index, A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+    const at = i => ix ? ix.getX(i) : i, cnt = ix ? ix.count : p.count;
     let degen = 0;
-    for (let i = 0; i < ix.count; i += 3) {
-      A.fromBufferAttribute(p, ix.getX(i)); B.fromBufferAttribute(p, ix.getX(i + 1)); C.fromBufferAttribute(p, ix.getX(i + 2));
+    for (let i = 0; i < cnt; i += 3) {
+      A.fromBufferAttribute(p, at(i)); B.fromBufferAttribute(p, at(i + 1)); C.fromBufferAttribute(p, at(i + 2));
       if (B.clone().sub(A).cross(C.clone().sub(A)).length() < 1e-9) degen++;
     }
     out.degenerate = degen;
