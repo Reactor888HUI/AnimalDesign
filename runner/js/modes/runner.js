@@ -13,7 +13,28 @@
     for (const sx of [-1, 1]) for (const sy of [-1, 1]) parts.push(new THREE.SphereGeometry(0.085, 8, 6).translate(sx * 0.22, sy * 0.06, 0));
     return THREE.BufferGeometryUtils.mergeBufferGeometries(parts, false);
   }
-  const STAND = { car: 1, box: 1, dumpster: 1, prop: 1, planter_bushes: 1, bench: 1, container: 1, parkour: 1, fence_piece: 1 };
+  const STAND = { car: 1, box: 1, dumpster: 1, prop: 1, planter_bushes: 1, bench: 1, container: 1, parkour: 1, fence_piece: 1, garage: 1 };
+  // fixed bone arcs over the garage jumps: laid again a while after they were picked up
+  const arcSeen = new Map();
+  function spawnArcs(world) {
+    const now = performance.now() / 1000;
+    for (const c of world.cells.values()) {
+      if (!c.near || !c.arcs || !c.arcs.length) continue;
+      for (let i = 0; i < c.arcs.length; i++) {
+        const key = c.ci + ',' + c.cj + ':' + i, last = arcSeen.get(key);
+        if (last !== undefined && now - last < 40) continue;
+        const a = c.arcs[i];
+        if (Math.hypot(a.from[0] - player.x, a.from[1] - player.z) > 60) continue;
+        arcSeen.set(key, now);
+        const n = 6, pts = [];
+        for (let k = 0; k < n; k++) {
+          const u = k / (n - 1);
+          pts.push({ x: a.from[0] + (a.to[0] - a.from[0]) * u, y: a.y0 + 0.6 + a.peak * Math.sin(Math.PI * u), z: a.from[1] + (a.to[1] - a.from[1]) * u, alive: true, ph: k });
+        }
+        clusters.push({ bones: pts, left: n, total: n, fixed: true });
+      }
+    }
+  }
   // is a bone at this height stuck inside something (a parked car, a bench, a bin)?
   function inside(world, x, z, y) {
     for (const o of world.obstaclesNear(x, z, 0.5)) {
@@ -56,7 +77,7 @@
   function updateBones(dt, ctx) {
     const { world, fx, au } = ctx;
     boneT -= dt; runT -= dt;
-    if (boneT <= 0) { boneT = 1.2; if (clusters.length < 4) spawnCluster(world); }
+    if (boneT <= 0) { boneT = 1.2; spawnArcs(world); if (clusters.filter(c => !c.fixed).length < 4) spawnCluster(world); }
     let k = 0;
     const t = performance.now() / 1000, py = player.y + 0.45;
     for (let ci = clusters.length - 1; ci >= 0; ci--) {

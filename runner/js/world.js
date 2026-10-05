@@ -38,12 +38,12 @@
   // ---- what stands in which cell ---------------------------------------------------------
   const seedOf = (ci, cj) => ((ci * 73856093) ^ (cj * 19349663)) >>> 0;
   const YARD_CELL = [-1, 1];
-  const FORCED = { '0,0': 'city', '1,0': 'park', '1,-1': 'square', '0,-1': 'city', '0,-2': 'plaza', '-1,0': 'square', '-1,1': 'yard' };
+  const FORCED = { '0,0': 'city', '1,0': 'park', '1,-1': 'square', '0,-1': 'city', '0,-2': 'plaza', '-1,0': 'square', '-1,1': 'yard', '0,1': 'garages' };
   function typeOf(ci, cj) {
     const f = FORCED[ci + ',' + cj];
     if (f) return f;
     const h = R.rng(seedOf(ci, cj) ^ 0x9e3779b9)();
-    return h < 0.56 ? 'city' : h < 0.72 ? 'park' : h < 0.86 ? 'square' : 'plaza';
+    return h < 0.53 ? 'city' : h < 0.68 ? 'park' : h < 0.81 ? 'square' : h < 0.92 ? 'plaza' : 'garages';
   }
   const isOpen = (ci, cj) => { const t = typeOf(ci, cj); return t !== 'city' && t !== 'yard'; };
 
@@ -221,6 +221,9 @@
       const W = YARD.warehouse;
       b.facadeBox([0.5, 0.47, 0.42], ox + W.x, W.h / 2, oz + W.z, W.w, W.h, W.d);
       obs.push({ x: ox + W.x, z: oz + W.z, hx: W.w / 2, hz: W.d / 2, h: 99, kind: 'wall' });
+    } else if (L.type === 'garages') {
+      b.rect(COL.yard, ox, oz, B, B, 0.05);
+      for (const [x0, x1, z, h] of GARAGE_ROWS) b.box([0.55, 0.53, 0.5], ox + (x0 + x1) / 2, h / 2, oz + z, x1 - x0, h, 6);
     } else if (L.type === 'square') {
       b.cyl(COL.stone, ox, 0.4, oz, 6, 6.2, 0.8, 16);
       b.box(COL.stone, ox, 8, oz, 1.4, 16, 1.4);
@@ -238,6 +241,7 @@
     const pick = arr => arr[Math.floor(rnd() * arr.length)];
     const tree = (x, z, s) => { place('tree', x, z, rnd() * 6.28, s || rr(0.9, 1.25)); obs.push({ x: ox + x, z: oz + z, hx: 0.32, hz: 0.32, h: 8, kind: 'tree' }); };
     const plan = L.type === 'city' ? ringPlan(rnd) : null;
+    const arcs = [];   // bone arcs over the jumps (garages), picked up by the runner
     const inGap = (side, t) => plan && plan.alley && ((plan.alley === 'z' && side.nz) || (plan.alley === 'x' && side.nx)) && Math.abs(t) < AW + 1.2;
 
     // lamps and trees along the curb
@@ -307,8 +311,9 @@
     else if (L.type === 'yard') yard();
     else if (L.type === 'park') park();
     else if (L.type === 'square') square();
+    else if (L.type === 'garages') garages();
     else plaza();
-    return { b, obs, lamps };
+    return { b, obs, lamps, arcs };
 
     function cityBlock() {
       blockCore(b, obs, ox, oz, plan.alley);
@@ -509,6 +514,48 @@
       }
     }
 
+    // Garage block: two lines of garage roofs over a driveway. Each line: a ramp up onto a roof, a
+    // kicker (orange) at the end of the roof, a gap, and the next roof to land on. The second line
+    // is higher with a wider gap: it needs speed and a well-timed second jump.
+    function garages() {
+      b.rect(COL.yard, ox, oz, B, B, 0.05);
+      const roofCol = [0.2, 0.2, 0.22], doorCol = [0.38, 0.41, 0.45];
+      const walls = [[0.62, 0.6, 0.55], [0.5, 0.55, 0.6], [0.62, 0.53, 0.44], [0.55, 0.6, 0.52]];
+      const row = (x0, x1, z, h, side) => {
+        const d = 6, n = Math.max(1, Math.round((x1 - x0) / 3.3)), w = (x1 - x0) / n;
+        for (let i = 0; i < n; i++) {
+          const cx = x0 + w * (i + 0.5);
+          b.box(walls[(i * 7 + Math.round(z)) & 3], ox + cx, h / 2, oz + z, w - 0.1, h, d);
+          b.box(doorCol, ox + cx, h * 0.42, oz + z + side * (d / 2 + 0.03), w * 0.78, h * 0.8, 0.05);
+          for (let k = 1; k < 6; k++) b.box([0.3, 0.33, 0.37], ox + cx, h * 0.84 * k / 6, oz + z + side * (d / 2 + 0.06), w * 0.78, 0.04, 0.02);
+        }
+        b.box(roofCol, ox + (x0 + x1) / 2, h + 0.06, oz + z, x1 - x0 + 0.3, 0.12, d + 0.3);
+        obs.push({ x: ox + (x0 + x1) / 2, z: oz + z, hx: (x1 - x0) / 2 + 0.15, hz: d / 2 + 0.15, h: h + 0.12, kind: 'garage' });
+      };
+      // a ramp (or a kicker) from height y0 up by `rise`, rising along `axis` towards `dir`
+      const ramp = (x, z, len, wid, rise, axis, dir, y0, kick) => {
+        b.ramp(kick ? [0.92, 0.45, 0.12] : [0.48, 0.4, 0.32], ox + x, oz + z, len, wid, rise, axis, dir, y0 || 0);
+        if (kick) for (let k = 0; k < 3; k++) b.box([0.95, 0.9, 0.85], ox + x + dir * (len / 2 - 0.12), (y0 || 0) + rise + 0.02 - 0.0, oz + z - wid / 2 + 0.4 + k * (wid - 0.8) / 2, 0.22, 0.04, 0.35);
+        obs.push({ x: ox + x, z: oz + z, hx: (axis === 'x' ? len : wid) / 2, hz: (axis === 'x' ? wid : len) / 2, h: (y0 || 0) + rise, kind: kick ? 'kicker' : 'ramp', ramp: { axis, dir, y0: y0 || 0 }, kick: !!kick });
+      };
+      for (const [x0, x1, z, h, side] of GARAGE_ROWS) row(x0, x1, z, h, side);
+      // line 1 (north): ramp up from the west, kicker at the east end of the first roof
+      ramp(-18, -12, 8, 3.6, 2.72, 'x', 1);
+      ramp(-1.9, -12, 1.8, 3.4, 0.7, 'x', 1, 2.72, true);
+      // line 2 (south): ramp up from the east, kicker at the west end, a lower roof across a wider gap
+      ramp(18, 10, 8, 3.6, 3.32, 'x', -1);
+      ramp(2.9, 10, 1.8, 3.4, 0.75, 'x', -1, 3.32, true);
+      // bones over the gaps
+      arcs.push({ from: [ox - 1, oz - 12], to: [ox + 4.5, oz - 12], y0: 3.4, peak: 2.0 });
+      arcs.push({ from: [ox + 2, oz + 10], to: [ox - 5.5, oz + 10], y0: 4.1, peak: 2.2 });
+      // the driveway: a couple of parked cars, tyres, lamps
+      solid(place('car', -9, -1, rad(90), 1), 'car', 0.5);
+      solid(place('van', 12, 1.5, rad(270), 1), 'car', 0.5);
+      for (const [x, z] of [[-4, 3], [-3.2, 3.5], [8, -4]]) { b.cyl([0.1, 0.1, 0.11], ox + x, 0.15, oz + z, 0.42, 0.42, 0.3, 10); obs.push({ x: ox + x, z: oz + z, hx: 0.4, hz: 0.4, h: 0.3, kind: 'box' }); }
+      lamp(b, obs, lamps, ox - 21, oz - 1, 1, 0);
+      lamp(b, obs, lamps, ox + 21, oz + 1, -1, 0);
+    }
+
     function plaza() {
       b.rect(COL.paving, ox, oz, B, B, 0.05);
       b.rect([0.41, 0.375, 0.33], ox, oz, B - 6, B - 6, 0.06);
@@ -543,13 +590,16 @@
     }
   }
 
+  // garage rows: [x0, x1, z, height, door side]
+  const GARAGE_ROWS = [[-14, -1, -12, 2.6, 1], [4, 20, -12, 2.6, 1], [2, 14, 10, 3.2, -1], [-20, -5.5, 10, 2.2, -1]];
+
   // ---- surfaces -----------------------------------------------------------------------------
   const STEP = 0.3;                 // the dog walks up onto anything this low
   const NOSTAND = { tree: 1, pole: 1, cone: 1, trash_bag: 1, wall: 1, traffic: 1, fence_tall: 1, pen: 1, npc: 1 };
   function topAt(o, x, z) {
     if (!o.ramp) return o.h;
-    const along = o.ramp.axis === 'x' ? x - o.x : z - o.z, half = o.ramp.axis === 'x' ? o.hx : o.hz;
-    return o.h * R.clamp((along * o.ramp.dir + half) / (2 * half), 0, 1);
+    const along = o.ramp.axis === 'x' ? x - o.x : z - o.z, half = o.ramp.axis === 'x' ? o.hx : o.hz, y0 = o.ramp.y0 || 0;
+    return y0 + (o.h - y0) * R.clamp((along * o.ramp.dir + half) / (2 * half), 0, 1);
   }
 
   // ---- streaming -----------------------------------------------------------------------------
@@ -602,7 +652,7 @@
         group.add(halos);
       }
       this.scene.add(group);
-      this.cells.set(k, { ci, cj, near, type: L.type, group, obstacles: r.obs, lamps: r.lamps });
+      this.cells.set(k, { ci, cj, near, type: L.type, group, obstacles: r.obs, lamps: r.lamps, arcs: r.arcs || [] });
     }
     drop(k, c) {
       this.scene.remove(c.group);
@@ -636,8 +686,10 @@
         if (Math.abs(x - o.x) > o.hx + 0.15 || Math.abs(z - o.z) > o.hz + 0.15) continue;
         if (o.r && Math.hypot(x - o.x, z - o.z) > o.r + 0.15) continue;
         const t = topAt(o, x, z);
-        if (t <= y + STEP && t > g) g = t;
+        // on a ramp the dog may lag a little behind the slope at full speed: it still counts as on it
+        if (t <= y + (o.ramp ? 0.9 : STEP) && t > g) { g = t; this.lastGround = o; }
       }
+      if (g === 0) this.lastGround = null;
       return g;
     }
     lampsNear(x, z, n) {
@@ -686,7 +738,7 @@
             continue;
           }
         }
-        if (NOSTAND[o.kind] ? p.y > o.h - 0.15 : p.y > topAt(o, cx, cz) - STEP) continue;
+        if (NOSTAND[o.kind] ? p.y > o.h - 0.15 : p.y > topAt(o, cx, cz) - (o.ramp ? 0.9 : (p.stepUp || STEP))) continue;
         let dx = p.x - cx, dz = p.z - cz;
         const d2 = dx * dx + dz * dz;
         if (d2 >= r * r) continue;

@@ -20,7 +20,7 @@
       this.heading = p.heading;
       this.pos.set(p.x + Math.sin(p.heading) * 4.6, 2.6, p.z + Math.cos(p.heading) * 4.6);
       this.cam.position.copy(this.pos);
-      this.lookS = null; this.yS = p.y; this.yawRate = 0;
+      this.lookS = null; this.yS = p.y; this.yG = p.ground || 0; this.yawRate = 0;
     }
     resize(aspect) {
       this.cam.aspect = aspect;
@@ -46,8 +46,11 @@
       this.yawRate = damp(this.yawRate, want, 2, dt);
       this.heading += this.yawRate * dt;
 
+      // rise with the ground the dog stands on (a garage roof) fully, with its jumps only half way
+      this.yG = damp(this.yG || 0, p.ground || 0, 3, dt);
       this.yS = damp(this.yS, p.y, 2.5, dt);
-      const dist = 4.6, h = 2.6 + this.yS * 0.5;
+      const lift = this.yG + Math.max(0, this.yS - this.yG) * 0.5;
+      const dist = 4.6, h = 2.6 + lift;
       const bx = Math.sin(this.heading), bz = Math.cos(this.heading);
       // follow the dog's position softly, aiming a little ahead so it does not drift off-centre
       const K = 6;
@@ -58,7 +61,7 @@
       const cam = this.cam;
       cam.position.copy(this.pos);
       // look at a point just ahead of the dog, at a fixed downward tilt
-      this.look.set(p.x - bx * 2.2 + p.vx / K, 0.5 + this.yS * 0.6, p.z - bz * 2.2 + p.vz / K);
+      this.look.set(p.x - bx * 2.2 + p.vx / K, 0.5 + this.yG + Math.max(0, this.yS - this.yG) * 0.6, p.z - bz * 2.2 + p.vz / K);
       if (!this.lookS) this.lookS = this.look.clone();
       const k = 1 - Math.exp(-8 * dt);
       this.lookS.x += (this.look.x - this.lookS.x) * k;

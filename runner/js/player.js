@@ -34,7 +34,7 @@
       const fx = -Math.sin(this.heading), fz = -Math.cos(this.heading);
       for (const k of [1, -1]) {
         const q = this.q || (this.q = { x: 0, y: 0, z: 0 });
-        q.x = this.x + fx * this.halfLen * k; q.z = this.z + fz * this.halfLen * k; q.y = this.y;
+        q.x = this.x + fx * this.halfLen * k; q.z = this.z + fz * this.halfLen * k; q.y = this.y; q.stepUp = this.stepUp;
         const ox = q.x, oz = q.z;
         if (world.resolve(q, 0.26)) {
           const dx = q.x - ox, dz = q.z - oz;
@@ -119,6 +119,8 @@
 
       // collisions (anything we are not standing above)
       this.hitCd -= dt;
+      // coming up a ramp the dog steps onto the roof at its top even if it is a bit below it
+      this.stepUp = this.onRamp ? 0.8 : 0;
       const hit = world.resolve(this, RADIUS);
       if (hit) {
         const vn = this.vx * hit.nx + this.vz * hit.nz; // negative = moving into the obstacle
@@ -148,6 +150,8 @@
 
       // vertical: ground can be the street, a bench, a car roof, a container or a ramp
       const ground = this.ground = world.groundAt(this.x, this.z, this.y);
+      const under = world.lastGround;
+      this.onRamp = !!(under && under.ramp);
       if (input.consumeJump()) this.jumpBuf = 0.15;
       this.jumpBuf -= dt;
       const onGround = this.y <= ground + 0.03 && this.vy <= 0;
@@ -160,6 +164,7 @@
         this.sqV += 7;                                         // stretch on take-off
         fx.ring(this.x, ground + 0.12, this.z, { color: theme.dust, count: 10, speed: 3.6, up: 0.4, size: 0.42, grow: 2.4, opacity: 0.5, life: 0.5 });
         this.emit('jump', sf);
+        this.jumpedAt = performance.now();
       } else if (this.jumpBuf > 0 && this.airJumps > 0 && this.y > ground + 0.6 && this.vy < 5) {
         // second jump in the air: a smaller boost and a somersault
         this.airJumps--; this.jumpBuf = 0;
@@ -194,10 +199,24 @@
           if (this.flip >= 0) { this.flip = -1; this.lean.rotation.x = R.angDiff(0, this.lean.rotation.x); }
         }
       } else {
-        this.y = damp(this.y, ground, 30, dt); // small steps up and down
+        // up a ramp or a step: stay on it (no lag); down small steps: ease down
+        this.y = ground > this.y ? ground : damp(this.y, ground, 30, dt);
         this.vy = 0;
       }
       this.air = this.y > ground + 0.05;
+      // a kicker (an orange ramp on a roof) throws the dog up when it runs off it, more the faster it goes
+      const kk = this.kick;
+      if (this.air && kk && this.vy > -2) {
+        const along = (kk.ramp.axis === 'x' ? this.vx : this.vz) * kk.ramp.dir;
+        if (along > 3) {
+          const boost = Math.min(9.5, 4 + 0.32 * along) + (performance.now() - (this.jumpedAt || 0) < 200 ? 2.5 : 0);
+          this.vy = Math.max(this.vy, boost);
+          this.airJumps = this.maxAirJumps;
+          fx.ring(this.x, this.y + 0.2, this.z, { color: theme.spark, count: 14, speed: 4, up: 0.4, size: 0.3, grow: 1.8, opacity: 0.9, life: 0.5 });
+          this.emit('launch', along);
+        }
+      }
+      this.kick = !this.air && under && under.kick ? under : null;
 
       // dust while drifting or galloping
       const v = this.vel;

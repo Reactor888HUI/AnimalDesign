@@ -210,6 +210,7 @@
     else if (name === 'hitCar') { au.yelp(); au.thump(1); }
     else if (name === 'jump') au.whoosh();
     else if (name === 'jump2') au.hop2();
+    else if (name === 'launch') { au.whoosh(); au.hop2(); }
     else if (name === 'crash') { au.yelp(); au.thump(1); ctx.say('Неудачное приземление! Лапа болит', 'bad'); }
     else if (name === 'healed') { au.chime(); ctx.say('Лапа зажила, можно бежать галопом'); }
   };
