@@ -103,6 +103,18 @@ canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
   text-shadow: 0 2px 10px rgba(0, 0, 0, .45); transition: opacity .2s, transform .2s; white-space: nowrap; z-index: 25;
 }
 #toast.on { opacity: 1; transform: translate(-50%, 0); }
+/* the trick chain: names, multiplier, and the time left to add the next trick */
+#trick {
+  top: calc(74px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  display: flex; align-items: baseline; gap: 10px; padding: 8px 14px 10px; border-radius: 14px; z-index: 24;
+  font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 12px; color: var(--ink); white-space: nowrap;
+  overflow: hidden;
+}
+#trick[hidden] { display: none; }
+#trick b { font-size: 20px; color: var(--gold); }
+#trick i { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--gold); transform-origin: left; }
+#trick.pop b { animation: trickpop .25s ease-out; }
+@keyframes trickpop { from { transform: scale(1.5); } to { transform: scale(1); } }
 :root[data-theme="day"] #toast { color: #fff; background: rgba(20, 24, 40, .62); padding: 6px 14px; border-radius: 12px; text-shadow: none; }
 :root[data-theme="day"] #toast.bad { color: #ffb0a8; }
 #themeBtn {
@@ -287,6 +299,7 @@ body.is-touch #shint { display: none; }
   border: 2px solid var(--line); touch-action: none;
 }
 .act.on { transform: scale(.92); }
+#slideBtn { right: calc(150px + env(safe-area-inset-right, 0px)); bottom: calc(40px + env(safe-area-inset-bottom, 0px)); border-color: #4da3ff; }
 #biteBtn { right: calc(146px + env(safe-area-inset-right, 0px)); bottom: calc(34px + env(safe-area-inset-bottom, 0px)); width: 88px; height: 88px; font-size: 13px; border-color: #ff4d4d; }
 #biteBtn.hot { box-shadow: 0 0 0 3px rgba(255, 77, 77, .45), 0 0 22px rgba(255, 77, 77, .55); }
 #barkBtn { right: calc(150px + env(safe-area-inset-right, 0px)); bottom: calc(138px + env(safe-area-inset-bottom, 0px)); width: 68px; height: 68px; border-color: #ff7a3a; }

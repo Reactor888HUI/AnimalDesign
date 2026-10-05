@@ -139,6 +139,23 @@
     b.rect(COL.alley, ox, oz, alley === 'z' ? 2 * AW : 2 * PADH, alley === 'z' ? 2 * PADH : 2 * AW, 0.04);
   }
 
+  // a barrier gate: a striped bar at knee height across `len` metres along `axis` ('x' or 'z').
+  // Standing, the dog does not fit under it: slide under (body low) or jump over.
+  const BAR_LOW = 0.6, BAR_TOP = 0.82;
+  function bar(b, obs, x, z, len, axis) {
+    const ax = axis === 'x', n = Math.max(3, Math.round(len / 0.5));
+    for (const e of [-1, 1]) {
+      const px = x + (ax ? e * len / 2 : 0), pz = z + (ax ? 0 : e * len / 2);
+      b.cyl([0.85, 0.82, 0.78], px, 0.55, pz, 0.07, 0.08, 1.1, 8);
+      obs.push({ x: px, z: pz, hx: 0.1, hz: 0.1, h: 1.1, kind: 'pole' });
+    }
+    for (let i = 0; i < n; i++) {
+      const t = -len / 2 + (i + 0.5) * len / n, col = i % 2 ? [0.95, 0.94, 0.9] : [0.86, 0.16, 0.12];
+      b.box(col, x + (ax ? t : 0), (BAR_LOW + BAR_TOP) / 2, z + (ax ? 0 : t), ax ? len / n : 0.14, BAR_TOP - BAR_LOW, ax ? 0.14 : len / n);
+    }
+    obs.push({ x, z, hx: ax ? len / 2 : 0.1, hz: ax ? 0.1 : len / 2, h: BAR_TOP, low: BAR_LOW, kind: 'bar' });
+  }
+
   function lamp(b, obs, lamps, x, z, towardX, towardZ) {
     b.cyl(COL.pole, x, 2.75, z, 0.08, 0.11, 5.5, 6);
     b.box(COL.pole, x + towardX * 0.5, 5.45, z + towardZ * 0.5, towardX ? 1.0 : 0.07, 0.07, towardZ ? 1.0 : 0.07);
@@ -559,6 +576,9 @@
       for (const [x, z] of [[-4, 3], [-3.2, 3.5], [8, -4]]) { b.cyl([0.1, 0.1, 0.11], ox + x, 0.15, oz + z, 0.42, 0.42, 0.3, 10); obs.push({ x: ox + x, z: oz + z, hx: 0.4, hz: 0.4, h: 0.3, kind: 'box' }); }
       lamp(b, obs, lamps, ox - 21, oz - 1, 1, 0);
       lamp(b, obs, lamps, ox + 21, oz + 1, -1, 0);
+      // barrier gates across the driveway: slide under or jump over
+      bar(b, obs, ox - 15, oz - 1, 14, 'z');
+      bar(b, obs, ox + 17, oz - 1, 14, 'z');
     }
 
     function plaza() {
@@ -594,6 +614,8 @@
       for (const [x, z] of [[-18, -18], [18, 18], [18, -18], [-18, 18]]) solid(place('planter_bushes', x, z, 0, 1.2), 'prop');
       for (const [x, z, yaw] of [[14, 4, rad(90)], [14, 9, rad(90)]]) solid(place('bench', x, z, yaw, 1), 'prop');
       tree(18, 0); tree(-20, 0);
+      // a slide lane: three barriers in a row
+      for (const x of [-13, -9, -5]) bar(b, obs, ox + x, oz - 1, 5, 'z');
     }
   }
 
@@ -602,7 +624,7 @@
 
   // ---- surfaces -----------------------------------------------------------------------------
   const STEP = 0.3;                 // the dog walks up onto anything this low
-  const NOSTAND = { tree: 1, pole: 1, cone: 1, trash_bag: 1, wall: 1, traffic: 1, fence_tall: 1, pen: 1, npc: 1 };
+  const NOSTAND = { bar: 1, tree: 1, pole: 1, cone: 1, trash_bag: 1, wall: 1, traffic: 1, fence_tall: 1, pen: 1, npc: 1 };
   function topAt(o, x, z) {
     if (!o.ramp) return o.h;
     const along = o.ramp.axis === 'x' ? x - o.x : z - o.z, half = o.ramp.axis === 'x' ? o.hx : o.hz, y0 = o.ramp.y0 || 0;
@@ -851,6 +873,7 @@
       let hit = null;
       for (const o of this.obstaclesNear(p.x, p.z, r + 0.2)) {
         if (skip && skip[o.kind]) continue;
+        if (o.low !== undefined && p.y + (p.bodyH || 1) <= o.low) continue;     // low enough to pass under (a barrier)
         let cx = R.clamp(p.x, o.x - o.hx, o.x + o.hx), cz = R.clamp(p.z, o.z - o.hz, o.z + o.hz);
         if (o.r) {
           // round obstacle: the closest point on the circle

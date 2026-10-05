@@ -8,7 +8,7 @@
     touch: false,
     onTheme: null,
     onFirst: null,
-    _jumpEdge: false, _barkEdge: false, _scentEdge: false, _biteEdge: false,
+    _jumpEdge: false, _barkEdge: false, _scentEdge: false, _biteEdge: false, _slideEdge: false,
     // direction controls: where to run on the screen (x right, y up/away), 0..1 strength
     dirMode: false, mx: 0, my: 0, mag: 0,
     camTurn: 0,      // camera turned by the player: Z/X keys (-1..1) and drags (radians, applied once)
@@ -18,6 +18,7 @@
     consumeBark() { const j = this._barkEdge; this._barkEdge = false; return j; },
     consumeScent() { const j = this._scentEdge; this._scentEdge = false; return j; },
     consumeBite() { const j = this._biteEdge; this._biteEdge = false; return j; },
+    consumeSlide() { const j = this._slideEdge; this._slideEdge = false; return j; },
   };
 
   // ---- keyboard ---------------------------------------------------------------------------
@@ -32,6 +33,7 @@
     if (e.code === 'KeyF') input._barkEdge = true;
     if (e.code === 'KeyE') input._scentEdge = true;
     if (e.code === 'KeyG') input._biteEdge = true;
+    if (e.code === 'KeyC' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') input._slideEdge = true;
     if (input.onFirst) input.onFirst();
   });
   addEventListener('keyup', e => {
@@ -128,7 +130,7 @@
   jumpZone.addEventListener('pointerup', jumpUp);
   jumpZone.addEventListener('pointercancel', jumpUp);
 
-  for (const [id, key] of [['barkBtn', '_barkEdge'], ['scentBtn', '_scentEdge'], ['biteBtn', '_biteEdge'], ['noseBtn', '_scentEdge'], ['digBtn', '_biteEdge']]) {
+  for (const [id, key] of [['barkBtn', '_barkEdge'], ['scentBtn', '_scentEdge'], ['biteBtn', '_biteEdge'], ['noseBtn', '_scentEdge'], ['digBtn', '_biteEdge'], ['slideBtn', '_slideEdge']]) {
     const btn = document.getElementById(id);
     if (!btn) continue;
     btn.addEventListener('pointerdown', e => { input[key] = true; btn.classList.add('on'); e.preventDefault(); e.stopPropagation(); });

@@ -150,17 +150,57 @@
           ctx.say(mult > 1 ? 'Кольцо ×' + mult + '! +' + bonus : 'Кольцо! +' + bonus);
           au.chime(); au.pick(6 + mult * 2);
           fx.ring(d.x, d.y, d.z, { color: 0xffe27a, count: 16, speed: 4, up: 0.2, size: 0.3, grow: 1.6, opacity: 0.95, life: 0.6 });
+          addTrick('ring');
         }
         o.prev = side;
         // looks: spins slowly and pulses; a used ring is a faint ghost until it comes back
         if (!o.active) { o.t -= dt; if (o.t <= 0) o.active = true; }
         const pulse = 1 + 0.06 * Math.sin(performance.now() * 0.005 + i);
         o.mesh.scale.setScalar(d.r * (o.active ? pulse : 1));
-        o.mesh.material.opacity = o.active ? 0.95 : 0.18;
-        o.mesh.children[0].material.opacity = o.active ? 0.12 : 0.02;
+        // fade out as the camera flies through it, so it never fills the screen
+        const cp = ctx.camera.position, near = R.clamp((Math.hypot(cp.x - d.x, cp.y - d.y, cp.z - d.z) - d.r) / 3, 0, 1);
+        o.mesh.material.opacity = (o.active ? 0.95 : 0.18) * near;
+        o.mesh.children[0].material.opacity = (o.active ? 0.12 : 0.02) * near;
+        o.mesh.visible = near > 0.02;
       }
     }
     for (const [key, o] of ringObjs) if (!seen.has(key)) { scene.remove(o.mesh); ringObjs.delete(key); }
+  }
+
+  // ---- tricks: each one adds to a chain; keep it going (next trick within a few seconds on the
+  // ground) and the multiplier grows; the chain pays out in bones when it ends; a crash loses it --
+  const TRICKS = {
+    flip: ['Сальто', 3], wall: ['От стены', 4], slide: ['Подкат', 1], bar: ['Под шлагбаумом', 4],
+    launch: ['Трамплин', 2], ring: ['Кольцо', 2], long: ['Дальний прыжок', 3],
+  };
+  const CHAIN_T = 2.6;
+  let chain = null;
+  function addTrick(name) {
+    if (!chain) chain = { names: [], pts: 0, t: CHAIN_T };
+    chain.names.push(name); chain.pts += TRICKS[name][1]; chain.t = CHAIN_T;
+    el.trick.hidden = false;
+    el.trickNames.textContent = chain.names.slice(-3).map(n => TRICKS[n][0]).join(' + ');
+    el.trickMult.textContent = chain.names.length > 1 ? '×' + Math.min(5, chain.names.length) : '';
+    el.trick.classList.remove('pop'); void el.trick.offsetWidth; el.trick.classList.add('pop');
+  }
+  function updateTricks(dt, ctx) {
+    for (const n of player.tricks) {
+      if (n === 'crash') {
+        if (chain) ctx.say('Цепочка сорвалась!', 'bad');
+        chain = null; el.trick.hidden = true;
+      } else if (TRICKS[n]) addTrick(n);
+    }
+    player.tricks.length = 0;
+    if (!chain) return;
+    if (!player.air && player.slide < 0) chain.t -= dt;          // the clock runs only on the ground
+    el.trickTime.style.transform = 'scaleX(' + R.clamp(chain.t / CHAIN_T, 0, 1).toFixed(3) + ')';
+    if (chain.t <= 0) {
+      const mult = Math.min(5, chain.names.length), gain = chain.pts * mult;
+      bonesN += gain; el.bonesN.textContent = bonesN;
+      ctx.say(mult > 1 ? 'Цепочка ×' + mult + ': +' + gain : TRICKS[chain.names[0]][0] + ' +' + gain, mult >= 3 ? 'long' : undefined);
+      ctx.au.chime(); if (mult > 1) ctx.au.pick(4 + mult * 2);
+      chain = null; el.trick.hidden = true;
+    }
   }
 
   // ---- jump record: distance from take-off to landing ------------------------------------------
@@ -178,6 +218,7 @@
       const rings = flightRings;
       takeoff = null; flightRings = 0;
       if (p.crash >= 0 || dist < 3) return;
+      if (dist > 10) addTrick('long');
       el.jumpLast.textContent = dist.toFixed(1);
       if (dist > jumpBest) {
         const first = jumpBest === 0;
@@ -246,7 +287,7 @@
       scene.add(bonesMesh);
       try { jumpBest = +localStorage.getItem('runner-jump-best') || 0; } catch (e) {}
       el = {
-        bonesN: $('bonesN'), jumpLast: $('jumpLast'), jumpBest: $('jumpBest'),
+        bonesN: $('bonesN'), jumpLast: $('jumpLast'), jumpBest: $('jumpBest'), trick: $('trick'), trickNames: $('trickNames'), trickMult: $('trickMult'), trickTime: $('trickTime'),
         speedFill: $('speedFill'), speedNum: $('speedNum'), chaseFill: $('chaseFill'),
         score: $('score'), combo: $('combo'), banner: $('banner'), flash: $('flash'),
         best: $('best'), arrow: $('arrow'), cdist: $('cdist'),
@@ -302,6 +343,7 @@
       updateBones(dt, ctx);
       updateRings(dt, ctx);
       trackJump(ctx);
+      updateTricks(dt, ctx);
       updateLanding(world);
       el.speedFill.style.background = player.limp > 0 ? '#ff6b6b' : '';
 
@@ -319,6 +361,6 @@
       el.cdist.textContent = Math.round(cat.dist) + ' м';
     },
 
-    debug() { return { player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }) }; },
+    debug() { return { player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }), chain: () => chain }; },
   };
 })(window.R = window.R || {});

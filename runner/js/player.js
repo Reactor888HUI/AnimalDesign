@@ -1,7 +1,8 @@
 (function (R) {
   const C = R.C, clamp = R.clamp, damp = R.damp;
   const RADIUS = C.DOG_RADIUS;
-  const STILL = { throttle: 0, steer: 0, jumpHeld: false, consumeJump: () => false };
+  const STILL = { throttle: 0, steer: 0, jumpHeld: false, consumeJump: () => false, consumeSlide: () => false };
+  const SLIDE_T = 0.75;
 
   class Player {
     constructor(entity) {
@@ -26,6 +27,8 @@
       this.maxSpeed = C.MAX_SPEED;      // a mode can ask for a calmer dog
       this.jumpBuf = 0; this.coyote = 0; this.air = false;
       this.shake = 0; this.hitCd = 0; this.dustT = 0;
+      // tricks (runner): a slide under barriers, a jump off a wall; done tricks are queued for the mode
+      this.slide = -1; this.slideBuf = 0; this.bodyH = 1; this.wall = null; this.tricks = [];
       this.onEvent = null; // (name, value) => void, used for sounds
     }
     get vel() { return Math.hypot(this.vx, this.vz); }
@@ -34,9 +37,11 @@
       const fx = -Math.sin(this.heading), fz = -Math.cos(this.heading);
       for (const k of [1, -1]) {
         const q = this.q || (this.q = { x: 0, y: 0, z: 0 });
-        q.x = this.x + fx * this.halfLen * k; q.z = this.z + fz * this.halfLen * k; q.y = this.y; q.stepUp = this.stepUp;
+        q.x = this.x + fx * this.halfLen * k; q.z = this.z + fz * this.halfLen * k; q.y = this.y; q.stepUp = this.stepUp; q.bodyH = this.bodyH;
         const ox = q.x, oz = q.z;
-        if (world.resolve(q, 0.26)) {
+        const hit = world.resolve(q, 0.26);
+        if (hit) {
+          if (this.air && hit.kind !== 'traffic' && hit.h - this.y > 1.2) this.wall = { nx: hit.nx, nz: hit.nz, t: 0.3 };
           const dx = q.x - ox, dz = q.z - oz;
           this.x += dx; this.z += dz;
           // lose the speed going into the obstacle
@@ -59,6 +64,24 @@
         this.limp = Math.max(0, this.limp - dt / 14);
         if (this.limp === 0) this.emit('healed');
       }
+      if (this.tricks.length > 30) this.tricks.length = 0;       // modes without tricks never read them
+      // slide: a quick drop onto the belly at speed, under barriers; it keeps the speed for a moment
+      if (input.consumeSlide && input.consumeSlide()) this.slideBuf = 0.2;
+      this.slideBuf -= dt;
+      if (this.slideBuf > 0 && this.slide < 0 && !this.air && this.speed > 5 && this.crash < 0) {
+        this.slide = SLIDE_T; this.slideBuf = 0; this.slideSpeed = this.speed; this.underBar = false;
+        this.sqV -= 4;
+        fx.ring(this.x, this.y + 0.1, this.z, { color: theme.dust, count: 8, speed: 3, up: 0.2, size: 0.4, grow: 2, opacity: 0.45, life: 0.4 });
+        this.emit('slide', this.speed);
+      }
+      if (this.slide >= 0) {
+        this.slide -= dt;
+        // still under a barrier: keep low until clear of it
+        const stuck = world.obstaclesNear(this.x, this.z, 0.6).find(o => o.kind === 'bar' && this.y + 1 > o.low && this.y < o.h);
+        if (stuck) { this.underBar = true; if (this.slide < 0.05) this.slide = 0.05; }
+        if (this.slide < 0) { this.slide = -1; if (this.underBar) this.tricks.push('bar'); else this.tricks.push('slide'); }
+      }
+      this.bodyH = this.slide >= 0 ? 0.48 : 1;
       const sf = clamp(this.speed / C.MAX_SPEED, 0, 1);
       // Direction controls (the game): the stick says where to run on the screen; the dog turns
       // there itself and runs as fast as the stick is pushed. Let go and it stops.
@@ -89,6 +112,7 @@
       else this.speed -= C.COAST * (0.6 + sf) * dt;
       // a sore paw: no galloping until it gets better
       const cap = this.limp > 0 ? Math.min(this.maxSpeed * (1 - 0.62 * this.limp), this.limp > 0.4 ? 5.5 : this.maxSpeed) : this.maxSpeed;
+      if (this.slide >= 0) this.speed = Math.max(3, (this.slideSpeed *= Math.exp(-0.7 * dt)));
       this.speed = clamp(this.speed, 0, cap);
       if (this.crash >= 0) this.speed *= Math.exp(-5 * dt);
 
@@ -107,6 +131,7 @@
         const turnGain = (0.75 + 0.25 * Math.min(1, this.speed / 6)) * (1 - 0.1 * sf) * (this.air ? this.airTurn : 1) * (sliding ? 1.5 : 1);
         this.yawRate = damp(this.yawRate, -this.steerS * C.TURN_RATE * turnGain, 10, dt);
       }
+      if (this.slide >= 0) this.yawRate *= Math.exp(-6 * dt);       // a slide goes straight
       this.heading += this.yawRate * dt;
 
       // velocity chases the facing direction; low grip at speed makes the dog drift
@@ -122,6 +147,9 @@
       // coming up a ramp the dog steps onto the roof at its top even if it is a bit below it
       this.stepUp = this.onRamp ? 0.8 : 0;
       const hit = world.resolve(this, RADIUS);
+      // touching a tall wall in the air: a jump now kicks off it
+      if (this.wall) { this.wall.t -= dt; if (this.wall.t <= 0) this.wall = null; }
+      if (hit && this.air && hit.kind !== 'traffic' && hit.h - this.y > 1.2) this.wall = { nx: hit.nx, nz: hit.nz, t: 0.3 };
       if (hit) {
         const vn = this.vx * hit.nx + this.vz * hit.nz; // negative = moving into the obstacle
         if (vn < 0) {
@@ -159,17 +187,33 @@
       if (onGround) this.airJumps = this.maxAirJumps;
       const jv = C.JUMP_V * this.jumpMul * (1 - 0.35 * this.limp);
       if (this.jumpBuf > 0 && this.coyote > 0) {
+        if (this.slide >= 0 && !this.underBar) { this.slide = -1; this.tricks.push('slide'); }
+        else if (this.slide >= 0) this.jumpBuf = 0;            // no standing up under a barrier
+      }
+      if (this.jumpBuf > 0 && this.coyote > 0) {
         this.vy = jv * (1 + 0.08 * sf);
         this.y = ground + 0.03; this.jumpBuf = 0; this.coyote = 0;
         this.sqV += 7;                                         // stretch on take-off
         fx.ring(this.x, ground + 0.12, this.z, { color: theme.dust, count: 10, speed: 3.6, up: 0.4, size: 0.42, grow: 2.4, opacity: 0.5, life: 0.5 });
         this.emit('jump', sf);
         this.jumpedAt = performance.now();
+      } else if (this.jumpBuf > 0 && this.wall && this.air) {
+        // wall jump: bounce off the wall, up and away, facing the new way; the second jump is back
+        const w = this.wall, vn = this.vx * w.nx + this.vz * w.nz;
+        const tx = this.vx - vn * w.nx, tz = this.vz - vn * w.nz;
+        this.vx = tx * 0.8 + w.nx * 7.5; this.vz = tz * 0.8 + w.nz * 7.5;
+        this.speed = Math.hypot(this.vx, this.vz);
+        this.heading = Math.atan2(-this.vx, -this.vz); this.yawRate = 0;
+        this.vy = jv * 0.95; this.jumpBuf = 0; this.wall = null;
+        this.airJumps = this.maxAirJumps; this.sqV += 6;
+        fx.ring(this.x - w.nx * 0.3, this.y + 0.5, this.z - w.nz * 0.3, { color: theme.spark, count: 12, speed: 4, up: 0.3, size: 0.3, grow: 1.6, opacity: 0.9, life: 0.45 });
+        this.tricks.push('wall');
+        this.emit('walljump', sf);
       } else if (this.jumpBuf > 0 && this.airJumps > 0 && this.y > ground + 0.6 && this.vy < 5) {
         // second jump in the air: a smaller boost and a somersault
         this.airJumps--; this.jumpBuf = 0;
         this.vy = jv * 0.8;
-        this.flip = 0; this.sqV += 5;
+        this.flip = 0; this.sqV += 5; this.tricks.push('flip');
         fx.ring(this.x, this.y + 0.4, this.z, { color: theme.spark, count: 12, speed: 4.5, up: 0.2, size: 0.3, grow: 1.6, opacity: 0.9, life: 0.45 });
         this.emit('jump2', sf);
       }
@@ -189,6 +233,7 @@
             this.vx *= 0.45; this.vz *= 0.45; this.speed *= 0.4; this.shake = 1;
             fx.ring(this.x, ground + 0.12, this.z, { color: theme.dust, count: 16, speed: 4, up: 0.8, size: 0.6, grow: 2.6, opacity: 0.6, life: 0.7 });
             this.emit('crash', impact);
+            this.tricks.push('crash');
           } else if (this.vy < -6) {
             this.shake = Math.max(this.shake, Math.min(0.45, impact / 30));
             this.sqV -= Math.min(9, impact * 0.7);              // squash on landing
@@ -214,6 +259,7 @@
           this.airJumps = this.maxAirJumps;
           fx.ring(this.x, this.y + 0.2, this.z, { color: theme.spark, count: 14, speed: 4, up: 0.4, size: 0.3, grow: 1.8, opacity: 0.9, life: 0.5 });
           this.emit('launch', along);
+          this.tricks.push('launch');
         }
       }
       this.kick = !this.air && under && under.kick ? under : null;
@@ -264,7 +310,7 @@
       }
       this.ent.update(dt, {
         speed01: clamp(v / C.MAX_SPEED, 0, 1), speed: v, air: this.air, vy: this.vy, sniff: this.sniff,
-        turn: this.yawRate, flip: this.flip, crash: this.crash, limp: this.limp, land: this.lastImpact,
+        turn: this.yawRate, flip: this.flip, crash: this.crash, limp: this.limp, land: this.lastImpact, slide: this.slide >= 0,
       });
     }
   }

@@ -385,7 +385,7 @@
     const root = new THREE.Group(); root.add(scaled);
 
     // state
-    let phi = 0, t = 0, airW = 0, wasAir = false, landT = 0, atkT = 0, eatT = 0, roll = 0, look = 0, crashW = 0;
+    let phi = 0, t = 0, airW = 0, wasAir = false, landT = 0, atkT = 0, eatT = 0, roll = 0, look = 0, crashW = 0, slideW = 0;
     const wS = { stand: 1, walk: 0, trot: 0, gallop: 0 };
     const P = emptyPose();
 
@@ -481,6 +481,17 @@
         // landing: legs give and the body dips
         if (landT > 0) { const k = bump(1 - landT / 0.28); P.dy -= 0.045 * k * Math.min(1, (s.land || 8) / 10); P.flex += 0.1 * k; }
 
+        // slide: flat on the belly, front legs reaching forward, hind legs stretched back, ears flat
+        slideW = R.damp(slideW, s.slide ? 1 : 0, s.slide ? 16 : 9, dt);
+        if (slideW > 0.01) {
+          const w = slideW, sp = gaitPose('gallop', 0.27, 12, 0);
+          for (const k of KEYS) P[k] = P[k] * (1 - w) + sp[k] * w;
+          for (const L of LEGS) {
+            const a = P.feet[L], b = sp.feet[L];
+            a.u = a.u * (1 - w) + (b.u + (L[1] === 'F' ? 0.08 : -0.08)) * w; a.v = a.v * (1 - w) + 0.02 * w; a.fold = a.fold * (1 - w) + b.fold * 0.4 * w;
+          }
+          P.dy -= 0.2 * w; P.pitch = P.pitch * (1 - w) + 0.04 * w; P.neck -= 0.35 * w; P.head += 0.2 * w; P.ears -= 1 * w; P.tail -= 0.2 * w;
+        }
         // crash: nose into the ground, front legs fold, then it gets back up
         const cr = s.crash >= 0 ? s.crash : -1;
         crashW = cr >= 0 ? (cr < 0.12 ? cr / 0.12 : cr > 0.65 ? Math.max(0, 1 - (cr - 0.65) / 0.35) : 1) : R.damp(crashW, 0, 10, dt);
