@@ -38,7 +38,9 @@ function serve() {
       ok(cond, what, info) { checks.push({ ok: !!cond, what, info }); },
       // open a page of the game; the frame loop is stopped unless live is set, so a test drives it frame by frame
       async open(url, o = {}) {
-        const page = await browser.newPage({ viewport: o.viewport || { width: 800, height: 500 } });
+        // the offline copy (service worker) only where a test asks for it: it downloads the whole game
+        const context = await browser.newContext({ viewport: o.viewport || { width: 800, height: 500 }, serviceWorkers: o.sw ? 'allow' : 'block' });
+        const page = await context.newPage();
         page.on('pageerror', e => errors.push(e.message));
         page.on('console', m => { if (m.type() === 'error' && !/ERR_FAILED|favicon/.test(m.text())) errors.push(m.text()); });
         await page.route('**/fonts.g*/**', r => r.abort());
@@ -62,7 +64,7 @@ function serve() {
     for (const c of checks) console.log('   ' + (c.ok ? 'ok  ' : 'BAD ') + c.what + (c.info !== undefined ? '  ' + JSON.stringify(c.info) : ''));
     if (crash) console.log('   CRASH ' + (crash.stack || crash));
     for (const e of errors) console.log('   PAGE ERROR ' + e);
-    for (const ctx of browser.contexts()) for (const p of ctx.pages()) await p.close();
+    for (const ctx of browser.contexts()) await ctx.close();
   }
   await browser.close();
   srv.close();

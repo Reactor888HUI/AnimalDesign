@@ -1,0 +1,23 @@
+{
+  "name": "Собаки: три собаки, один город",
+  "short_name": "Собаки",
+  "description": "Бегун, Охранник и Нюхач: три игры за трёх собак в одном 3D-городе.",
+  "lang": "ru",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#0b0f1c",
+  "theme_color": "#0b0f1c",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Бегун", "url": "./index.html#runner", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Охранник", "url": "./index.html#guard", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Нюхач", "url": "./index.html#sniffer", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

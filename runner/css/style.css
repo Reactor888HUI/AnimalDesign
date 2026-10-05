@@ -281,6 +281,10 @@ body.is-touch #shint { display: none; }
 
 #menu { position: fixed; inset: 0; z-index: 120; overflow: auto; background: radial-gradient(ellipse at 50% 0%, #1e2a52 0%, #0b0f1c 70%); color: #f4ead2; padding-block: 24px; }
 #menu[hidden] { display: none; }
+#menu .install { margin-top: 18px; display: grid; gap: 8px; justify-items: start; }
+#menu .install [hidden] { display: none; }
+#installBtn { cursor: pointer; padding: 12px 18px; border-radius: 999px; color: #f4ead2; border: 1px solid #ffd36a; font: 700 13px/1 'Space Grotesk', system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+#menu .install p { margin: 0; font-size: 13px; color: rgba(244, 234, 210, .65); }
 .menu-inner { max-width: 880px; margin: 0 auto; padding: 0 16px; display: grid; gap: 14px; }
 #menu h1 { font-size: clamp(30px, 6vw, 48px); letter-spacing: .02em; }
 #menu .lead { color: rgba(244, 234, 210, .7); }

@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0b0f1c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Собаки">
 <title>Бегун</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -105,6 +111,11 @@
         <span>Соседи теряют вещи. Понюхай, включи нюх и иди по цветному следу. Ключи, мячик, котёнок и лиса-воришка.</span>
       </button>
     </div>
+    <div class="install">
+      <button id="installBtn" class="panel" type="button" hidden>Установить на телефон</button>
+      <p id="iosHint" hidden>На iPhone: «Поделиться» → «На экран Домой» — и игра откроется на весь экран.</p>
+      <p id="offline" hidden></p>
+    </div>
   </div>
 </div>
 
@@ -173,6 +184,7 @@
 <script src="js/modes/runner.js"></script>
 <script src="js/modes/guard.js"></script>
 <script src="js/modes/sniffer.js"></script>
+<script src="js/pwa.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
