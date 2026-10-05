@@ -63,8 +63,13 @@
   };
   const mix = (a, b, t) => a.clone().lerp(b, clamp(t, 0, 1));
 
-  // ---- geometry: tubes of elliptic rings, each ring weighted to one or two bones ------------------
-  // ring: [u, v, rN (in-plane radius), rX (side radius), [[bone, w], ...]], x offset per tube
+  // ---- geometry: tubes of rings, each ring weighted to one or two bones -----------------------------
+  // ring: [u, v, rN, rX, [[bone, w], ...], inward, shape], x offset per tube.
+  //   rN: radius in the side plane on the "first" side (up for the body, forward for a leg),
+  //   rX: half width; shape (optional): dn = radius on the other side (down / back),
+  //   sq = squareness (2 = ellipse, more = flatter sides), keel = narrower towards the dn side
+  //   (the deep, egg-shaped chest), crown = narrower towards the first side (the croup seen from
+  //   behind), so a section need not be a plain ellipse.
   function buildGeometry(boneIndex) {
     const pos = [], col = [], si = [], sw = [], idx = [];
     function tube(rings, x, segs, colorFn, capStart, capEnd) {
@@ -80,10 +85,13 @@
         for (let k = 0; k < 4; k++) { si.push(ws[k] ? boneIndex[ws[k][0]] : 0); sw.push(ws[k] ? ws[k][1] : 0); }
       };
       rings.forEach((r, i) => {
-        const [u, v, rn, rx, w, inward] = r, [tu, tv] = tan[i], nu = -tv, nv = tu, xr = x * (1 - (inward || 0));
+        const [u, v, rn, rx, w, inward, sh] = r, [tu, tv] = tan[i], nu = -tv, nv = tu, xr = x * (1 - (inward || 0));
+        const dn = sh && sh.dn !== undefined ? sh.dn : rn, e = 2 / ((sh && sh.sq) || 2), keel = (sh && sh.keel) || 0, crown = (sh && sh.crown) || 0;
         for (let k = 0; k < segs; k++) {
           const a = k / segs * TAU, ca = Math.cos(a), sa = Math.sin(a);
-          push(u + nu * rn * ca, v + nv * rn * ca, xr + rx * sa, colorFn(i, ca, sa, u, v, nu * ca, nv * ca), w);
+          const pc = Math.sign(ca) * Math.pow(Math.abs(ca), e), ps = Math.sign(sa) * Math.pow(Math.abs(sa), e);
+          const rr = ca >= 0 ? rn : dn, wx = rx * (1 - keel * Math.max(0, -ca) - crown * Math.max(0, ca));
+          push(u + nu * rr * pc, v + nv * rr * pc, xr + wx * ps, colorFn(i, ca, sa, u, v, nu * ca, nv * ca), w);
         }
       });
       for (let i = 0; i + 1 < n; i++) for (let k = 0; k < segs; k++) {
@@ -104,23 +112,30 @@
 
     // body: from the tail root to the forechest. Under the chest and belly the coat is white.
     const W = (...a) => a;
+    // [u, top, bottom, half width, weights, shape]: proportions from the side photo (withers = 1):
+    // chest down to the elbow (brisket 0.54 off the ground) and held low to well behind the elbow,
+    // then a steep tuck-up (0.70) into a slim loin with a slight arch; the croup slopes to a low tail
+    const B = (u, top, bot, w, wt, sh) => [u, (top + bot) / 2, (top - bot) / 2, w, wt, 0, sh];
+    const CH = { keel: 0.35 }, LO = { keel: 0.1 }, CR = { crown: 0.35 };
+    // the topline: highest at the withers, a slight dip behind them, an arch over the loin, the croup
+    // falling to the tail. The hindquarters are narrow on top: the thighs give the width (below).
     const body = [
-      // croup sloping down to a low tail set, an arched loin, moderate tuck-up, chest to the elbow
-      [-0.335, 0.40, 0.034, 0.034, W(['pelvis', 1])],
-      [-0.31, 0.41, 0.058, 0.056, W(['pelvis', 1])],
-      [-0.26, 0.425, 0.078, 0.072, W(['pelvis', 1])],
-      [-0.19, 0.44, 0.075, 0.066, W(['pelvis', 0.75], ['lumbar', 0.25])],
-      [-0.11, 0.45, 0.07, 0.057, W(['pelvis', 0.3], ['lumbar', 0.7])],
-      [-0.04, 0.448, 0.078, 0.06, W(['lumbar', 1])],
-      [0.03, 0.435, 0.10, 0.067, W(['lumbar', 0.55], ['chest', 0.45])],
-      [0.10, 0.415, 0.118, 0.077, W(['chest', 1])],
-      [0.17, 0.395, 0.135, 0.082, W(['chest', 1])],
-      [0.235, 0.395, 0.118, 0.079, W(['chest', 1])],
-      [0.29, 0.41, 0.09, 0.07, W(['chest', 0.8], ['neck1', 0.2])],
-      [0.315, 0.45, 0.05, 0.05, W(['chest', 0.4], ['neck1', 0.6])],
+      B(-0.322, 0.44, 0.39, 0.03, W(['pelvis', 1])),
+      B(-0.30, 0.47, 0.36, 0.05, W(['pelvis', 1]), CR),
+      B(-0.262, 0.497, 0.355, 0.062, W(['pelvis', 1]), CR),
+      B(-0.19, 0.515, 0.372, 0.062, W(['pelvis', 0.75], ['lumbar', 0.25]), LO),
+      B(-0.12, 0.523, 0.392, 0.058, W(['pelvis', 0.3], ['lumbar', 0.7]), LO),
+      B(-0.06, 0.52, 0.378, 0.058, W(['lumbar', 1]), LO),
+      B(0.0, 0.513, 0.33, 0.07, W(['lumbar', 0.7], ['chest', 0.3]), CH),
+      B(0.05, 0.514, 0.296, 0.083, W(['lumbar', 0.4], ['chest', 0.6]), CH),
+      B(0.10, 0.521, 0.282, 0.09, W(['chest', 1]), CH),
+      B(0.17, 0.53, 0.276, 0.093, W(['chest', 1]), CH),
+      B(0.235, 0.525, 0.29, 0.086, W(['chest', 1]), CH),
+      B(0.29, 0.5, 0.335, 0.072, W(['chest', 0.8], ['neck1', 0.2]), CH),
+      B(0.315, 0.495, 0.405, 0.05, W(['chest', 0.4], ['neck1', 0.6])),
     ];
     for (const r of body) r[3] *= 1.12;   // a touch wider than life: reads better from behind
-    tube(body, 0, 20, (i, ca, sa, u, v, nu, nv, isCap) => {
+    tube(body, 0, 16, (i, ca, sa, u, v, nu, nv, isCap) => {
       // white under the chest and belly, a white front of the chest; darker along the back
       const down = -nv, fwd = nu;
       let c = mix(COL.fawn, COL.fawnDark, sstep(0.55, 1, nv) * 0.6);
@@ -160,9 +175,9 @@
 
     // tail: thin, low, a slight upward curl; white tip
     const tl = [
-      [-0.30, 0.418, 0.024, 0.024, W(['pelvis', 0.5], ['tail1', 0.5])],
-      [-0.33, 0.39, 0.02, 0.02, W(['tail1', 1])],
-      [-0.355, 0.36, 0.017, 0.017, W(['tail1', 0.5], ['tail2', 0.5])],
+      [-0.30, 0.418, 0.028, 0.026, W(['pelvis', 0.5], ['tail1', 0.5])],
+      [-0.33, 0.39, 0.022, 0.021, W(['tail1', 1])],
+      [-0.355, 0.36, 0.018, 0.018, W(['tail1', 0.5], ['tail2', 0.5])],
       [-0.375, 0.325, 0.015, 0.015, W(['tail2', 1])],
       [-0.39, 0.29, 0.013, 0.013, W(['tail2', 0.5], ['tail3', 0.5])],
       [-0.4, 0.245, 0.011, 0.011, W(['tail3', 1])],
@@ -175,37 +190,44 @@
     // legs
     for (const s of ['L', 'R']) {
       const xf = sideX(s, true), xh = sideX(s, false);
+      // front: shoulder, upper arm, a pointed elbow at the brisket, a thin straight forearm, a
+      // sloping pastern, an oval paw with a flat sole. The lower leg stands a little out from the body.
+      const PAW = { dn: 0.018, sq: 3 }, OUT = -0.1;
       const front = [
         [0.19, 0.47, 0.05, 0.03, W(['scap' + s, 1]), 0.7],
-        [0.245, 0.40, 0.05, 0.034, W(['scap' + s, 0.6], ['hum' + s, 0.4]), 0.25],
-        [0.265, 0.34, 0.042, 0.032, W(['hum' + s, 1])],
-        [0.235, 0.275, 0.033, 0.027, W(['hum' + s, 0.5], ['fore' + s, 0.5])],
-        [0.222, 0.215, 0.023, 0.02, W(['fore' + s, 1])],
-        [0.223, 0.14, 0.018, 0.016, W(['fore' + s, 1])],
-        [0.225, 0.082, 0.017, 0.016, W(['fore' + s, 0.5], ['past' + s, 0.5])],
-        [0.232, 0.05, 0.016, 0.015, W(['past' + s, 1])],
-        [0.243, 0.028, 0.02, 0.019, W(['past' + s, 0.3], ['fpaw' + s, 0.7])],
-        [0.262, 0.02, 0.017, 0.017, W(['fpaw' + s, 1])],
-        [0.276, 0.016, 0.009, 0.01, W(['fpaw' + s, 1])],
+        [0.245, 0.40, 0.056, 0.037, W(['scap' + s, 0.6], ['hum' + s, 0.4]), 0.25],
+        [0.262, 0.335, 0.044, 0.032, W(['hum' + s, 1]), 0.05],
+        [0.232, 0.268, 0.028, 0.025, W(['hum' + s, 0.5], ['fore' + s, 0.5]), 0, { dn: 0.038 }],
+        [0.222, 0.212, 0.021, 0.019, W(['fore' + s, 1]), OUT],
+        [0.223, 0.145, 0.016, 0.015, W(['fore' + s, 1]), OUT],
+        [0.225, 0.085, 0.016, 0.016, W(['fore' + s, 0.5], ['past' + s, 0.5]), OUT],
+        [0.232, 0.052, 0.013, 0.013, W(['past' + s, 1]), OUT],
+        [0.243, 0.027, 0.017, 0.022, W(['past' + s, 0.25], ['fpaw' + s, 0.75]), OUT, PAW],
+        [0.262, 0.021, 0.017, 0.023, W(['fpaw' + s, 1]), OUT, PAW],
+        [0.279, 0.016, 0.01, 0.016, W(['fpaw' + s, 1]), OUT, { dn: 0.01, sq: 3 }],
       ];
-      tube(front, xf, 12, (i, ca, sa, u, v, nu) => {
+      tube(front, xf, 8, (i, ca, sa, u, v, nu) => {
         // white socks and a white front of the leg
         return mix(COL.fawn, COL.white, Math.max(sstep(0.17, 0.09, v), sstep(0.3, 0.2, v) * sstep(0, 0.6, nu)));
       }, false, true);
+      // hind: a broad thigh (more muscle behind), the stifle, the long "second thigh" sloping back,
+      // a sharp hock with its point behind, a thin upright metatarsus, an oval paw
       const hind = [
-        [-0.215, 0.445, 0.06, 0.03, W(['pelvis', 0.5], ['femur' + s, 0.5]), 0.8],
-        [-0.212, 0.385, 0.074, 0.042, W(['femur' + s, 1]), 0.35],
-        [-0.19, 0.315, 0.06, 0.038, W(['femur' + s, 1])],
-        [-0.16, 0.268, 0.037, 0.028, W(['femur' + s, 0.5], ['tibia' + s, 0.5])],
-        [-0.205, 0.22, 0.034, 0.024, W(['tibia' + s, 1])],
-        [-0.255, 0.165, 0.025, 0.019, W(['tibia' + s, 1])],
-        [-0.297, 0.115, 0.019, 0.017, W(['tibia' + s, 0.5], ['meta' + s, 0.5])],
-        [-0.297, 0.07, 0.016, 0.015, W(['meta' + s, 1])],
-        [-0.292, 0.028, 0.02, 0.019, W(['meta' + s, 0.3], ['hpaw' + s, 0.7])],
-        [-0.274, 0.02, 0.017, 0.017, W(['hpaw' + s, 1])],
-        [-0.26, 0.016, 0.009, 0.01, W(['hpaw' + s, 1])],
+        // the thigh grows out of the croup (its top inside the body) and is the widest part behind
+        [-0.228, 0.468, 0.05, 0.034, W(['pelvis', 0.6], ['femur' + s, 0.4]), 0.55],   // kept inside the croup: no flicker
+        [-0.215, 0.39, 0.07, 0.047, W(['femur' + s, 1]), 0.25, { dn: 0.088 }],
+        [-0.188, 0.318, 0.055, 0.037, W(['femur' + s, 1]), 0.1, { dn: 0.058 }],
+        [-0.157, 0.268, 0.034, 0.025, W(['femur' + s, 0.5], ['tibia' + s, 0.5]), 0],
+        [-0.2, 0.222, 0.026, 0.021, W(['tibia' + s, 1]), OUT, { dn: 0.036 }],
+        [-0.25, 0.166, 0.02, 0.016, W(['tibia' + s, 1]), OUT, { dn: 0.024 }],
+        [-0.293, 0.118, 0.016, 0.015, W(['tibia' + s, 0.5], ['meta' + s, 0.5]), OUT, { dn: 0.026 }],
+        [-0.298, 0.074, 0.012, 0.012, W(['meta' + s, 1]), OUT],
+        [-0.296, 0.042, 0.013, 0.013, W(['meta' + s, 0.5], ['hpaw' + s, 0.5]), OUT],
+        [-0.29, 0.026, 0.017, 0.022, W(['meta' + s, 0.2], ['hpaw' + s, 0.8]), OUT, PAW],
+        [-0.274, 0.021, 0.017, 0.023, W(['hpaw' + s, 1]), OUT, PAW],
+        [-0.257, 0.016, 0.01, 0.016, W(['hpaw' + s, 1]), OUT, { dn: 0.01, sq: 3 }],
       ];
-      tube(hind, xh, 12, (i, ca, sa, u, v, nu) => mix(COL.fawn, COL.white, Math.max(sstep(0.12, 0.06, v), sstep(0.3, 0.2, v) * sstep(0.2, -0.4, sa * (s === 'R' ? -1 : 1)) * 0.8)), false, true);
+      tube(hind, xh, 8, (i, ca, sa, u, v, nu) => mix(COL.fawn, COL.white, Math.max(sstep(0.12, 0.06, v), sstep(0.3, 0.2, v) * sstep(0.2, -0.4, sa * (s === 'R' ? -1 : 1)) * 0.8)), false, true);
     }
 
     const g = new THREE.BufferGeometry();
@@ -371,7 +393,7 @@
     }
     const geo = buildGeometry(boneIndex);
     // short glossy coat: a little sheen from the environment map when the game provides one
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.52, metalness: 0 });
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.52, metalness: 0, flatShading: true });
     if (R.envTexture) { mat.envMap = R.envTexture; mat.envMapIntensity = 0.5; mat.userData.env = true; }
     const mesh = new THREE.SkinnedMesh(geo, mat);
     mesh.castShadow = true; mesh.frustumCulled = false;
