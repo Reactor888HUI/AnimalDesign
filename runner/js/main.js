@@ -53,18 +53,36 @@
   sunGlow.scale.set(70, 70, 1);
   sky.add(sunGlow);
 
+  // ---- skyline: two rings of far-off houses on the horizon, so a long street never ends in a void ----
+  const skyline = [];
+  for (const [rad, h, seed, lo, hi] of [[275, 56, 7, 0.22, 0.9], [235, 36, 12, 0.18, 0.75]]) {
+    const geo = new THREE.CylinderGeometry(rad, rad, h, 72, 1, true);
+    geo.translate(0, h / 2 - 4, 0);
+    const t = R.skylineTextures(seed, lo, hi);
+    t.body.repeat.x = t.win.repeat.x = 3;
+    const body = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t.body, transparent: true, depthWrite: false, fog: false, side: THREE.BackSide, toneMapped: false }));
+    const win = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t.win, transparent: true, depthWrite: false, fog: false, side: THREE.BackSide, toneMapped: false, blending: THREE.AdditiveBlending }));
+    body.renderOrder = win.renderOrder = -3 + skyline.length;
+    body.frustumCulled = win.frustumCulled = false;
+    sky.add(body, win);
+    skyline.push({ body, win });
+  }
+
   // ---- post-processing: bloom (lamps, windows, sparks glow), colour grade and vignette ---------
   const GRADE = {
-    uniforms: { tDiffuse: { value: null }, uSat: { value: 1 }, uContrast: { value: 1 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uVig: { value: 0.2 } },
+    uniforms: { tDiffuse: { value: null }, uSat: { value: 1 }, uVib: { value: 0 }, uContrast: { value: 1 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uShadow: { value: new THREE.Vector3(1, 1, 1) }, uHigh: { value: new THREE.Vector3(1, 1, 1) }, uVig: { value: 0.2 } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `
-      uniform sampler2D tDiffuse; uniform float uSat, uContrast, uVig; uniform vec3 uTint; varying vec2 vUv;
+      uniform sampler2D tDiffuse; uniform float uSat, uVib, uContrast, uVig; uniform vec3 uTint, uShadow, uHigh; varying vec2 vUv;
       void main() {
         vec3 c = texture2D(tDiffuse, vUv).rgb;
         float l = dot(c, vec3(0.299, 0.587, 0.114));
-        c = mix(vec3(l), c, uSat);
+        // vibrance: dull colours gain more saturation than already bright ones (no garish skin/sky)
+        float s = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+        c = mix(vec3(l), c, uSat + uVib * (1.0 - s));
         c = (c - 0.5) * uContrast + 0.5;
-        c *= uTint;
+        // split toning: shadows and highlights get their own tint
+        c *= uTint * mix(uShadow, uHigh, smoothstep(0.08, 0.75, l));
         vec2 d = (vUv - 0.5) * vec2(1.0, 0.8);
         c *= mix(1.0 - uVig, 1.0, smoothstep(0.75, 0.2, length(d)));
         gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
@@ -97,7 +115,9 @@
     if (!bloomPass || !T.bloom) return;
     bloomPass.strength = T.bloom[0]; bloomPass.radius = T.bloom[1]; bloomPass.threshold = T.bloom[2];
     const g = T.grade, u = gradePass.uniforms;
-    u.uSat.value = g.sat; u.uContrast.value = g.contrast; u.uTint.value.set(g.tint[0], g.tint[1], g.tint[2]); u.uVig.value = g.vig;
+    u.uSat.value = g.sat; u.uVib.value = g.vib || 0; u.uContrast.value = g.contrast; u.uTint.value.set(g.tint[0], g.tint[1], g.tint[2]); u.uVig.value = g.vig;
+    const sh = g.shadow || [1, 1, 1], hi = g.high || [1, 1, 1];
+    u.uShadow.value.set(sh[0], sh[1], sh[2]); u.uHigh.value.set(hi[0], hi[1], hi[2]);
   }
   let postOn = !/[?&]nopost/.test(location.search);
   try { makeComposer(); } catch (e) { console.warn('[runner] post-processing off', e); composer = null; }
@@ -117,6 +137,12 @@
     sun.color.setHex(T.sunColor); sun.intensity = T.sunI;
     renderer.toneMappingExposure = T.exposure;
     for (const c of clouds) c.visible = !!T.clouds;
+    skyline.forEach((l, i) => {
+      // the far ring is lost in the haze more than the near one
+      const sl = T.skyline[i];
+      l.body.material.color.setHex(T.fog).lerp(new THREE.Color(sl[0]), sl[1]);
+      l.win.visible = !!T.lamps; l.win.material.opacity = sl[2] || 0;
+    });
     moon.visible = !!T.stars;
     sunGlow.visible = !T.stars;
     { const o = T.sunOffset, l = Math.hypot(o[0], o[1], o[2]); sunGlow.position.set(o[0] / l * 240, o[1] / l * 240, o[2] / l * 240); }
@@ -170,6 +196,7 @@
 
   // ---- world -----------------------------------------------------------------------------
   const world = new R.World(scene);
+  world.renderer = renderer;
   const fx = new R.FX(scene);
   const traffic = new R.Traffic(scene, world, 9);
   const rig = new R.CameraRig(camera, world);
@@ -203,6 +230,17 @@
   world.update(player.x, player.z, 99);
   rig.resize(innerWidth / innerHeight);
   rig.snap(player);
+  // send every texture and shader to the graphics card now, not the first time a block shows them
+  for (const map of R.assets.maps()) renderer.initTexture(R.texMat(map).map);
+  renderer.compile(scene, camera);
+  world.upload(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1)));   // compiles the upload shader too
+  // where the dog will be in a couple of seconds: the city is built ahead of that point
+  function ahead() {
+    const v = Math.hypot(player.vx || 0, player.vz || 0);
+    const dx = v > 2 ? player.vx / v : -Math.sin(player.heading), dz = v > 2 ? player.vz / v : -Math.cos(player.heading);
+    const d = 18 + Math.min(42, v * 2.6);
+    return [player.x + dx * d, player.z + dz * d];
+  }
 
   player.onEvent = (name, v) => {
     if (name === 'land') au.thump(v / 12);
@@ -272,7 +310,8 @@
     worldDir();
     traffic.update(dt, player);
     mode.update(dt, ctx);
-    world.update(player.x, player.z, 1);
+    const [ax, az] = ahead();
+    world.update(player.x, player.z, 1, ax, az);
     fx.update(dt);
     rig.update(dt, player, now / 1000, input);
 
@@ -347,5 +386,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead }, mode.debug ? mode.debug() : {});
 })(window.R);

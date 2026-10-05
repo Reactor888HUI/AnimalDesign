@@ -16,19 +16,23 @@
 
   R.THEMES = {
     night: {
-      skyTop: '#04060d', skyMid: '#0d1428', horizon: '#1d2547', fog: 0x1d2547, fogDensity: 0.0125,
-      hemiSky: 0x5a6cc0, hemiGround: 0x20222e, hemiI: 1.05,
-      sunColor: 0x8aa0ff, sunI: 0.85, sunOffset: [-26, 48, 30],
+      skyTop: '#03050c', skyMid: '#0c1328', horizon: '#1f2748', fog: 0x1f2748, fogDensity: 0.0115,
+      // a less saturated blue fill, so the warm lamp pools and windows stand out against it
+      hemiSky: 0x5a6488, hemiGround: 0x26252b, hemiI: 1.0,
+      sunColor: 0xb0bde8, sunI: 0.8, sunOffset: [-26, 48, 30],
       exposure: 1.0, lamps: true, stars: true, dust: 0x8a8fa8, spark: 0x9fd4ff,
-      // post-processing: glow of lamps and windows, colour grade, reflections on the dog's coat
-      bloom: [0.5, 0.4, 0.86], grade: { sat: 1.08, contrast: 1.06, tint: [0.95, 0.98, 1.07], vig: 0.3 }, envI: 0.18,
+      // post-processing: glow of lamps and windows, colour grade (cool shadows, warm lights), reflections on the dog's coat
+      bloom: [0.5, 0.4, 0.86], grade: { sat: 1.02, vib: 0.3, contrast: 1.08, tint: [0.98, 0.98, 1.02], shadow: [0.95, 0.98, 1.06], high: [1.1, 1.01, 0.9], vig: 0.3 }, envI: 0.18,
+      // far skyline: [colour, how much of it over the haze, lit windows]
+      skyline: [[0x0c1122, 0.55, 0.35], [0x080b17, 0.8, 0.55]],
     },
     day: {
-      skyTop: '#4d9be0', skyMid: '#8cc4ee', horizon: '#d6e9f5', fog: 0xd6e9f5, fogDensity: 0.0075,
-      hemiSky: 0xd8ecff, hemiGround: 0x9a9080, hemiI: 0.85,
-      sunColor: 0xfff0d2, sunI: 1.3, sunOffset: [34, 60, 22],
+      skyTop: '#3586de', skyMid: '#83bdf0', horizon: '#d2e6f5', fog: 0xd2e6f5, fogDensity: 0.0068,
+      hemiSky: 0xcfe5ff, hemiGround: 0x8c806a, hemiI: 0.78,
+      sunColor: 0xffebc8, sunI: 1.45, sunOffset: [34, 60, 22],
       exposure: 1.0, lamps: false, stars: false, dust: 0xcfc6b4, spark: 0xffe9a8, clouds: true,
-      bloom: [0.22, 0.35, 0.9], grade: { sat: 1.12, contrast: 1.05, tint: [1.04, 1.0, 0.95], vig: 0.18 }, envI: 0.65,
+      bloom: [0.22, 0.35, 0.9], grade: { sat: 1.08, vib: 0.4, contrast: 1.08, tint: [1.02, 1.0, 0.97], shadow: [0.94, 0.98, 1.06], high: [1.05, 1.01, 0.95], vig: 0.16 }, envI: 0.65,
+      skyline: [[0x8aa2bc, 0.16], [0x7890ab, 0.27]],
     },
   };
 })(window.R = window.R || {});

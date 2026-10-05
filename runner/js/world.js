@@ -6,9 +6,9 @@
   const rad = d => d * Math.PI / 180;
 
   const COL = {
-    asphalt: [0.20, 0.21, 0.24], alley: [0.17, 0.17, 0.19], sidewalk: [0.5, 0.48, 0.45], curb: [0.74, 0.72, 0.68],
-    paint: [0.9, 0.88, 0.78], yellow: [0.86, 0.68, 0.2], grass: [0.27, 0.5, 0.2], grass2: [0.34, 0.58, 0.25],
-    paving: [0.45, 0.41, 0.36], paving2: [0.39, 0.355, 0.315], path: [0.55, 0.5, 0.42], fill: [0.42, 0.3, 0.26],
+    asphalt: [0.19, 0.195, 0.215], alley: [0.165, 0.165, 0.18], sidewalk: [0.55, 0.51, 0.46], curb: [0.76, 0.73, 0.68],
+    paint: [0.93, 0.9, 0.8], yellow: [0.9, 0.68, 0.16], grass: [0.25, 0.52, 0.17], grass2: [0.33, 0.6, 0.22],
+    paving: [0.5, 0.43, 0.36], paving2: [0.42, 0.36, 0.31], path: [0.55, 0.5, 0.42], fill: [0.42, 0.3, 0.26],
     pole: [0.27, 0.29, 0.33], globe: [1.0, 0.92, 0.65], stone: [0.72, 0.7, 0.66], stone2: [0.58, 0.56, 0.53],
     water: [0.25, 0.5, 0.66], gold: [0.85, 0.66, 0.25], yard: [0.25, 0.25, 0.24],
   };
@@ -617,29 +617,105 @@
       this.start = { x: HP, z: 0 };
       this.farCells = C.FAR_CELLS;
       this.nearR = 1;
+      this.slice = 4;               // ms per frame for building blocks in the background
       this.dynamic = [];            // moving cars, refreshed every frame
     }
     static cellIndex(v) { return Math.round(v / P); }
     key(ci, cj) { return ci + ',' + cj; }
 
-    update(px, pz, budget) {
-      const ci0 = World.cellIndex(px), cj0 = World.cellIndex(pz), R_ = this.farCells;
-      const want = [];
-      for (let dz = -R_; dz <= R_; dz++) for (let dx = -R_; dx <= R_; dx++) {
-        const near = Math.max(Math.abs(dx), Math.abs(dz)) <= this.nearR;
-        const ci = ci0 + dx, cj = cj0 + dz, c = this.cells.get(this.key(ci, cj));
-        if (!c || c.near !== near) want.push({ ci, cj, near, d: dx * dx + dz * dz });
+    // Streaming. Detailed ("near") blocks are built ahead of the dog, along where it is running,
+    // a few milliseconds per frame, sent to the graphics card and only then swapped in, so the
+    // street ahead is ready before it comes out of the haze and the game does not stutter.
+    // The current cell is sticky: running down the middle of a street (which is a cell border)
+    // does not flip a whole row of blocks back and forth.
+    update(px, pz, budget, ax, az) {
+      const R_ = this.farCells, urgentAll = budget >= 99;
+      if (this.ci0 === undefined || urgentAll || Math.abs(px - this.ci0 * P) > HP + 8) this.ci0 = World.cellIndex(px);
+      if (this.cj0 === undefined || urgentAll || Math.abs(pz - this.cj0 * P) > HP + 8) this.cj0 = World.cellIndex(pz);
+      if (ax === undefined) { ax = px; az = pz; }
+      const ci0 = this.ci0, cj0 = this.cj0, ai = World.cellIndex(ax), aj = World.cellIndex(az);
+      const nearIn = this.nearR >= 1 ? 46 : 0, nearOut = nearIn + 16;
+      const rectD = (ci, cj, x, z) => Math.hypot(Math.max(0, Math.abs(x - ci * P) - HP), Math.max(0, Math.abs(z - cj * P) - HP));
+      const sync = [];
+      let job = null;
+      const i0 = Math.min(ci0, ai) - R_, i1 = Math.max(ci0, ai) + R_, j0 = Math.min(cj0, aj) - R_, j1 = Math.max(cj0, aj) + R_;
+      for (let cj = j0; cj <= j1; cj++) for (let ci = i0; ci <= i1; ci++) {
+        const cc = Math.max(Math.abs(ci - ci0), Math.abs(cj - cj0)), ca = Math.max(Math.abs(ci - ai), Math.abs(cj - aj));
+        if (Math.min(cc, ca) > R_) continue;
+        const d0 = rectD(ci, cj, px, pz), d = Math.min(d0, rectD(ci, cj, ax, az));
+        const c = this.cells.get(this.key(ci, cj));
+        // the 3x3 around the dog is always detailed (the games rely on it), plus blocks along the way ahead
+        const near = cc <= this.nearR || (c && c.near ? d <= nearOut : d <= nearIn);
+        if (c && c.near === near) continue;
+        const urgent = urgentAll || (near && d0 < 12);
+        if (!c || !near || urgent) sync.push({ ci, cj, near: near && urgent, d: d0 });       // missing / downgrade / needed now
+        if (near && !urgent && (!job || d < job.d)) job = { ci, cj, d };                     // upgrade ahead, in slices
       }
-      want.sort((a, b) => a.d - b.d);
-      let n = 0;
-      for (const w of want) {
-        if (n >= budget) break;
+      sync.sort((a, b) => a.d - b.d);
+      for (let n = 0; n < sync.length && n < budget; n++) {
+        const w = sync[n];
+        if (this.job && this.job.k === this.key(w.ci, w.cj)) this.cancelJob();
         this.build(w.ci, w.cj, w.near);
-        n++;
       }
+      // the background job: keep it while that block is still wanted, else start the next one
+      if (this.job) {
+        const j = this.job, c = this.cells.get(j.k);
+        const jc = Math.max(Math.abs(j.ci - ci0), Math.abs(j.cj - cj0));
+        if (!c || c.near || jc > this.nearR && rectD(j.ci, j.cj, px, pz) > nearOut && rectD(j.ci, j.cj, ax, az) > nearOut) this.cancelJob();
+      }
+      if (!this.job && job) this.job = { ci: job.ci, cj: job.cj, k: this.key(job.ci, job.cj), stage: 0 };
+      if (this.job) this.stepJob(performance.now() + this.slice);
       for (const [k, c] of this.cells) {
-        if (Math.max(Math.abs(c.ci - ci0), Math.abs(c.cj - cj0)) > R_ + 1) this.drop(k, c);
+        if (Math.min(Math.max(Math.abs(c.ci - ci0), Math.abs(c.cj - cj0)), Math.max(Math.abs(c.ci - ai), Math.abs(c.cj - aj))) > R_ + 1) this.drop(k, c);
       }
+    }
+
+    stepJob(deadline) {
+      const j = this.job;
+      if (j.stage === 0) {         // lay the block out (cheap: the geometry work is queued)
+        j.L = layout(j.ci, j.cj);
+        j.r = nearCell(j.ci, j.cj, R.rng(seedOf(j.ci, j.cj)), j.L);
+        j.group = new THREE.Group();
+        j.stage = 1;
+      }
+      if (j.stage === 1) {         // build and merge the meshes, a slice per frame
+        if (!j.r.b.buildStep(j.group, undefined, deadline)) return;
+        j.stage = 2;
+        return;
+      }
+      if (j.stage === 2) {         // send it to the graphics card while it is still hidden, a piece per frame
+        if (j.up === undefined) { this.addHalos(j.group, j.r.lamps); j.parts = j.group.children.slice(); j.up = 0; }
+        if (j.up < j.parts.length) { this.upload(j.parts[j.up++]); return; }
+        j.stage = 3;
+      }
+      // swap it in for the simple block
+      const old = this.cells.get(j.k);
+      if (old) this.drop(j.k, old);
+      this.add(j.k, j.ci, j.cj, true, j.L, j.r, j.group);
+      this.job = null;
+    }
+    cancelJob() {
+      const j = this.job;
+      if (j.group) j.group.traverse(o => { if (o.isMesh || o.isPoints) o.geometry.dispose(); });
+      this.job = null;
+    }
+    // draw a new mesh once into a 1x1 target with a plain material: this uploads its buffers
+    upload(obj) {
+      const r = this.renderer;
+      if (!r) return;
+      if (!this.warm) {
+        const sc = new THREE.Scene();
+        sc.overrideMaterial = new THREE.MeshBasicMaterial();
+        this.warm = { sc, rt: new THREE.WebGLRenderTarget(1, 1), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1) };
+      }
+      const w = this.warm, parent = obj.parent;
+      obj.frustumCulled = false;
+      w.sc.add(obj);
+      const prev = r.getRenderTarget();
+      r.setRenderTarget(w.rt); r.render(w.sc, w.cam); r.setRenderTarget(prev);
+      w.sc.remove(obj);
+      if (parent) parent.add(obj);
+      obj.frustumCulled = true;
     }
 
     build(ci, cj, near) {
@@ -649,15 +725,20 @@
       const r = near ? nearCell(ci, cj, rnd, L) : farCell(ci, cj, rnd, L);
       const group = new THREE.Group();
       r.b.build(group);
-      if (near && r.lamps.length) {
-        const pos = [];
-        for (const l of r.lamps) pos.push(l.x, l.y, l.z);
-        const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-        const halos = new THREE.Points(g, R.mat('halo'));
-        halos.renderOrder = 4;
-        group.add(halos);
-      }
+      if (near) this.addHalos(group, r.lamps);
+      this.add(k, ci, cj, near, L, r, group);
+    }
+    addHalos(group, lamps) {
+      if (!lamps.length) return;
+      const pos = [];
+      for (const l of lamps) pos.push(l.x, l.y, l.z);
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      const halos = new THREE.Points(g, R.mat('halo'));
+      halos.renderOrder = 4;
+      group.add(halos);
+    }
+    add(k, ci, cj, near, L, r, group) {
       this.scene.add(group);
       this.cells.set(k, { ci, cj, near, type: L.type, group, obstacles: r.obs, lamps: r.lamps, arcs: r.arcs || [], rings: r.rings || [] });
     }

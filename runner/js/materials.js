@@ -200,6 +200,29 @@
     for (const key in cache) paint(key, cache[key]);
   };
 
+  // far-off city on the horizon: building silhouettes (white, tinted per theme) and their lit windows
+  R.skylineTextures = function (seed, lo, hi) {
+    const W = 2048, H = 256, rnd = R.rng(seed);
+    const body = document.createElement('canvas'), win = document.createElement('canvas');
+    body.width = win.width = W; body.height = win.height = H;
+    const b = body.getContext('2d'), w = win.getContext('2d');
+    b.fillStyle = '#fff'; w.fillStyle = '#ffd9a0';
+    let x = 0;
+    while (x < W) {
+      const bw = 18 + rnd() * 70, bh = H * (lo + (hi - lo) * Math.pow(rnd(), 1.6));
+      const top = H - bh;
+      b.fillRect(x, top, bw + 1, bh);
+      if (rnd() < 0.3) b.fillRect(x + bw * 0.3, top - bh * 0.12, bw * 0.4, bh * 0.12 + 1);   // a step on the roof
+      if (rnd() < 0.15) b.fillRect(x + bw * 0.5, top - 14, 2, 14);                               // an antenna
+      for (let wy = top + 6; wy < H - 6; wy += 7) for (let wx = x + 4; wx < x + bw - 4; wx += 6) {
+        if (rnd() < 0.22) w.fillRect(wx, wy, 3, 3);
+      }
+      x += bw + (rnd() < 0.2 ? rnd() * 20 : 0);
+    }
+    const mk = c => { const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4; return t; };
+    return { body: mk(body), win: mk(win) };
+  };
+
   // window pattern for far-away blocks (white wall, dark windows; tinted by vertex colour)
   let ft = null;
   R.facadeTexture = function () {

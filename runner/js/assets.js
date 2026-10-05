@@ -52,8 +52,41 @@
   // buildings get the wall detail (bricks / plaster) in the solid material
   const WALLS = new Set(['building_red', 'building_green', 'gb_blank', 'rb_blank', 'brown_building', 'big_building', 'pizza_corner', 'building_red_corner']);
 
+  const CHUNK = 40000;
+  // smaller vertex data for the graphics card: normals and colours in bytes, the surface id as a byte
+  function compact(g) {
+    const nr = g.attributes.normal, col = g.attributes.color, sf = g.attributes.aSurf;
+    if (nr && nr.array instanceof Float32Array) {
+      const a = nr.array, b = new Int8Array(a.length);
+      for (let i = 0; i < a.length; i++) b[i] = Math.round(Math.max(-1, Math.min(1, a[i])) * 127);
+      g.setAttribute('normal', new THREE.BufferAttribute(b, 3, true));
+    }
+    if (col && col.array instanceof Float32Array) {
+      const a = col.array; let ok = true;
+      for (let i = 0; i < a.length; i++) if (a[i] > 1 || a[i] < 0) { ok = false; break; }
+      if (ok) {
+        const b = new Uint8Array(a.length);
+        for (let i = 0; i < a.length; i++) b[i] = Math.round(a[i] * 255);
+        g.setAttribute('color', new THREE.BufferAttribute(b, col.itemSize, true));
+      }
+    }
+    if (sf && sf.array instanceof Float32Array) g.setAttribute('aSurf', new THREE.BufferAttribute(Uint8Array.from(sf.array), 1));
+  }
+
   class Batch {
-    constructor() { this.solid = []; this.glass = []; this.facade = []; this.pool = []; this.tex = new Map(); this.surf = 0; }
+    constructor() { this.solid = []; this.glass = []; this.facade = []; this.pool = []; this.tex = new Map(); this.surf = 0; this.ops = []; this.opi = 0; }
+
+    // The geometry work is queued, not done at once: the world builds a city block a few
+    // milliseconds per frame (run / buildStep) instead of freezing for one long frame.
+    _op(fn) { this.ops.push(fn); }
+    run(deadline) {
+      while (this.opi < this.ops.length) {
+        if (performance.now() > deadline) return false;
+        this.ops[this.opi++]();
+      }
+      this.ops.length = 0; this.opi = 0;
+      return true;
+    }
 
     addPart(kind, geo, map) {
       // every solid piece carries its surface type (they are merged, so all need the attribute)
@@ -81,28 +114,28 @@
       g.setAttribute('aSurf', new THREE.BufferAttribute(new Float32Array(n).fill(s), 1));
       return g;
     }
-    box(col, cx, cy, cz, sx, sy, sz, kind) {
+    box(col, cx, cy, cz, sx, sy, sz, kind) { this._op(() => {
       const g = new THREE.BoxGeometry(sx, sy, sz); g.translate(cx, cy, cz);
       this.addPart(kind || 'solid', this._color(g, col));
-    }
-    rect(col, cx, cz, w, d, y) {
+    }); }
+    rect(col, cx, cz, w, d, y) { this._op(() => {
       const g = new THREE.PlaneGeometry(w, d); g.rotateX(-Math.PI / 2); g.translate(cx, y || 0, cz);
       this.addPart('solid', this._color(g, col));
-    }
-    cyl(col, cx, cy, cz, rt, rb, h, seg, kind) {
+    }); }
+    cyl(col, cx, cy, cz, rt, rb, h, seg, kind) { this._op(() => {
       const g = new THREE.CylinderGeometry(rt, rb, h, seg || 8); g.translate(cx, cy, cz);
       this.addPart(kind || 'solid', this._color(g, col));
-    }
-    sph(col, cx, cy, cz, r, kind) {
+    }); }
+    sph(col, cx, cy, cz, r, kind) { this._op(() => {
       const g = new THREE.SphereGeometry(r, 8, 6); g.translate(cx, cy, cz);
       this.addPart(kind || 'solid', this._color(g, col));
-    }
-    cone(col, cx, cy, cz, r, h) {
+    }); }
+    cone(col, cx, cy, cz, r, h) { this._op(() => {
       const g = new THREE.ConeGeometry(r, h, 8); g.translate(cx, cy, cz);
       this.addPart('solid', this._color(g, col));
-    }
+    }); }
     // textured far-away facade box; uv repeats with the wall size so windows keep their scale
-    facadeBox(col, cx, cy, cz, sx, sy, sz) {
+    facadeBox(col, cx, cy, cz, sx, sy, sz) { this._op(() => {
       const g = new THREE.BoxGeometry(sx, sy, sz);
       const uv = g.attributes.uv, nrm = g.attributes.normal;
       for (let i = 0; i < uv.count; i++) {
@@ -112,9 +145,9 @@
       }
       g.translate(cx, cy, cz);
       this.addPart('facade', this._color(g, col, true));
-    }
+    }); }
     // wedge rising along `axis` towards `dir`
-    ramp(col, cx, cz, len, wid, h, axis, dir, y0) {
+    ramp(col, cx, cz, len, wid, h, axis, dir, y0) { this._op(() => {
       const g = new THREE.BoxGeometry(axis === 'x' ? len : wid, h, axis === 'x' ? wid : len);
       g.translate(0, h / 2, 0);
       const pos = g.attributes.position;
@@ -126,30 +159,44 @@
       const cg = this._color(g, col);
       cg.computeVertexNormals();
       this.addPart('solid', cg);
-    }
-    poolDecal(x, z, size) {
+    }); }
+    poolDecal(x, z, size) { this._op(() => {
       const g = new THREE.PlaneGeometry(size, size); g.rotateX(-Math.PI / 2); g.translate(x, 0.07, z);
       this.pool.push(g);
-    }
+    }); }
 
-    build(group, o) {
-      const add = (list, mat, cast, recv) => {
-        if (!list.length) return;
-        const merged = THREE.BufferGeometryUtils.mergeBufferGeometries(list, false);
-        list.forEach(g => g.dispose());
-        if (!merged) return;
-        const mesh = new THREE.Mesh(merged, mat);
+    // all at once (far cells, start-up) ...
+    build(group, o) { this.run(Infinity); while (!this.buildStep(group, o, Infinity)); }
+    // ... or a step at a time: true when the last mesh is in the group
+    buildStep(group, o, deadline) {
+      if (!this.run(deadline)) return false;
+      if (!this.lists) {
+        const cast = !o || o.cast !== false;
+        this.lists = [[this.solid, () => R.mat('solid'), cast, true], [this.glass, () => R.mat('glass'), false, false],
+          [this.facade, () => R.mat('facade'), false, false], [this.pool, () => R.mat('pool'), false, false]];
+        for (const e of this.tex.values()) this.lists.push([e.list, () => R.texMat(e.map), cast, true]);
+      }
+      // merge in pieces of up to ~40k vertices: each piece is a short step, and a small upload
+      while (this.lists.length) {
+        if (performance.now() > deadline) return false;
+        const [list, mat, cast, recv] = this.lists[0];
+        if (!list.length) { this.lists.shift(); continue; }
+        let n = 0, k = 0;
+        while (k < list.length && (k === 0 || n + list[k].attributes.position.count <= CHUNK)) n += list[k++].attributes.position.count;
+        const part = list.splice(0, k);
+        const merged = THREE.BufferGeometryUtils.mergeBufferGeometries(part, false);
+        part.forEach(g => g.dispose());
+        if (!merged) continue;
+        compact(merged);
+        const mesh = new THREE.Mesh(merged, mat());
         mesh.castShadow = cast; mesh.receiveShadow = recv;
         mesh.matrixAutoUpdate = false;
         group.add(mesh);
-      };
-      add(this.solid, R.mat('solid'), !o || o.cast !== false, true);
-      add(this.glass, R.mat('glass'), false, false);
-      add(this.facade, R.mat('facade'), false, false);
-      add(this.pool, R.mat('pool'), false, false);
-      for (const e of this.tex.values()) add(e.list, R.texMat(e.map), !o || o.cast !== false, true);
+      }
+      return true;
     }
   }
+
   R.Batch = Batch;
 
   // every connected piece of glass (a window, a shop front) gets its own random number
@@ -208,6 +255,12 @@
 
   R.assets = {
     has: key => !!lib[key],
+    // every texture the models use (to upload them all at start)
+    maps() {
+      const out = new Map();
+      for (const k in lib) for (const p of lib[k].parts) if (p.map) out.set(p.map.uuid, p.map);
+      return [...out.values()];
+    },
     dims: key => lib[key] && lib[key].dims,
 
     load(onProgress) {
@@ -253,11 +306,12 @@
       if (!a) return null;
       s = s || 1; sy = sy || 1; yaw = yaw || 0;
       M.compose(V.set(x, y || 0, z), Q.setFromAxisAngle(UP, yaw), S.set(s, s * sy, s));
-      const inst = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
-      batch.surf = WALLS.has(key) ? 5 : 0;
+      const inst = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1, mat = M.clone(), surf = WALLS.has(key) ? 5 : 0;
+      batch._op(() => {
+      batch.surf = surf;
       for (const p of a.parts) {
         const g = p.geo.clone();
-        g.applyMatrix4(M);
+        g.applyMatrix4(mat);
         if (p.rand) {
           const r = new Float32Array(p.rand.length);
           for (let i = 0; i < r.length; i++) r[i] = (p.rand[i] + Math.abs(inst)) % 1;
@@ -266,6 +320,7 @@
         batch.addPart(p.kind, g, p.map);
       }
       batch.surf = 0;
+      });
       const w = a.dims.w * s, d = a.dims.d * s;
       const turned = Math.abs(Math.sin(yaw)) > 0.7071;
       return { x, z, hx: (turned ? d : w) / 2, hz: (turned ? w : d) / 2, h: a.dims.h * s * sy };
