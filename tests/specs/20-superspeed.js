@@ -46,9 +46,11 @@ exports.run = async t => {
     document.getElementById('questBtn').click(); document.querySelector('[data-tab="records"]').click();
     out.records = [...document.querySelectorAll('#quests .records div')].map(d => d.textContent);
     document.querySelector('#quests .close').click();
-    // on a phone the jump zone covers the lower right; the HUD buttons there must still get the tap
+    // on a phone the jump zone covers the right; the menu button and its items must still get the tap
     const tu = document.getElementById('touchUI'), was = tu.hidden; tu.hidden = false;
-    out.tappable = ['questBtn', 'minimap'].filter(id => { const e = document.getElementById(id); if (e.hidden) return true; const b = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); });
+    document.getElementById('moreBtn').click();
+    out.tappable = ['moreBtn', 'more'].filter(id => { const e = document.getElementById(id); const b = e.getBoundingClientRect(); return b.width > 0 && e.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); });
+    document.getElementById('moreBtn').click();
     tu.hidden = was;
     return out;
   });
@@ -61,6 +63,6 @@ exports.run = async t => {
   t.ok(r.streak, 'light streaks behind the dog', r.streak);
   t.ok(r.sounds, 'the wind, boost, trick and fanfare sounds are there', r.sounds);
   t.ok(r.btnOn && r.btnOff, 'the boost button switches super speed on at once, and off again', { on: r.btnOn, off: r.btnOff });
-  t.ok(r.tappable.length === 2, 'the quest button and the map are above the jump zone', r.tappable);
+  t.ok(r.tappable.length === 2, 'the menu button and the menu are above the jump zone', r.tappable);
   t.ok(r.records.length > 10 && /Полётов стрелой\s*[1-9]/.test(r.records.join('|')) && /Максимальная скорость\s*5\d/.test(r.records.join('|')), 'records: arrow flights and the top speed are counted', r.records.slice(0, 9));
 };

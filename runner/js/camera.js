@@ -3,10 +3,11 @@
 
   // A comfortable chase camera (the usual advice against motion sickness):
   //  - it never rolls, never shakes, never bobs and does not zoom with speed;
-  //  - it comes round behind the running dog by itself, softly, with a lag and at most ~28 deg/s
+  //  - it comes round behind the running dog by itself, softly, with a lag and at most ~24 deg/s
   //    (no snapping after every little turn), so the stick's "up" soon means "where the dog runs" again;
   //  - the player can turn it too (drag / Z, X), as in most games: the finger or mouse to the right
   //    looks right; after that it waits a moment before it comes round again;
+  //  - or (the runner's default) it is locked behind the dog: the picture turns with the dog, softly;
   //  - it sits a little higher and further back, so the street is a steady reference
   //    and the dog stays in the middle of the picture.
   class CameraRig {
@@ -17,6 +18,7 @@
       this.look = new THREE.Vector3();
       this.lookS = null; this.yS = 0; this.yawRate = 0; this.steady = 0;
       this.autoAlign = true;
+      this.locked = false;   // locked behind the dog (the runner's default) or free (turned by hand)
     }
     snap(p) {
       this.heading = p.heading;
@@ -38,17 +40,23 @@
       if (rad || hold) this.steady = -0.8;   // after a manual turn, wait before re-aligning
     }
     update(dt, p, time, input) {
-      if (input) { this.turn(input.camDrag || 0, input.camTurn || 0, dt); input.camDrag = 0; }
+      if (input) { if (!this.locked) this.turn(input.camDrag || 0, input.camTurn || 0, dt); input.camDrag = 0; }
       const sf = clamp(p.speed / C.MAX_SPEED, 0, 1);
-      // coming round behind the running dog: a soft spring with a small dead zone, never faster than
-      // ~28 deg/s (the comfort limit: a faster swing made the player dizzy), slower while the dog is
+      // free: coming round behind the running dog, a soft spring with a small dead zone, never faster than
+      // ~24 deg/s (the comfort limit: a faster swing made the player dizzy), and not while the dog is
       // still in a turn, so the picture does not whip round after it
       const err = R.angDiff(this.heading, p.heading);
       const turning = Math.abs(p.yawRate || 0) > 0.6;
       this.steady = p.speed < 2.5 ? Math.min(this.steady, 0) : Math.min(1.5, this.steady + dt);
       let want = 0;
-      if (this.autoAlign && this.steady > 0.3 && Math.abs(err) > 0.1) want = Math.sign(err) * Math.min(0.49, (Math.abs(err) - 0.1) * 1.2) * (0.4 + 0.6 * sf) * (turning ? 0.2 : 1);
-      this.yawRate = damp(this.yawRate, want, 2, dt);
+      if (this.locked) {
+        // locked: always right behind the dog, as if fixed to it, but on a soft spring (a smooth
+        // start and stop of every turn, at most ~125 deg/s), so it never jerks or wobbles
+        want = clamp(err * 5, -2.2, 2.2);
+        this.yawRate = damp(this.yawRate, want, 9, dt);
+        want = null;
+      } else if (this.autoAlign && this.steady > 0.4 && Math.abs(err) > 0.12) want = Math.sign(err) * Math.min(0.42, (Math.abs(err) - 0.12) * 1.1) * (0.3 + 0.7 * sf) * (turning ? 0 : 1);
+      if (want !== null) this.yawRate = damp(this.yawRate, want, 2, dt);
       this.heading += this.yawRate * dt;
 
       // rise with the ground the dog stands on (a garage roof) fully, with its jumps only half way

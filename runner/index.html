@@ -160,6 +160,19 @@
   <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
 </button>
 
+<!-- everything that is not running sits behind one button in the corner -->
+<button id="moreBtn" class="ui panel" type="button" aria-label="Меню игры" aria-expanded="false" aria-controls="more">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.5" r="1.6"/></svg>
+</button>
+<div id="more" class="ui panel" role="menu" hidden>
+  <button type="button" role="menuitem" data-act="quests" class="r-only"><span class="ic">★</span><b>Задания и гардероб</b><i class="v stars"></i></button>
+  <button type="button" role="menuitem" data-act="map"><span class="ic">◎</span><b>Карта района</b></button>
+  <button type="button" role="menuitem" data-act="cam" class="r-only"><span class="ic">◉</span><b>Камера</b><i class="v cam"></i></button>
+  <button type="button" role="menuitem" data-act="sound"><span class="ic">♪</span><b>Звук</b><i class="v sound"></i></button>
+  <button type="button" role="menuitem" data-act="time" class="r-only"><span class="ic">☀</span><b>Время суток</b><i class="v time"></i></button>
+  <button type="button" role="menuitem" data-act="dogs"><span class="ic">↩</span><b>Выбрать собаку</b></button>
+</div>
+
 <div id="hint" class="ui panel r-only"><kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; держи <kbd>W</kbd> на галопе или <kbd>Q</kbd> — рывок &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания</div>
 
 <div id="touchUI" hidden>

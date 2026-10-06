@@ -13,6 +13,9 @@
     dirMode: false, mx: 0, my: 0, mag: 0,
     camTurn: 0,      // camera turned by the player: Z/X keys (-1..1) and drags (radians, applied once)
     camDrag: 0,
+    // the camera locked behind the dog (the runner's default): the stick steers like a handlebar
+    // (sideways = turn, up = how fast, back = stop) and the pace is kept when the thumb lets go
+    camLock: false, cruise: 0,
     _k: {},
     consumeJump() { const j = this._jumpEdge; this._jumpEdge = false; return j; },
     consumeBark() { const j = this._barkEdge; this._barkEdge = false; return j; },
@@ -46,7 +49,7 @@
     for (const c in k) k[c] = false;
     input.jumpHeld = false;
     T.id = null; T.x = 0; T.y = 0;      // declared below; this only runs on later events
-    jumpId = null;
+    jumpId = null; dblId = null; input.cruise = 0;   // the app put away: the dog does not run on by itself
     document.querySelectorAll('#stick.on, #jumpBtn.on').forEach(e => e.classList.remove('on'));
   };
   addEventListener('blur', () => releaseAll());
@@ -73,9 +76,28 @@
   const T = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
   const RADIUS = 56;
 
+  // a double tap anywhere on the play area jumps (hold the second tap to jump higher), so one thumb
+  // can run, steer and jump: tap, tap — without reaching for the jump button
+  const TAP = { upT: -1e9, x: 0, y: 0, short: false, downT: 0, dx: 0, dy: 0 };
+  let dblId = null;
+  function tapDown(e) {
+    const now = performance.now();
+    const dbl = TAP.short && now - TAP.upT < 320 && Math.hypot(e.clientX - TAP.x, e.clientY - TAP.y) < 90;
+    TAP.downT = now; TAP.dx = e.clientX; TAP.dy = e.clientY;
+    if (dbl) { input._jumpEdge = true; input.jumpHeld = true; dblId = e.pointerId; TAP.short = false; TAP.upT = -1e9; }
+    return dbl;
+  }
+  function tapUp(e) {
+    const now = performance.now();
+    if (e.pointerId === dblId) { dblId = null; input.jumpHeld = false; TAP.short = false; return; }
+    TAP.short = now - TAP.downT < 260 && Math.hypot(e.clientX - TAP.dx, e.clientY - TAP.dy) < 20;
+    TAP.upT = now; TAP.x = e.clientX; TAP.y = e.clientY;
+  }
+
   function stickDown(e) {
     if (T.id !== null) return;
     T.id = e.pointerId; T.ox = e.clientX; T.oy = e.clientY; T.x = 0; T.y = 0;
+    tapDown(e);
     stickZone.setPointerCapture(e.pointerId);
     stick.style.left = e.clientX + 'px';
     stick.style.top = e.clientY + 'px';
@@ -95,6 +117,7 @@
   function stickUp(e) {
     if (e.pointerId !== T.id) return;
     T.id = null; T.x = 0; T.y = 0;
+    tapUp(e);
     stick.classList.remove('on');
   }
   stickZone.addEventListener('pointerdown', stickDown);
@@ -116,13 +139,16 @@
       jumpId = e.pointerId;
       input._jumpEdge = true; input.jumpHeld = true;
       jumpBtn.classList.add('on');
-    } else if (camTouch === null) { camTouch = e.pointerId; camTX = e.clientX; }
+    } else {
+      tapDown(e);
+      if (camTouch === null) { camTouch = e.pointerId; camTX = e.clientX; }
+    }
   });
   jumpZone.addEventListener('pointermove', e => {
-    if (e.pointerId !== camTouch) return;
+    if (e.pointerId !== camTouch || input.camLock) return;
     input.camDrag += (e.clientX - camTX) * 0.007; camTX = e.clientX;
   });
-  const camTouchUp = e => { if (e.pointerId === camTouch) camTouch = null; };
+  const camTouchUp = e => { if (e.pointerId !== jumpId) tapUp(e); if (e.pointerId === camTouch) camTouch = null; };
   jumpZone.addEventListener('pointerup', camTouchUp);
   jumpZone.addEventListener('pointercancel', camTouchUp);
   const jumpUp = e => {
@@ -153,14 +179,14 @@
     camId = e.pointerId; camX = e.clientX;
   });
   addEventListener('pointermove', e => {
-    if (e.pointerId !== camId) return;
+    if (e.pointerId !== camId || input.camLock) return;
     input.camDrag += (e.clientX - camX) * 0.006; camX = e.clientX;
   });
   const camUp = e => { if (e.pointerId === camId) camId = null; };
   addEventListener('pointerup', camUp); addEventListener('pointercancel', camUp);
 
   // ---- per-frame read ---------------------------------------------------------------------
-  input.poll = function () {
+  input.poll = input._poll = function () {   // (_poll: the real one, for tests that stub poll)
     // direction: stick or keys, relative to the screen
     let mx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
     let my = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0);
@@ -185,7 +211,16 @@
       ts = ax < 0.1 ? 0 : Math.sign(T.x) * Math.pow((ax - 0.1) / 0.9, 1.5);
       tt = T.y < -0.25 ? Math.min(1, (-T.y - 0.25) / 0.6) : (T.y > 0.45 ? -(T.y - 0.3) : 0);
     }
-    if (input.autoRun && !k.KeyS && !k.ArrowDown && !(T.id !== null && T.y > 0.45) && kt === 0 && tt === 0) tt = 1;
+    if (this.camLock) {
+      // the handlebar: up sets the pace (kept when the thumb lets go), back brakes and stops
+      this.dirMode = false;
+      if (T.id !== null) {
+        if (T.y < -0.2) this.cruise = Math.min(1, (-T.y - 0.2) / 0.6);
+        else if (T.y > 0.4) this.cruise = 0;
+        tt = T.y > 0.4 ? -Math.min(1, (T.y - 0.3) / 0.5) : this.cruise;
+      } else tt = this.cruise;
+      if (kt) { tt = 0; this.cruise = 0; }    // keys: run while W is held (kt is added below)
+    } else if (input.autoRun && !k.KeyS && !k.ArrowDown && !(T.id !== null && T.y > 0.45) && kt === 0 && tt === 0) tt = 1;
     this.steer = clamp(ks + ts, -1, 1);
     this.throttle = clamp(kt + tt, -1, 1);
   };

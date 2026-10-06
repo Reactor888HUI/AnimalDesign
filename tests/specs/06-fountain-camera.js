@@ -3,6 +3,7 @@ exports.run = async t => {
   const page = await t.open('runner/index.html?noworker&nopost#runner');
   const r = await page.evaluate(() => {
     const r = window.__runner, M = window.R.modes.runner, ctx = r.ctx, p = r.player, w = r.world;
+    r.setCam('free', true);   // the free camera's comfort limit (the locked one is checked in 22)
     const step = (n, fn) => { for (let i = 0; i < n; i++) { fn && fn(i); ctx.traffic.update(1 / 30, p); M.update(1 / 30, ctx); w.update(p.x, p.z, 2); r.rig.update(1 / 30, p, i / 30); } };
     let f = null;
     for (const [ci, cj] of [[1, -1], [-1, 0]]) { p.x = ci * 74 + 15; p.z = cj * 74; w.update(p.x, p.z, 99); for (const o of w.obstaclesNear(ci * 74, cj * 74, 2)) if (o.kind === 'fountain' && o.r > 5) f = o; if (f) break; }

@@ -356,10 +356,60 @@
     quests.onDone = (q, bonus) => {
       au.chime(); setTimeout(() => au.pick(10), 180);
       ctx.say(bonus ? 'Все задания дня! +2 ★' : 'Задание выполнено! +' + q.stars + ' ★', 'long');
-      const b = $('questBtn'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+      const b = $('moreBtn'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop', 'new');
     };
   }
   const map = mode.mapMarkers ? new R.DistrictMap(ctx, { markers: () => mode.mapMarkers(), travel: modeName === 'runner' }) : null;
+
+  // ---- the camera: locked behind the dog (the runner's default) or free, turned by hand ----------
+  let camMode = 'lock';
+  try { if (localStorage.getItem('runner-cam') === 'free') camMode = 'free'; } catch (e) {}
+  function setCam(m, keep) {
+    camMode = m === 'free' ? 'free' : 'lock';
+    rig.locked = input.camLock = modeName === 'runner' && camMode === 'lock';
+    input.cruise = 0;
+    $('hint').innerHTML = rig.locked
+      ? '<kbd>W</kbd> бежать &nbsp;·&nbsp; <kbd>A</kbd> <kbd>D</kbd> / стрелки — поворот &nbsp;·&nbsp; <kbd>S</kbd> стоп &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; <kbd>Q</kbd> рывок &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания &nbsp;·&nbsp; <kbd>N</kbd> время суток'
+      : '<kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; держи <kbd>W</kbd> на галопе или <kbd>Q</kbd> — рывок &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания';
+    if (modeName === 'runner') $('stickHint').textContent = rig.locked ? 'бег и поворот' : 'куда бежать';
+    if (!keep) try { localStorage.setItem('runner-cam', camMode); } catch (e) {}
+  }
+  setCam(camMode, true);
+
+  // ---- one menu button in the corner: everything that is not running is behind it ----------------
+  const more = $('more'), moreBtn = $('moreBtn');
+  const TOD_SHORT = { auto: 'авто', day: 'день', sunset: 'закат', dawn: 'рассвет', night: 'ночь' };
+  more.querySelector('[data-act="map"]').hidden = !map;
+  function moreLabels() {
+    const q = $('questBtn').querySelector('.stars');
+    more.querySelector('.v.stars').textContent = q ? '★ ' + q.textContent : '';
+    more.querySelector('.v.cam').textContent = camMode === 'lock' ? 'за спиной' : 'свободная';
+    more.querySelector('.v.sound').textContent = au.muted ? 'выключен' : music.on ? 'звук и музыка' : 'без музыки';
+    more.querySelector('.v.time').textContent = TOD_SHORT[daytime.mode] || daytime.mode;
+  }
+  function showMore(on) {
+    if (on === !more.hidden) return;
+    more.hidden = !on; moreBtn.setAttribute('aria-expanded', String(on));
+    ctx.paused = on;   // the game waits while the menu is open
+    if (on) { moreBtn.classList.remove('new'); moreLabels(); }
+  }
+  moreBtn.addEventListener('click', e => { e.stopPropagation(); showMore(more.hidden); });
+  more.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    e.stopPropagation();
+    const act = b.dataset.act;
+    if (act === 'sound') { $('muteBtn').click(); moreLabels(); return; }
+    if (act === 'time') { toggleTheme(); moreLabels(); return; }
+    if (act === 'cam') { setCam(camMode === 'lock' ? 'free' : 'lock'); moreLabels(); ctx.say(camMode === 'lock' ? 'Камера за спиной собаки' : 'Свободная камера: веди пальцем справа, чтобы повернуть'); return; }
+    showMore(false);
+    if (act === 'map') $('minimap').click();
+    else if (act === 'quests') $('questBtn').click();
+    else if (act === 'dogs') $('menuBtn').click();
+  });
+  // a tap anywhere else closes it
+  addEventListener('pointerdown', e => { if (!more.hidden && !more.contains(e.target) && e.target !== moreBtn && !moreBtn.contains(e.target)) showMore(false); }, true);
+  addEventListener('keydown', e => { if (e.code === 'Escape' && !more.hidden) showMore(false); });
   if (themeLocked === false) setTheme(daytime.mode, true);
   world.update(player.x, player.z, 99);
   rig.resize(innerWidth / innerHeight);
@@ -466,7 +516,7 @@
     setTimeout(() => { for (const id of ['ghint', 'shint']) $(id).classList.add('hide'); }, 25000);
   };
   $('loading').classList.add('hide');
-  if (coarse) setTimeout(() => ctx.say('Стик — куда бежать. Веди пальцем справа — повернуть камеру', 'long'), 2500);
+  if (coarse) setTimeout(() => ctx.say(rig.locked ? 'Стик: вверх — бежать, в стороны — поворот, назад — стоп. Двойной тап — прыжок' : 'Стик — куда бежать. Веди пальцем справа — повернуть камеру. Двойной тап — прыжок', 'long'), 2500);
 
   // ---- where the stick points, in the world ------------------------------------------------
   // The stick is read relative to the camera. While it is held steadily one way, the reference
@@ -632,5 +682,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life, map, speedTrail, get quests() { return quests; }, get wardrobe() { return wardrobe; } }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setCam, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life, map, speedTrail, get quests() { return quests; }, get wardrobe() { return wardrobe; } }, mode.debug ? mode.debug() : {});
 })(window.R);

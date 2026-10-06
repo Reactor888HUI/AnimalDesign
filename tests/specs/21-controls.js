@@ -6,6 +6,7 @@ exports.run = async t => {
   const r = await page.evaluate(() => {
     const R_ = window.__runner, p = R_.player, M = window.R.modes.runner, ctx = R_.ctx, w = R_.world, inp = R_.input, rig = R_.rig, out = {};
     w.dynamic = []; R_.traffic.update = () => {};
+    R_.setCam('free', true);   // these are the free camera's controls
     // one frame as the game runs it, with the stick at (mx, my) and an optional camera drag
     const frame = (mx, my, drag) => {
       inp.dirMode = true; inp.mx = mx; inp.my = my; inp.mag = Math.hypot(mx, my) ? 1 : 0; inp.camDrag = drag || 0; inp.camTurn = 0;
