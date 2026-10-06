@@ -7,7 +7,7 @@
   //    (no snapping after every little turn), so the stick's "up" soon means "where the dog runs" again;
   //  - the player can turn it too (drag / Z, X), as in most games: the finger or mouse to the right
   //    looks right; after that it waits a moment before it comes round again;
-  //  - or (the runner's default) it is locked behind the dog: the picture turns with the dog, softly;
+  //  - or (the runner's default) it is on "the leash": fixed close behind the dog, see leash();
   //  - it sits a little higher and further back, so the street is a steady reference
   //    and the dog stays in the middle of the picture.
   class CameraRig {
@@ -18,13 +18,14 @@
       this.look = new THREE.Vector3();
       this.lookS = null; this.yS = 0; this.yawRate = 0; this.steady = 0;
       this.autoAlign = true;
-      this.locked = false;   // locked behind the dog (the runner's default) or free (turned by hand)
+      this.locked = false;   // on the leash behind the dog (the runner's default) or free (turned by hand)
     }
     snap(p) {
       this.heading = p.heading;
       this.pos.set(p.x + Math.sin(p.heading) * 4.6, 2.6, p.z + Math.cos(p.heading) * 4.6);
       this.cam.position.copy(this.pos);
       this.lookS = null; this.yS = p.y; this.yG = p.ground || 0; this.yawRate = 0;
+      if (this.locked) this.leash(0, p);
     }
     resize(aspect) {
       this.cam.aspect = aspect;
@@ -39,8 +40,31 @@
       this.heading -= rad + hold * 1.6 * dt;
       if (rad || hold) this.steady = -0.8;   // after a manual turn, wait before re-aligning
     }
+    // "the leash" (the runner's default): fixed about a metre behind the collar and a little above the
+    // dog's head, as if tied to it — it turns and moves with the dog at once. Only an instant turn (a wall
+    // jump) is eased over a few frames, and the gallop's bounce is softened a little, so it never jumps.
+    leash(dt, p) {
+      const err = R.angDiff(this.heading, p.heading);
+      this.yawRate = clamp(err * 25, -6, 6);
+      this.heading += this.yawRate * dt;
+      this.yS = damp(this.yS, p.y, 25, dt);
+      // in the air the dog's body tips up into the view: go up and back a little with it
+      this.airK = damp(this.airK || 0, p.air ? 1 : 0, p.air ? 8 : 4, dt);
+      const bx = Math.sin(this.heading), bz = Math.cos(this.heading);
+      const BACK = 0.6 + 0.5 * this.airK, UP = 1.45 + 0.45 * this.airK;   // the collar is ~0.4 m ahead of the centre: ~1 m behind it
+      this.pos.set(p.x + bx * BACK, this.yS + UP, p.z + bz * BACK);
+      this.world.pushOut(this.pos, 0.25);
+      const cam = this.cam;
+      cam.position.copy(this.pos);
+      this.look.set(p.x - bx * 8, this.yS + 0.45, p.z - bz * 8);
+      cam.lookAt(this.look);
+      this.lookS = null; this.yG = p.ground || 0;
+      const fov = this.baseFov + 6;          // a little wider this close: more of the street in view
+      if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
+    }
     update(dt, p, time, input) {
       if (input) { if (!this.locked) this.turn(input.camDrag || 0, input.camTurn || 0, dt); input.camDrag = 0; }
+      if (this.locked) { this.leash(dt, p); return; }
       const sf = clamp(p.speed / C.MAX_SPEED, 0, 1);
       // free: coming round behind the running dog, a soft spring with a small dead zone, never faster than
       // ~24 deg/s (the comfort limit: a faster swing made the player dizzy), and not while the dog is
@@ -49,14 +73,8 @@
       const turning = Math.abs(p.yawRate || 0) > 0.6;
       this.steady = p.speed < 2.5 ? Math.min(this.steady, 0) : Math.min(1.5, this.steady + dt);
       let want = 0;
-      if (this.locked) {
-        // locked: always right behind the dog, as if fixed to it, but on a soft spring (a smooth
-        // start and stop of every turn, at most ~125 deg/s), so it never jerks or wobbles
-        want = clamp(err * 5, -2.2, 2.2);
-        this.yawRate = damp(this.yawRate, want, 9, dt);
-        want = null;
-      } else if (this.autoAlign && this.steady > 0.4 && Math.abs(err) > 0.12) want = Math.sign(err) * Math.min(0.42, (Math.abs(err) - 0.12) * 1.1) * (0.3 + 0.7 * sf) * (turning ? 0 : 1);
-      if (want !== null) this.yawRate = damp(this.yawRate, want, 2, dt);
+      if (this.autoAlign && this.steady > 0.4 && Math.abs(err) > 0.12) want = Math.sign(err) * Math.min(0.42, (Math.abs(err) - 0.12) * 1.1) * (0.3 + 0.7 * sf) * (turning ? 0 : 1);
+      this.yawRate = damp(this.yawRate, want, 2, dt);
       this.heading += this.yawRate * dt;
 
       // rise with the ground the dog stands on (a garage roof) fully, with its jumps only half way

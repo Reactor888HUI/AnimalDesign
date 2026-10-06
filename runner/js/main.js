@@ -361,7 +361,7 @@
   }
   const map = mode.mapMarkers ? new R.DistrictMap(ctx, { markers: () => mode.mapMarkers(), travel: modeName === 'runner' }) : null;
 
-  // ---- the camera: locked behind the dog (the runner's default) or free, turned by hand ----------
+  // ---- the camera: on the leash behind the dog (the runner's default) or free, turned by hand -------
   let camMode = 'lock';
   try { if (localStorage.getItem('runner-cam') === 'free') camMode = 'free'; } catch (e) {}
   function setCam(m, keep) {
@@ -383,7 +383,7 @@
   function moreLabels() {
     const q = $('questBtn').querySelector('.stars');
     more.querySelector('.v.stars').textContent = q ? '★ ' + q.textContent : '';
-    more.querySelector('.v.cam').textContent = camMode === 'lock' ? 'за спиной' : 'свободная';
+    more.querySelector('.v.cam').textContent = camMode === 'lock' ? 'поводок' : 'свободная';
     more.querySelector('.v.sound').textContent = au.muted ? 'выключен' : music.on ? 'звук и музыка' : 'без музыки';
     more.querySelector('.v.time').textContent = TOD_SHORT[daytime.mode] || daytime.mode;
   }
@@ -401,7 +401,7 @@
     const act = b.dataset.act;
     if (act === 'sound') { $('muteBtn').click(); moreLabels(); return; }
     if (act === 'time') { toggleTheme(); moreLabels(); return; }
-    if (act === 'cam') { setCam(camMode === 'lock' ? 'free' : 'lock'); moreLabels(); ctx.say(camMode === 'lock' ? 'Камера за спиной собаки' : 'Свободная камера: веди пальцем справа, чтобы повернуть'); return; }
+    if (act === 'cam') { setCam(camMode === 'lock' ? 'free' : 'lock'); moreLabels(); ctx.say(camMode === 'lock' ? 'Камера на поводке: в метре за собакой' : 'Свободная камера: веди пальцем справа, чтобы повернуть'); return; }
     showMore(false);
     if (act === 'map') $('minimap').click();
     else if (act === 'quests') $('questBtn').click();

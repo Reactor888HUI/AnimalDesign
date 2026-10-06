@@ -31,13 +31,21 @@ exports.run = async t => {
     out.leaves = leaves; out.kicked = kicked; out.below = below;
     // pedestrians
     p.x = 37; p.z = 0; r.world.update(p.x, p.z, 99);
-    const last = new Map(); let stuck = 0, inside = 0, placed = 0;
+    // stuck = hardly any walking at all in 2 s (not "back at the same spot": turning back at a bench
+    // and passing the same point again is fine)
+    const last = new Map(), walked = new Map(); let stuck = 0, inside = 0, placed = 0;
     for (let i = 0; i < 1200; i++) {
       r.world.dynamic.length = 0; L.update(1 / 30, p, ctx.theme());
       placed = Math.max(placed, L.stats().people);
-      if (i % 60 === 59) for (const m of L.people) if (m.cell) {
-        const q = last.get(m); if (q && m.look <= 0 && Math.hypot(q[0] - m.x, q[1] - m.z) < 0.3) stuck++;
+      for (const m of L.people) if (m.cell) {
+        const q = last.get(m);
+        // (standing to look at the dog is not being stuck)
+        if (q) walked.set(m, (walked.get(m) || 0) + (m.look > 0 ? 99 : Math.hypot(q[0] - m.x, q[1] - m.z)));
         last.set(m, [m.x, m.z]);
+      }
+      if (i % 60 === 59) for (const m of L.people) if (m.cell) {
+        if (walked.has(m) && walked.get(m) < 0.3) stuck++;
+        walked.set(m, 0);
         if (r.world.obstaclesNear(m.x, m.z, 0.1).some(o => o.kind !== 'npc' && o.kind !== 'traffic' && o.h > 0.4 && Math.abs(m.x - o.x) < o.hx && Math.abs(m.z - o.z) < o.hz)) inside++;
       }
     }

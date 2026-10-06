@@ -1,6 +1,6 @@
-// The runner's default: the camera locked behind the dog and one-thumb controls. The stick steers like
+// The runner's default: the camera "on the leash" (fixed ~1 m behind the collar) and one-thumb controls. The stick steers like
 // a handlebar (sideways = turn, up = pace, back = stop), the pace is kept when the thumb lets go, a double
-// tap jumps; the camera stays right behind the dog and turns smoothly (no jerks); a bot steering this
+// tap jumps; the camera stays fixed behind the dog and turns with it (no lag, no jumps); a bot steering this
 // way catches cats; and the one menu button in the corner holds the map, quests, camera, sound and time.
 exports.run = async t => {
   const page = await t.open('runner/index.html?noworker&nopost#runner');
@@ -12,13 +12,17 @@ exports.run = async t => {
     R_.world.update(p.x, p.z, 99); R_.rig.snap(p);
     window.__step = n => {
       const M = window.R.modes.runner, ctx = R_.ctx, inp = R_.input, rig = R_.rig, A = window.R.angDiff;
-      let maxRate = 0, maxAcc = 0, last = rig.heading, lastRate = 0;
+      let maxGap = 0, maxJump = 0, minD = 99, maxD = 0;
+      const prev = rig.cam.position.clone();
       for (let k = 0; k < n; k++) {
         inp._poll(); R_.worldDir(); M.update(1 / 30, ctx); R_.world.update(p.x, p.z, 2); rig.update(1 / 30, p, 0, inp);
-        const rate = A(last, rig.heading) * 30; last = rig.heading;
-        maxRate = Math.max(maxRate, Math.abs(rate)); if (k > 0) maxAcc = Math.max(maxAcc, Math.abs(rate - lastRate) * 30); lastRate = rate;
+        maxGap = Math.max(maxGap, Math.abs(A(rig.heading, p.heading)));
+        // how far the camera moved this frame beyond what the dog moved: a jump of the picture
+        maxJump = Math.max(maxJump, rig.cam.position.distanceTo(prev) - p.speed / 30); prev.copy(rig.cam.position);
+        const d = Math.hypot(rig.cam.position.x - p.x, rig.cam.position.z - p.z); minD = Math.min(minD, d); maxD = Math.max(maxD, d);
       }
-      return { speed: +p.speed.toFixed(1), heading: +p.heading.toFixed(2), gap: +Math.abs(A(rig.heading, p.heading)).toFixed(2), air: p.air || p.y > 0.3, maxRate: Math.round(maxRate * 57.3), maxAcc: Math.round(maxAcc * 57.3) };
+      return { speed: +p.speed.toFixed(1), heading: +p.heading.toFixed(2), gap: +Math.abs(A(rig.heading, p.heading)).toFixed(2), air: p.air || p.y > 0.3,
+        maxGap: +maxGap.toFixed(2), maxJump: +maxJump.toFixed(2), minD: +minD.toFixed(2), maxD: +maxD.toFixed(2), camUp: +(rig.cam.position.y - p.y).toFixed(2) };
     };
     const b = document.getElementById('stickZone').getBoundingClientRect();
     return { x: b.left + b.width * 0.4, y: b.top + b.height * 0.6, locked: R_.rig.locked && R_.input.camLock };
@@ -45,11 +49,12 @@ exports.run = async t => {
   await m.down(); await m.move(pt.x, pt.y + 50);
   const stop = await step(70);
   await m.up();
-  t.ok(pt.locked, 'the runner starts with the camera locked behind the dog', pt);
+  t.ok(pt.locked, 'the runner starts with the camera on the leash', pt);
   t.ok(run.speed > 14 && Math.abs(run.heading) < 0.05, 'stick up: a straight gallop', run);
   t.ok(turn.heading < -0.6, 'stick to the right: the dog turns right', turn);
-  t.ok(after.gap < 0.15, 'the camera is right behind the dog again', after);
-  t.ok(turn.maxRate <= 130 && turn.maxAcc <= 700, 'the camera turns smoothly (no jerks, at most ~125 deg/s)', turn);
+  t.ok(turn.maxGap < 0.12 && after.gap < 0.02, 'on the leash: the camera turns with the dog at once (no lag)', { turn, after });
+  t.ok(run.minD > 0.4 && run.maxD < 0.8 && run.camUp > 1.2 && run.camUp < 1.7, 'about a metre behind the collar, a little above the head', run);
+  t.ok(Math.max(run.maxJump, turn.maxJump, after.maxJump) < 0.15, 'the picture never jumps', { run: run.maxJump, turn: turn.maxJump, after: after.maxJump });
   t.ok(cruise.speed > run.speed * 0.85, 'thumb off the stick: the dog keeps running', { before: run.speed, after: cruise.speed });
   t.ok(jump.air, 'a double tap jumps', jump);
   t.ok(stop.speed < 1, 'stick back: the dog stops', stop);
@@ -58,7 +63,7 @@ exports.run = async t => {
   const chase = await page.evaluate(() => {
     const r = window.__runner, M = window.R.modes.runner, ctx = r.ctx, p = r.player, c = r.cat, w = r.world, inp = r.input, A = window.R.angDiff;
     inp.poll = function () { this.dirMode = false; const want = Math.atan2(-(c.x - p.x), -(c.z - p.z)); this.steer = Math.max(-1, Math.min(1, -A(p.heading, want) * 2)); this.throttle = 1; };
-    let lastH = r.rig.heading, camMax = 0;
+    let gapMax = 0;
     const s0 = +document.getElementById('score').textContent, dt = 1 / 30;
     for (let i = 0; i < 1800; i++) {
       inp.poll();
@@ -66,11 +71,11 @@ exports.run = async t => {
       const fx = -Math.sin(p.heading), fz = -Math.cos(p.heading);
       const ob = w.obstaclesNear(p.x + fx * 2.2, p.z + fz * 2.2, 0.5).find(o => o.h < 1.2);
       if (ob && !p.air) { inp._jumpEdge = true; inp.jumpHeld = true; } else if (p.y > 0.9) inp.jumpHeld = false;
-      camMax = Math.max(camMax, Math.abs(A(lastH, r.rig.heading)) / dt); lastH = r.rig.heading;
+      gapMax = Math.max(gapMax, Math.abs(A(r.rig.heading, p.heading)));
     }
-    return { catches: +document.getElementById('score').textContent - s0, camMaxDegS: Math.round(camMax * 57.3) };
+    return { catches: +document.getElementById('score').textContent - s0, gapMaxDeg: Math.round(gapMax * 57.3) };
   });
-  t.ok(chase.catches >= 1 && chase.camMaxDegS <= 130, 'steering like a handlebar catches cats; the camera stays within ~125 deg/s', chase);
+  t.ok(chase.catches >= 1, 'steering like a handlebar catches cats', chase);
 
   // the menu in the corner
   const menu = await page.evaluate(() => {
