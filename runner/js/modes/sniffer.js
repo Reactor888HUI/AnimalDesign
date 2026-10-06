@@ -667,6 +667,14 @@
       el.digBtn.classList.toggle('hot', !!(cc && cc.state === 'track' && cc.def.find === 'dig' && Math.hypot(cc.trail.end.x - player.x, cc.trail.end.z - player.z) < 2.4));
     },
 
+    // the map: the client to visit (or bring the find back to), the clue to sniff
+    mapMarkers() {
+      const c = S && S.c, out = [];
+      if (!c) return out;
+      if (c.npc && (c.state === 'meet' || c.state === 'back')) out.push({ x: c.npc.root.position.x, z: c.npc.root.position.z, color: '#45d483', label: 'хозяин' });
+      if (c.clue && c.state === 'clue') out.push({ x: c.clue.position.x, z: c.clue.position.z, color: '#ffd36a', label: 'улика' });
+      return out;
+    },
     // music: quiet while walking about, a little more on the trail, a chase is tense
     tension() { const c = S && S.c; return !c ? 0.15 : c.state === 'chase' ? 0.85 : c.state === 'track' ? 0.32 : 0.15; },
     debug() { return { sniff: () => S }; },

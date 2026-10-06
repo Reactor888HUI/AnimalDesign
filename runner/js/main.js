@@ -299,6 +299,8 @@
 
   let level = coarse ? 1 : 2;
   const player = ctx.player = mode.start(ctx);
+  // the district map (not in the guard's yard: one yard, nothing to find)
+  const map = mode.mapMarkers ? new R.DistrictMap(ctx, { markers: () => mode.mapMarkers(), travel: modeName === 'runner' }) : null;
   if (themeLocked === false) setTheme(daytime.mode, true);
   world.update(player.x, player.z, 99);
   rig.resize(innerWidth / innerHeight);
@@ -431,15 +433,19 @@
     applyLive(T, heavyT <= 0);
     if (heavyT <= 0) heavyT = 0.35;
 
-    input.poll();
-    worldDir();
-    traffic.update(dt, player);
-    life.update(dt, player, T);
-    mode.update(dt, ctx);
-    const [ax, az] = ahead();
-    world.update(player.x, player.z, 1, ax, az);
-    fx.update(dt);
-    rig.update(dt, player, now / 1000, input);
+    // the big map open: the game stands still (the picture behind it keeps drawing)
+    if (!ctx.paused) {
+      input.poll();
+      worldDir();
+      traffic.update(dt, player);
+      life.update(dt, player, T);
+      mode.update(dt, ctx);
+      const [ax, az] = ahead();
+      world.update(player.x, player.z, 1, ax, az);
+      fx.update(dt);
+      rig.update(dt, player, now / 1000, input);
+    }
+    if (map) map.update(dt);
     camera.updateMatrixWorld();
     { const o = T.sunOffset, D = R.dogLight; if (D) { D.uRimDir.value.set(o[0], o[1], o[2]).normalize().transformDirection(camera.matrixWorldInverse); D.uRimCol.value.setHex(T.sunColor); D.uRimK.value = T.rimK; } }
     pShadow.update(player, T);
@@ -525,5 +531,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life, map }, mode.debug ? mode.debug() : {});
 })(window.R);

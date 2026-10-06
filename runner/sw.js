@@ -19,6 +19,7 @@ const FILES = [
   'js/fx.js',
   'js/input.js',
   'js/main.js',
+  'js/map.js',
   'js/materials.js',
   'js/models.js',
   'js/modes/guard.js',

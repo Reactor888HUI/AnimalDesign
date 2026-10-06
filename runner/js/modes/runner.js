@@ -363,6 +363,8 @@
       el.cdist.textContent = Math.round(cat.dist) + ' м';
     },
 
+    // the map: where the cat is
+    mapMarkers() { return cat ? [{ x: cat.x, z: cat.z, color: '#ff4d6d', label: 'кот' }] : []; },
     // how tense the game is now (0..1), for the music: the cat close, a long chain going
     tension() { return R.clamp((cat.dist < 32 ? 0.35 + 0.6 * (1 - cat.dist / 32) : 0.1) + (chain ? 0.12 : 0), 0, 1); },
     debug() { return { player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }), chain: () => chain }; },

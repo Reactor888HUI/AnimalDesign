@@ -47,6 +47,18 @@
 </div>
 
 <div id="toast" class="ui"></div>
+<button id="minimap" class="ui panel" type="button" aria-label="Карта района (K)" hidden><canvas width="264" height="264"></canvas></button>
+<div id="bigmap" hidden>
+  <div class="frame panel">
+    <div class="head"><b>Карта района</b><span class="travel">нажми значок — и ты там</span><span class="place"></span><button class="close" type="button" aria-label="Закрыть карту">✕</button></div>
+    <canvas class="map"></canvas>
+    <div class="legend">
+      <span><i style="background:#ffd36a"></i>собака</span><span class="leg-cat"><i style="background:#ff4d6d"></i>кот</span>
+      <span><canvas data-icon="garages"></canvas>гаражи с трамплинами</span><span><canvas data-icon="parkour"></canvas>паркур-площадка</span>
+      <span><canvas data-icon="fountain"></canvas>площадь с фонтаном</span><span><i style="background:#5f9a4c"></i>парк</span><span><i style="background:#6c6159"></i>дома</span>
+    </div>
+  </div>
+</div>
 <div id="trick" class="ui panel r-only" hidden><span id="trickNames"></span><b id="trickMult"></b><i id="trickTime"></i></div>
 
 <div id="ghud" class="ui g-only">
@@ -136,7 +148,7 @@
   <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
 </button>
 
-<div id="hint" class="ui panel r-only"><kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> день/ночь</div>
+<div id="hint" class="ui panel r-only"><kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта</div>
 
 <div id="touchUI" hidden>
   <div id="stickHint">куда бежать</div>
@@ -179,6 +191,7 @@
 <script src="js/chickens.js"></script>
 <script src="js/traffic.js"></script>
 <script src="js/street.js"></script>
+<script src="js/map.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/music.js"></script>
 <script src="js/camera.js"></script>
