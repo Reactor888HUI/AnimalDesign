@@ -167,7 +167,7 @@
             float ts = dot(uSunDir, Rr);
             if (ts > 0.0) {
               float es = dot(uSunDir, S) / ts, eu = dot(uSunDir, U) / ts;
-              add += uSunCol * exp(-es * es / (0.0015 * sharp) - eu * eu / (0.05 * sharp)) * grain * w * uGlare * 1.6;
+              add += uSunCol * exp(-es * es / (0.012 * sharp) - eu * eu / (0.08 * sharp)) * grain * w * uGlare * 0.9;   // a soft, wide path
             }
             gl_FragColor.rgb = gl_FragColor.rgb * (1.0 - 0.3 * w) + add;
           }

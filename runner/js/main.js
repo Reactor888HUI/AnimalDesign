@@ -82,14 +82,47 @@
     skyline.push({ body, win });
   }
 
+  // ---- dust in the air: tiny motes drifting round the camera, they catch the low sun ----------
+  const motes = (() => {
+    const N = 260, pos = new Float32Array(N * 3), rnd = R.rng(77);
+    for (let i = 0; i < N; i++) { pos[i * 3] = (rnd() - 0.5) * 36; pos[i * 3 + 1] = rnd() * 7; pos[i * 3 + 2] = (rnd() - 0.5) * 36; }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const m = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffe2b0, map: R.glowTexture(), size: 4, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));   // a few pixels at any distance (no big squares right at the lens)
+    m.frustumCulled = false; m.renderOrder = 5;
+    scene.add(m);
+    return m;
+  })();
+
   // ---- post-processing: bloom (lamps, windows, sparks glow), colour grade and vignette ---------
   const GRADE = {
-    uniforms: { tDiffuse: { value: null }, uSat: { value: 1 }, uVib: { value: 0 }, uContrast: { value: 1 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uShadow: { value: new THREE.Vector3(1, 1, 1) }, uHigh: { value: new THREE.Vector3(1, 1, 1) }, uVig: { value: 0.2 } },
+    uniforms: { tDiffuse: { value: null }, uSat: { value: 1 }, uVib: { value: 0 }, uContrast: { value: 1 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uShadow: { value: new THREE.Vector3(1, 1, 1) }, uHigh: { value: new THREE.Vector3(1, 1, 1) }, uVig: { value: 0.2 },
+      // god rays: the sun's place on the screen, strength, colour, number of samples, aspect
+      uSunUV: { value: new THREE.Vector2(0.5, 0.8) }, uRays: { value: 0 }, uRayCol: { value: new THREE.Color(1, 0.8, 0.6) }, uRayN: { value: 20 }, uAspect: { value: 1 }, uRayT: { value: 0.4 } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `
       uniform sampler2D tDiffuse; uniform float uSat, uVib, uContrast, uVig; uniform vec3 uTint, uShadow, uHigh; varying vec2 vUv;
+      uniform vec2 uSunUV; uniform float uRays, uRayN, uAspect, uRayT; uniform vec3 uRayCol;
       void main() {
         vec3 c = texture2D(tDiffuse, vUv).rgb;
+        // god rays: march from this pixel towards the sun and gather the bright sky on the way; houses,
+        // trees and the far skyline in between are dark, so they cut the light into beams
+        if (uRays > 0.003) {
+          vec2 dir = uSunUV - vUv;
+          float dist = length(dir * vec2(uAspect, 1.0));
+          vec2 stepv = dir / uRayN * 0.85;
+          float jit = fract(sin(dot(vUv, vec2(12.9898, 78.233))) * 43758.5453);
+          vec2 uv = vUv + stepv * jit;
+          float acc = 0.0, decay = 1.0;
+          for (int i = 0; i < 24; i++) {
+            if (float(i) >= uRayN) break;
+            uv += stepv;
+            vec3 sm = texture2D(tDiffuse, clamp(uv, 0.001, 0.999)).rgb;
+            acc += max(0.0, dot(sm, vec3(0.3, 0.59, 0.11)) - uRayT) * decay;   // only what is brighter than the sky round it
+            decay *= 0.965;
+          }
+          acc /= uRayN;
+          c += min(vec3(0.6), uRayCol * acc * uRays * 8.0 * (1.0 - smoothstep(0.1, 1.5, dist)));
+        }
         float l = dot(c, vec3(0.299, 0.587, 0.114));
         // vibrance: dull colours gain more saturation than already bright ones (no garish skin/sky)
         float s = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
@@ -189,6 +222,7 @@
     }
   }
   const skylineCol = new THREE.Color(), skyGlow = new THREE.Color(), lampDir = new THREE.Vector3();
+  const rayV = new THREE.Vector3(), rayD = new THREE.Vector3(), rayP = new THREE.Vector3();
   const TOD_NAMES = { auto: 'авто (день, закат, ночь, рассвет)', day: 'день', sunset: 'закат', night: 'ночь' };
   function showMode() {
     const b = $('themeBtn');
@@ -449,6 +483,30 @@
     camera.updateMatrixWorld();
     { const o = T.sunOffset, D = R.dogLight; if (D) { D.uRimDir.value.set(o[0], o[1], o[2]).normalize().transformDirection(camera.matrixWorldInverse); D.uRimCol.value.setHex(T.sunColor); D.uRimK.value = T.rimK; } }
     pShadow.update(player, T);
+    // god rays: where the sun is on the screen (it may be off the screen: the beams still reach in),
+    // none when it is behind the camera; dust motes follow the camera and drift
+    if (gradePass) {
+      const u = gradePass.uniforms, o = T.sunOffset;
+      rayV.set(o[0], o[1], o[2]).normalize();
+      const facing = rayV.dot(camera.getWorldDirection(rayD));
+      rayP.copy(camera.position).addScaledVector(rayV, 200).project(camera);
+      u.uSunUV.value.set(rayP.x * 0.5 + 0.5, rayP.y * 0.5 + 0.5);
+      // phones: only at sunset and dawn (the faint daytime rays are not worth the samples there)
+      u.uRays.value = (level >= 2 || (T.rays || 0) >= 0.3 ? (T.rays || 0) : 0) * R.clamp((facing + 0.15) / 0.5, 0, 1);
+      u.uRayT.value = T.rayT || 0.5;
+      u.uRayCol.value.setHex(T.sunGlowCol);
+      u.uRayN.value = level >= 2 ? 22 : 12;
+      u.uAspect.value = camera.aspect;
+    }
+    motes.position.set(Math.round(camera.position.x / 36) * 36, 0, Math.round(camera.position.z / 36) * 36);
+    motes.material.opacity = 0.75 * (T.rays || 0);
+    motes.visible = (T.rays || 0) > 0.05;
+    if (motes.visible) {
+      const a = motes.geometry.attributes.position, t = now / 1000;
+      for (let i = 0; i < a.count; i += 7) a.setY(i, (a.getY(i) + dt * 0.08) % 7);
+      motes.rotation.y = Math.sin(t * 0.05) * 0.2;
+      a.needsUpdate = true;
+    }
 
     const gait = R.clamp(player.vel / C.MAX_SPEED, 0, 1);
     if (!player.air && player.vel > 0.8) {
