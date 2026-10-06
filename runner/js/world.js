@@ -276,14 +276,18 @@
     const plan = L.type === 'city' ? ringPlan(rnd) : null;
     const arcs = [];   // bone arcs over the jumps (garages), picked up by the runner
     const rings = [];  // hoops in the air to fly through: { x, y, z, r, axis } (axis = direction of flight)
+    const wires = [];  // overhead wires: { a, b, sag }
     const inGap = (side, t) => plan && plan.alley && ((plan.alley === 'z' && side.nz) || (plan.alley === 'x' && side.nx)) && Math.abs(t) < AW + 1.2;
 
     // lamps and trees along the curb
+    const poles = [];  // [side][0 = t -12, 1 = t +12]: the street lamps' poles, for the wires
     SIDES.forEach((side, i) => {
+      poles[i] = [];
       for (const t of [-12, 12]) {
         if (inGap(side, t)) continue;
         const [x, z] = pt(side, t, PADH - 0.5);
         lamp(b, obs, lamps, ox + x, oz + z, -side.nx, -side.nz);
+        poles[i][t < 0 ? 0 : 1] = [ox + x, oz + z];
       }
       for (let t = -HB + 4; t < HB - 3; t += 8 + rnd() * 4) {
         if (Math.abs(Math.abs(t) - 12) < 3 || rnd() < 0.3 || inGap(side, t)) continue;
@@ -347,8 +351,27 @@
     else if (L.type === 'square') square();
     else if (L.type === 'garages') garages();
     else plaza();
+    // wires from pole to pole along the block and round its corners; birds perch on them
+    {
+      const WY = 5.05, wire = (p, q, sag) => {
+        b.wire([0.13, 0.13, 0.15], [p[0], WY, p[1]], [q[0], WY, q[1]], sag, 0.022);
+        wires.push({ a: [p[0], WY, p[1]], b: [q[0], WY, q[1]], sag });
+      };
+      // the sides go round the block: side i's +12 end meets side (i + 1)'s ... end at a corner
+      for (let i = 0; i < 4; i++) {
+        const P0 = poles[i][0], P1 = poles[i][1];
+        if (P0 && P1) wire(P0, P1, 0.7);
+      }
+      const ends = i => [poles[i][0], poles[i][1]].filter(Boolean);
+      for (let i = 0; i < 4; i++) {
+        const j = (i + 1) % 4;
+        let best = null, bd = 1e9;
+        for (const p of ends(i)) for (const q of ends(j)) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d < bd) { bd = d; best = [p, q]; } }
+        if (best && bd < 30) wire(best[0], best[1], 0.9);
+      }
+    }
     groundAO(b, obs);
-    return { b, obs, lamps, arcs, rings };
+    return { b, obs, lamps, arcs, rings, wires };
 
     function cityBlock() {
       blockCore(b, obs, ox, oz, plan.alley);
@@ -818,7 +841,7 @@
     }
     add(k, ci, cj, near, L, r, group) {
       this.scene.add(group);
-      this.cells.set(k, { ci, cj, near, type: L.type, group, obstacles: r.obs, lamps: r.lamps, arcs: r.arcs || [], rings: r.rings || [] });
+      this.cells.set(k, { ci, cj, near, type: L.type, group, obstacles: r.obs, lamps: r.lamps, arcs: r.arcs || [], rings: r.rings || [], wires: r.wires || [] });
     }
     drop(k, c) {
       this.scene.remove(c.group);

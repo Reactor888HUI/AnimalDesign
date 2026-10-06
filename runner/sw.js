@@ -27,6 +27,7 @@ const FILES = [
   'js/music.js',
   'js/player.js',
   'js/pwa.js',
+  'js/street.js',
   'js/traffic.js',
   'js/util.js',
   'js/whippet.js',

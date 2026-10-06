@@ -11,6 +11,6 @@ self.onmessage = e => {
     const r = m.near ? G.nearCell(m.ci, m.cj, R.rng(G.seedOf(m.ci, m.cj)), L) : G.farCell(m.ci, m.cj, R.rng(G.seedOf(m.ci, m.cj)), L);
     const out = r.b.toArrays();
     self.postMessage({ type: 'cell', id: m.id, cellType: L.type,
-      r: { obs: r.obs, lamps: r.lamps || [], arcs: r.arcs || [], rings: r.rings || [] }, pieces: out.pieces }, out.transfer);
+      r: { obs: r.obs, lamps: r.lamps || [], arcs: r.arcs || [], rings: r.rings || [], wires: r.wires || [] }, pieces: out.pieces }, out.transfer);
   }
 };

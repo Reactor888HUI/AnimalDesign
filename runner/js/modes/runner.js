@@ -171,7 +171,7 @@
   // ground) and the multiplier grows; the chain pays out in bones when it ends; a crash loses it --
   const TRICKS = {
     flip: ['Сальто', 3], wall: ['От стены', 4], slide: ['Подкат', 1], bar: ['Под шлагбаумом', 4],
-    launch: ['Трамплин', 2], ring: ['Кольцо', 2], long: ['Дальний прыжок', 3],
+    launch: ['Трамплин', 2], ring: ['Кольцо', 2], long: ['Дальний прыжок', 3], pigeons: ['Голуби', 1],
   };
   const CHAIN_T = 2.6;
   let chain = null;
@@ -292,6 +292,8 @@
         score: $('score'), combo: $('combo'), banner: $('banner'), flash: $('flash'),
         best: $('best'), arrow: $('arrow'), cdist: $('cdist'),
       };
+      // scattering a flock of pigeons counts as a (small) trick
+      if (ctx.life) ctx.life.onScare = () => player.tricks.push('pigeons');
       try { best = +localStorage.getItem('runner-best') || 0; } catch (e) {}
       el.best.textContent = best; el.jumpBest.textContent = jumpBest.toFixed(1); el.jumpLast.textContent = "0";
       return player;

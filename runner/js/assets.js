@@ -166,6 +166,19 @@
       cg.computeVertexNormals();
       this.addPart('solid', cg);
     }); }
+    // a thin wire from a to b (three-sided, low-poly), sagging by `sag` in the middle
+    wire(col, a, b, sag, r, segs) { this._op(() => {
+      const n = segs || 6, A = new THREE.Vector3(), B = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion();
+      const at = (t, v) => v.set(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t), a[2] + (b[2] - a[2]) * t);
+      for (let i = 0; i < n; i++) {
+        at(i / n, A); at((i + 1) / n, B);
+        const d = B.clone().sub(A), len = d.length();
+        const g = new THREE.CylinderGeometry(r || 0.025, r || 0.025, len * 1.02, 3, 1, true);
+        q.setFromUnitVectors(up, d.normalize());
+        g.applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(q)); g.translate((A.x + B.x) / 2, (A.y + B.y) / 2, (A.z + B.z) / 2);
+        this.addPart('solid', this._color(g, col));
+      }
+    }); }
     poolDecal(x, z, size) { this._op(() => {
       const g = new THREE.PlaneGeometry(size, size); g.rotateX(-Math.PI / 2); g.translate(x, 0.07, z);
       this.pool.push(g);

@@ -270,6 +270,8 @@
   world.startWorker();
   const fx = new R.FX(scene);
   const traffic = new R.Traffic(scene, world, 9);
+  const life = new R.StreetLife(scene, world, au);
+  if (modeName === 'runner') life.addPeople(coarse ? 3 : 5);
   const rig = new R.CameraRig(camera, world);
 
   const blobs = [];
@@ -277,7 +279,7 @@
   const toast = $('toast');
   let toastT = 0;
   const ctx = {
-    scene, camera, renderer, world, fx, traffic, rig, input, au, $, coarse,
+    scene, camera, renderer, world, fx, traffic, rig, input, au, $, coarse, get life() { return life; },
     theme: () => daytime.live || daytime.update(0),
     setTheme, daytime, lockTheme(name) { setTheme(name, true); themeLocked = true; },
     say(text, kind) {
@@ -432,6 +434,7 @@
     input.poll();
     worldDir();
     traffic.update(dt, player);
+    life.update(dt, player, T);
     mode.update(dt, ctx);
     const [ax, az] = ahead();
     world.update(player.x, player.z, 1, ax, az);
@@ -522,5 +525,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life }, mode.debug ? mode.debug() : {});
 })(window.R);

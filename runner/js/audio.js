@@ -184,6 +184,8 @@
     tone('square', [[0, 660], [0.18, 660]], 0.08, 0.18, 0, 1500, 0.8);
     tone('square', [[0, 440], [0.3, 380]], 0.08, 0.3, 0.2, 1200, 0.8);
   };
+  // a flock taking off: a quick ripple of wing claps
+  A.flutter = v => { if (!ok() || v <= 0.02) return; for (let i = 0; i < 7; i++) noise(900 + Math.random() * 900, 0.9, 0.05 * v, 0.06, i * 0.045 + Math.random() * 0.03); };
   A.alert = () => { if (ok()) tone('triangle', [[0, 520], [0.1, 900]], 0.08, 0.12); };
 
   // continuous sounds follow the game state
