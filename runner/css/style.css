@@ -143,6 +143,8 @@ body.is-touch #hint { display: none; }
 
 /* touch controls */
 #touchUI { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+/* tappable HUD buttons sit above the jump zone, or a tap on them would jump instead */
+button.ui { z-index: 32; }
 #touchUI[hidden] { display: none; }
 #stickZone { position: absolute; left: 0; bottom: 0; width: 50%; height: 62%; pointer-events: auto; touch-action: none; }
 #jumpZone { position: absolute; right: 0; bottom: 0; width: 50%; height: 62%; pointer-events: auto; touch-action: none; }
@@ -306,6 +308,8 @@ body.is-touch #shint { display: none; }
   border: 2px solid var(--line); touch-action: none;
 }
 .act.on { transform: scale(.92); }
+#boostBtn { right: calc(156px + env(safe-area-inset-right, 0px)); bottom: calc(132px + env(safe-area-inset-bottom, 0px)); width: 68px; height: 68px; border-color: #ff8a2a; background: conic-gradient(rgba(255, 138, 42, .55) calc(var(--en, 1) * 360deg), var(--panel) 0); }
+#boostBtn.on { box-shadow: 0 0 0 3px rgba(255, 138, 42, .5), 0 0 20px rgba(255, 179, 71, .6); }
 #slideBtn { right: calc(150px + env(safe-area-inset-right, 0px)); bottom: calc(40px + env(safe-area-inset-bottom, 0px)); border-color: #4da3ff; }
 #biteBtn { right: calc(146px + env(safe-area-inset-right, 0px)); bottom: calc(34px + env(safe-area-inset-bottom, 0px)); width: 88px; height: 88px; font-size: 13px; border-color: #ff4d4d; }
 #biteBtn.hot { box-shadow: 0 0 0 3px rgba(255, 77, 77, .45), 0 0 22px rgba(255, 77, 77, .55); }
@@ -398,3 +402,9 @@ body:not(.mode-runner) #bigmap .leg-cat { display: none; }
 .row.boost .bar i { background: linear-gradient(90deg, #ff8a2a, #ffd36a); transform-origin: left; }
 .row.boost.on label { color: #ffb347; }
 .row.boost.on .bar i { box-shadow: 0 0 8px #ffb347; }
+
+#quests .records { display: grid; gap: 2px; }
+#quests .records div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
+#quests .records span { color: var(--ink-dim); }
+#quests .records b { color: var(--ink); white-space: nowrap; }
+@media (max-width: 420px) { #quests .head [data-tab] { padding: 7px 9px; font-size: 11px; } }

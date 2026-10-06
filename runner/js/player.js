@@ -1,7 +1,7 @@
 (function (R) {
   const C = R.C, clamp = R.clamp, damp = R.damp;
   const RADIUS = C.DOG_RADIUS;
-  const STILL = { throttle: 0, steer: 0, jumpHeld: false, consumeJump: () => false, consumeSlide: () => false };
+  const STILL = { throttle: 0, steer: 0, jumpHeld: false, consumeJump: () => false, consumeSlide: () => false, consumeBoost: () => false };
   const SLIDE_T = 0.75;
 
   class Player {
@@ -111,9 +111,13 @@
       // against the run, a crash or a sore paw, or no energy left switch it off
       const SUPER = 1.4;
       if (this.canSuper) {
-        const full = this.thrS > 0.94 && this.speed > this.maxSpeed * 0.93 && this.limp === 0 && this.crash < 0 && this.slide < 0;
+        const full = this.thrS > (this.superOn ? 0.7 : 0.94) && this.speed > this.maxSpeed * (this.superOn ? 0.55 : 0.93) && this.limp === 0 && this.crash < 0 && this.slide < 0;
         this.fullT = full && !this.air ? this.fullT + dt : (full ? this.fullT : 0);
-        if (!this.superOn && this.fullT > 0.9 && this.energy > 0.2) { this.superOn = true; this.emit('super', 1); }
+        // the boost button: at once, from a fast run (not only after holding full gallop)
+        const asked = input.consumeBoost && input.consumeBoost();
+        if (!this.superOn && this.energy > 0.2 && this.limp === 0 && this.crash < 0 && (this.fullT > 0.9 || (asked && this.speed > this.maxSpeed * 0.6))) { this.superOn = true; this.fullT = 1; this.emit('super', 1); }
+        else if (asked && this.superOn) { this.superOn = false; this.emit('super', 0); }
+        else if (asked && this.energy <= 0.2) this.emit('noboost', 1);
         if (this.superOn && (!full && !this.air || this.energy <= 0 || this.limp > 0 || this.crash >= 0)) { this.superOn = false; this.emit('super', 0); }
         this.energy = clamp(this.energy + (this.superOn ? -dt / 7 : dt / 10), 0, 1);
       }

@@ -295,7 +295,7 @@
       try { jumpBest = +localStorage.getItem('runner-jump-best') || 0; } catch (e) {}
       el = {
         bonesN: $('bonesN'), jumpLast: $('jumpLast'), jumpBest: $('jumpBest'), trick: $('trick'), trickNames: $('trickNames'), trickMult: $('trickMult'), trickTime: $('trickTime'),
-        speedFill: $('speedFill'), speedNum: $('speedNum'), chaseFill: $('chaseFill'), boostFill: $('boostFill'), boostRow: $('boostRow'),
+        speedFill: $('speedFill'), speedNum: $('speedNum'), chaseFill: $('chaseFill'), boostFill: $('boostFill'), boostRow: $('boostRow'), boostBtn: $('boostBtn'),
         score: $('score'), combo: $('combo'), banner: $('banner'), flash: $('flash'),
         best: $('best'), arrow: $('arrow'), cdist: $('cdist'),
       };
@@ -308,6 +308,7 @@
 
     update(dt, ctx) {
       const { world, fx, au, input } = ctx;
+      ctxQ = ctx.quests || null;
       const T = ctx.theme();
       player.update(dt, input, world, fx, T);
       cat.update(dt, player, world);
@@ -350,7 +351,6 @@
       if (near && !wasNear && barkCd <= 0) { if (ctx.wardrobe) ctx.wardrobe.bark(); else au.bark(); barkCd = 4; quest('bark'); }
       wasNear = near;
 
-      ctxQ = ctx.quests || null;
       if (ctxQ) {
         if (bonesN > lastBones) quest('bones', bonesN - lastBones);
         if (player.vel > 11 && !player.air) gallopM += player.vel * dt;
@@ -364,6 +364,7 @@
         }
       }
       lastBones = bonesN;
+      if (ctxQ && player.vel > 1) ctxQ.stat('topSpeed', player.vel, true);
       updateBones(dt, ctx);
       updateRings(dt, ctx);
       trackJump(ctx);
@@ -376,6 +377,7 @@
       el.speedFill.style.transform = 'scaleX(' + sf.toFixed(3) + ')';
       el.boostFill.style.transform = 'scaleX(' + player.energy.toFixed(3) + ')';
       el.boostRow.classList.toggle('on', player.superOn);
+      if (el.boostBtn) { el.boostBtn.style.setProperty('--en', player.energy.toFixed(2)); el.boostBtn.classList.toggle('on', player.superOn); }
       el.speedNum.textContent = Math.round(v * 2.4);
       el.chaseFill.style.transform = 'scaleX(' + R.clamp(1 - cat.dist / C.CAT_RANGE, 0, 1).toFixed(3) + ')';
       bannerA = R.clamp(bannerA + (cat.dist < 14 ? 1 : -1) * dt * 3, 0, 1);

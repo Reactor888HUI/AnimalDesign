@@ -35,6 +35,21 @@ exports.run = async t => {
     // the arrow trick is in the chain
     const ch = M.debug().chain(); out.chain = ch ? ch.names : [];
     out.sounds = ['setWind', 'boost', 'trick', 'fanfare'].every(k => typeof ctx.au[k] === 'function');
+    // the boost button: at once from a fast run; again: off
+    Object.assign(p, { x: 37.5, z: 60, y: 0, heading: 0, vx: 0, vz: -12, speed: 12, superOn: false, superK: 0, fullT: 0, energy: 1, yawRate: 0, steerS: 0 }); w.update(p.x, p.z, 99);
+    inp._boostEdge = true; step(2, () => { inp.throttle = 0.8; });
+    out.btnOn = p.superOn;
+    inp._boostEdge = true; step(2, () => { inp.throttle = 0.8; });
+    out.btnOff = !p.superOn;
+    // the records tab lists what was done
+    ctx.quests.saveStats();
+    document.getElementById('questBtn').click(); document.querySelector('[data-tab="records"]').click();
+    out.records = [...document.querySelectorAll('#quests .records div')].map(d => d.textContent);
+    document.querySelector('#quests .close').click();
+    // on a phone the jump zone covers the lower right; the HUD buttons there must still get the tap
+    const tu = document.getElementById('touchUI'), was = tu.hidden; tu.hidden = false;
+    out.tappable = ['questBtn', 'minimap'].filter(id => { const e = document.getElementById(id); if (e.hidden) return true; const b = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); });
+    tu.hidden = was;
     return out;
   });
   t.ok(!r.superAt45 && r.normalTop <= 16.1, 'full gallop first, at the normal top speed', r);
@@ -45,4 +60,7 @@ exports.run = async t => {
   t.ok(r.chain.includes('arrow'), 'the arrow is a trick in the chain', r.chain);
   t.ok(r.streak, 'light streaks behind the dog', r.streak);
   t.ok(r.sounds, 'the wind, boost, trick and fanfare sounds are there', r.sounds);
+  t.ok(r.btnOn && r.btnOff, 'the boost button switches super speed on at once, and off again', { on: r.btnOn, off: r.btnOff });
+  t.ok(r.tappable.length === 2, 'the quest button and the map are above the jump zone', r.tappable);
+  t.ok(r.records.length > 10 && /Полётов стрелой\s*[1-9]/.test(r.records.join('|')) && /Максимальная скорость\s*5\d/.test(r.records.join('|')), 'records: arrow flights and the top speed are counted', r.records.slice(0, 9));
 };

@@ -33,6 +33,8 @@
       let s = {};
       try { s = JSON.parse(localStorage.getItem('runner-quests') || '{}'); } catch (e) {}
       this.stars = s.stars || 0; this.total = s.total || 0;
+      try { this.stats = JSON.parse(localStorage.getItem('runner-stats') || '{}'); } catch (e) { this.stats = {}; }
+      setInterval(() => this.saveStats(), 3000);
       this.gift = !s.seen;              // the first time: a welcome present
       if (this.gift) this.stars += 3;
       if (s.day === today() && s.list) { this.day = s.day; this.list = s.list; this.rerolled = !!s.rerolled; this.bonus = !!s.bonus; this.places = s.places || []; }
@@ -54,6 +56,11 @@
     }
     text(q) { return byId[q.id].text(q.goal); }
     progress(q) { const d = byId[q.id]; return Math.min(q.n, q.goal) + (d.unit ? '' : '') + ' / ' + q.goal + (d.unit || ''); }
+    record(ev, v) {
+      const MAP = { cat: ['cats'], ring: ['rings'], jump: ['bestJump', 1], chain: ['bestChain', 1], gallop: ['gallopM'], bones: ['bones'], 'trick:flip': ['flips'], 'trick:wall': ['walls'],
+        'trick:arrow': ['arrows'], 'trick:bar': ['bars'], 'trick:pigeons': ['pigeons'], combo: ['bestCombo', 1], launch: ['launches'] };
+      const m = MAP[ev]; if (m) this.stat(m[0], v, m[1]);
+    }
     spend(n) { if (this.stars < n) return false; this.stars -= n; this.save(); if (this.onChange) this.onChange(); return true; }
     // one quest of today can be swapped for another, once a day
     reroll(i) {
@@ -65,8 +72,16 @@
       if (this.onChange) this.onChange();
       return true;
     }
+    // lifetime records (the Records tab): counts and bests across all runs
+    stat(key, v, max) {
+      const S = this.stats || (this.stats = {});
+      S[key] = max ? Math.max(S[key] || 0, v) : (S[key] || 0) + v;
+      this.statsDirty = true;
+    }
+    saveStats() { if (this.statsDirty) { this.statsDirty = false; try { localStorage.setItem('runner-stats', JSON.stringify(this.stats)); } catch (e) {} } }
     // the game reports an event; v: how many (or the value, for "max" quests)
     on(ev, v, extra) {
+      this.record(ev, v === undefined ? 1 : v);
       if (this.day !== today()) { this.newDay(); this.save(); }
       if (v === undefined) v = 1;
       if (ev === 'place') {                     // distinct places only
@@ -83,12 +98,12 @@
         if (d.unit) q.n = Math.round(q.n * 10) / 10;
         if (q.n !== before) changed = true;
         if (q.n >= q.goal) {
-          q.done = true; this.stars += q.stars; this.total++;
+          q.done = true; this.stars += q.stars; this.total++; this.stat('starsEarned', q.stars);
           if (this.onDone) this.onDone(q, false);
         }
       }
       if (!this.bonus && this.list.every(q => q.done)) {
-        this.bonus = true; this.stars += 2;
+        this.bonus = true; this.stars += 2; this.stat('starsEarned', 2); this.stat('fullDays', 1);
         if (this.onDone) this.onDone(null, true);
       }
       if (changed) { this.save(); if (this.onChange) this.onChange(); }
@@ -143,6 +158,21 @@
           body.appendChild(card);
         });
         body.insertAdjacentHTML('beforeend', `<p class="note">${this.q.bonus ? 'Все задания дня выполнены: +2 ★ бонус получен.' : 'Все три за день — ещё +2 ★.'} Новые задания — завтра.</p>`);
+      } else if (this.tab === 'records') {
+        const S = this.q.stats || {}, f = (v, d) => v === undefined ? '—' : d ? (+v).toFixed(d) : Math.round(v).toLocaleString('ru-RU');
+        let catBest = 0, jumpBest = S.bestJump; try { catBest = +localStorage.getItem('runner-best') || 0; jumpBest = Math.max(jumpBest || 0, +localStorage.getItem('runner-jump-best') || 0); } catch (e) {}
+        const rows = [
+          ['Лучший забег (коты)', f(catBest)], ['Самый длинный прыжок', f(jumpBest, 1) + ' м'], ['Самая длинная цепочка', S.bestChain ? '×' + S.bestChain : '—'],
+          ['Лучшее комбо с котами', S.bestCombo ? '×' + S.bestCombo : '—'], ['Максимальная скорость', f(S.topSpeed ? S.topSpeed * 2.4 : undefined) + ' км/ч'   /* the same scale as the speedometer */],
+          ['Поймано котов всего', f(S.cats || 0)], ['Колец пролетено', f(S.rings || 0)], ['Полётов стрелой', f(S.arrows || 0)], ['Сальто', f(S.flips || 0)],
+          ['Отскоков от стены', f(S.walls || 0)], ['Подкатов под шлагбаум', f(S.bars || 0)], ['Стай голубей разогнано', f(S.pigeons || 0)],
+          ['Пробежано галопом', f((S.gallopM || 0) / 1000, 1) + ' км'], ['Косточек собрано', f(S.bones || 0)],
+          ['Заданий выполнено', f(this.q.total || 0)], ['Дней со всеми заданиями', f(S.fullDays || 0)], ['Звёзд заработано', f(S.starsEarned || 0)],
+        ];
+        const tbl = document.createElement('div'); tbl.className = 'records';
+        for (const [k, v] of rows) { const r = document.createElement('div'); r.innerHTML = '<span></span><b></b>'; r.firstChild.textContent = k; r.lastChild.textContent = v; tbl.appendChild(r); }
+        body.appendChild(tbl);
+        body.insertAdjacentHTML('beforeend', '<p class="note">Рекорды хранятся в этом браузере.</p>');
       } else {
         for (const [slot, name] of R.Wardrobe.SLOTS) {
           const sec = document.createElement('div'); sec.className = 'slot';

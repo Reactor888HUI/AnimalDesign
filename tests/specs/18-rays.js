@@ -24,7 +24,10 @@ exports.run = async t => {
     const R_ = window.__runner, wait = ms => new Promise(ok => setTimeout(ok, ms));
     window.R.THEMES.sunset.rays = window.__keep; R_.daytime.fixed = {}; R_.setTheme('sunset'); await wait(300);
     const motes = () => R_.scene.children.some(o => o.isPoints && o.material.size === 4 && o.visible && o.material.opacity > 0.05);
-    const sunset = motes(); R_.setTheme('night'); await wait(300);
+    const sunset = motes(); R_.setTheme('night');
+    // let a couple of frames run (software rendering is slow: time alone is not enough)
+    for (let i = 0; i < 2; i++) await new Promise(ok => requestAnimationFrame(() => ok()));
+    await wait(100);
     return { sunset, night: motes() };
   });
   t.ok(withRays > without + 3, 'sunset: the rays brighten the view towards the sun', { withRays, without });

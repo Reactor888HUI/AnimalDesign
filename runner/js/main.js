@@ -230,7 +230,8 @@
       document.documentElement.dataset.theme = T.lampK > 0.5 ? 'night' : 'day';
     }
   }
-  let superHinted = false;
+  let superHinted = false, noBoostT = 0;
+  const now0 = () => performance.now();
   const skylineCol = new THREE.Color(), skyGlow = new THREE.Color(), lampDir = new THREE.Vector3();
   const rayV = new THREE.Vector3(), rayD = new THREE.Vector3(), rayP = new THREE.Vector3();
   const TOD_NAMES = { auto: 'авто (день, закат, ночь, рассвет)', day: 'день', sunset: 'закат', night: 'ночь' };
@@ -383,6 +384,7 @@
     else if (name === 'jump2') au.hop2();
     else if (name === 'launch') { au.whoosh(); au.hop2(); }
     else if (name === 'slide') au.whoosh();
+    else if (name === 'noboost') { if (!noBoostT || now0() - noBoostT > 2500) { noBoostT = now0(); ctx.say('Рывок ещё не накопился', 'bad'); } }
     else if (name === 'super') { if (au.boost) au.boost(!!v); if (v && !superHinted) { superHinted = true; ctx.say('Суперскорость!', 'long'); } }
     else if (name === 'walljump') { au.thump(0.4); au.hop2(); }
     else if (name === 'crash') { au.yelp(); au.thump(1); ctx.say('Неудачное приземление! Лапа болит', 'bad'); }
