@@ -609,14 +609,16 @@
             const a = P.feet[L], b = sp.feet[L];
             a.u = a.u * (1 - w) + (b.u + (L[1] === 'F' ? 0.08 : -0.08)) * w; a.v = a.v * (1 - w) + 0.02 * w; a.fold = a.fold * (1 - w) + b.fold * 0.4 * w;
           }
-          P.dy -= 0.2 * w; P.pitch = P.pitch * (1 - w) + 0.04 * w; P.neck -= 0.35 * w; P.head += 0.2 * w; P.ears -= 1 * w; P.tail -= 0.2 * w;
+          P.dy -= 0.2 * w; P.pitch = P.pitch * (1 - w) + 0.04 * w; P.neck -= 0.35 * w; P.head += 0.2 * w; P.ears -= 1 * w;
+          P.tail = P.tail * (1 - w) + (-0.9) * w;          // the tail streams out behind, clear of the ground
         }
         // crash: nose into the ground, front legs fold, then it gets back up
         const cr = s.crash >= 0 ? s.crash : -1;
         crashW = cr >= 0 ? (cr < 0.12 ? cr / 0.12 : cr > 0.65 ? Math.max(0, 1 - (cr - 0.65) / 0.35) : 1) : R.damp(crashW, 0, 10, dt);
         if (crashW > 0.01) {
           const w = crashW;
-          P.dy = P.dy * (1 - w) - 0.17 * w; P.pitch = P.pitch * (1 - w) - 0.32 * w; P.neck = P.neck * (1 - w) - 0.85 * w; P.head = P.head * (1 - w) - 0.2 * w;
+          // (just touching the ground with the nose and the folded front legs, not through it)
+          P.dy = P.dy * (1 - w) - 0.11 * w; P.pitch = P.pitch * (1 - w) - 0.27 * w; P.neck = P.neck * (1 - w) - 0.7 * w; P.head = P.head * (1 - w) - 0.12 * w;
           P.ears = P.ears * (1 - w) - 1 * w; P.tail = P.tail * (1 - w) - 0.3 * w; P.flex = P.flex * (1 - w) + 0.1 * w;
           for (const L of LEGS) {
             const a = P.feet[L];
