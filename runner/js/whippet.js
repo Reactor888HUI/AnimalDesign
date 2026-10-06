@@ -62,6 +62,23 @@
     fawn: new THREE.Color(0xb46d33), fawnDark: new THREE.Color(0x8e5226), white: new THREE.Color(0xf1e9de),
     nose: new THREE.Color(0x161110), rim: new THREE.Color(0x3a2214), pink: new THREE.Color(0xd0907e),
   };
+  // rim light: the edges of the coat that face the sun glow in its colour (strong against a low
+  // sunset sun, faint at noon, cool under the moon). main.js sets these every frame.
+  R.dogLight = R.dogLight || {
+    uRimCol: { value: new THREE.Color(1, 0.8, 0.6) }, uRimDir: { value: new THREE.Vector3(0, 1, 0) }, uRimK: { value: 0.4 },
+  };
+  function withRim(mat) {
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, R.dogLight);
+      sh.fragmentShader = 'uniform vec3 uRimCol, uRimDir;\nuniform float uRimK;\n' + sh.fragmentShader.replace(
+        'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+        `float rimF = smoothstep(0.12, 0.7, 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0));
+        outgoingLight += uRimCol * uRimK * 1.6 * rimF * (0.2 + 0.8 * clamp(dot(normal, uRimDir) + 0.3, 0.0, 1.0));
+        gl_FragColor = vec4( outgoingLight, diffuseColor.a );`);
+    };
+    mat.customProgramCacheKey = () => 'whippet-rim';
+    return mat;
+  }
   const mix = (a, b, t) => a.clone().lerp(b, clamp(t, 0, 1));
 
   // ---- geometry: tubes of rings, each ring weighted to one or two bones -----------------------------
@@ -260,7 +277,10 @@
       const c = new THREE.Color(0, 0, 0); let k = 0;
       for (const v of vs) if (cls[v] === want) { c.r += col[v * 3]; c.g += col[v * 3 + 1]; c.b += col[v * 3 + 2]; k++; }
       if (!k) for (const v of vs) { c.r += col[v * 3]; c.g += col[v * 3 + 1]; c.b += col[v * 3 + 2]; k++; }
-      gcol.set(gi, c.multiplyScalar(1 / k));
+      c.multiplyScalar(1 / k);
+      // the coat is not plastic: each facet a shade lighter or darker (a fixed hash, so it never flickers)
+      const h = Math.sin(gi * 12.9898 + 78.233) * 43758.5453, jit = (h - Math.floor(h) - 0.5) * (want === 0 ? 0.1 : 0.03);
+      gcol.set(gi, c.multiplyScalar(1 + jit));
     }
     for (let t = 0; t < idx.length; t += 3) {
       const fc = gcol.get(grp[t / 3]);
@@ -310,7 +330,7 @@
     // rose ears: a small thin flap folded back along the skull, the fold turned over so the pink
     // inside shows at the front edge; the tip points back and a little down
     const ears = [];
-    const earMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0, flatShading: true });
+    const earMat = withRim(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0, flatShading: true }));
     for (const s of [-1, 1]) {
       const P = [], Cc = [], N = 6, outer = COL.fawnDark, inner = COL.pink;
       const ring = t => {
@@ -470,7 +490,7 @@
     }
     const geo = buildGeometry(boneIndex);
     // short glossy coat: a little sheen from the environment map when the game provides one
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.52, metalness: 0, flatShading: true });
+    const mat = withRim(new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.52, metalness: 0, flatShading: true }));
     if (R.envTexture) { mat.envMap = R.envTexture; mat.envMapIntensity = 0.5; mat.userData.env = true; }
     const mesh = new THREE.SkinnedMesh(geo, mat);
     mesh.castShadow = true; mesh.frustumCulled = false;

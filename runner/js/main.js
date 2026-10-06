@@ -327,6 +327,52 @@
   };
   traffic.onHorn = (x, z) => au.horn(Math.max(0.2, 1 - Math.hypot(x - player.x, z - player.z) / 40));
 
+  // ---- the dog's own soft shadow on phones (no shadow maps there): the dog is drawn from the sun into
+  // a small texture every frame and that texture is laid on the ground under it, so the shadow has
+  // the dog's shape (legs, tail; long at sunset) instead of a round blob. Desktop keeps real shadows.
+  const pShadow = (() => {
+    const N = 96, rt = new THREE.WebGLRenderTarget(N, N, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    const sc = new THREE.Scene();
+    sc.overrideMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, skinning: true });
+    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 60);
+    cam.up.set(0, 0, -1);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, alphaMap: rt.texture, depthWrite: false, opacity: 0.4 });
+    mat.polygonOffset = true; mat.polygonOffsetFactor = -2; mat.polygonOffsetUnits = -6;
+    const decal = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mat);
+    decal.renderOrder = 3; decal.visible = false;
+    scene.add(decal);
+    const S = new THREE.Matrix4(), V = new THREE.Matrix4(), cc = new THREE.Color();
+    return {
+      decal, rt, on: false,
+      update(p, T) {
+        if (!this.on || !p.root || !p.root.parent) { decal.visible = false; return; }
+        const o = T.sunOffset, l = Math.hypot(o[0], o[1], o[2]);
+        const Ly = Math.max(0.2, o[1] / l), sx = -(o[0] / l) / Ly, sz = -(o[2] / l) / Ly;   // ground shift per metre of height
+        const at = p.root.position;          // where the dog is drawn
+        const gy = p.ground || 0, H = 1.4;
+        const cx = at.x + sx * H * 0.5, cz = at.z + sz * H * 0.5, hs = 1.25 + 0.5 * H * Math.hypot(sx, sz);
+        cam.left = cam.bottom = -hs; cam.right = cam.top = hs;
+        cam.position.set(cx, gy + 30, cz); cam.lookAt(cx, gy, cz);
+        cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+        // shear the dog along the sun's rays onto the ground plane (projection * view * shear * view^-1)
+        S.set(1, sx, 0, -sx * gy, 0, 1, 0, 0, 0, sz, 1, -sz * gy, 0, 0, 0, 1);
+        V.copy(cam.matrixWorldInverse);
+        cam.projectionMatrix.multiply(V).multiply(S).multiply(V.clone().invert());
+        const parent = p.root.parent;
+        sc.add(p.root);
+        renderer.getClearColor(cc); const ca = renderer.getClearAlpha();
+        renderer.setClearColor(0x000000, 1); renderer.setRenderTarget(rt);
+        renderer.render(sc, cam);
+        renderer.setRenderTarget(null); renderer.setClearColor(cc, ca);
+        parent.add(p.root);
+        decal.position.set(cx, gy + 0.06, cz); decal.scale.set(2 * hs, 1, 2 * hs);
+        // softer and fainter as the dog goes up
+        mat.opacity = T.shadowK * (1 - Math.min(0.6, Math.max(0, (p.y || 0) - gy) * 0.22));
+        decal.visible = !(p.hidden || p.root.visible === false);
+      },
+    };
+  })();
+
   // ---- quality governor ------------------------------------------------------------------
   function setLevel(l) {
     level = l;
@@ -335,7 +381,8 @@
     renderer.setPixelRatio(l === 0 ? 1 : Math.min(devicePixelRatio, coarse ? 1.5 : 1.75));
     renderer.setSize(innerWidth, innerHeight);
     sizeComposer();
-    for (const b of blobs) b.m.visible = l < 2;
+    pShadow.on = l < 2;
+    for (const b of blobs) b.m.visible = l < 2 && b.o !== player;      // the dog has its own shadow then
     window.__quality = l;
   }
   setLevel(level);
@@ -390,6 +437,9 @@
     world.update(player.x, player.z, 1, ax, az);
     fx.update(dt);
     rig.update(dt, player, now / 1000, input);
+    camera.updateMatrixWorld();
+    { const o = T.sunOffset, D = R.dogLight; if (D) { D.uRimDir.value.set(o[0], o[1], o[2]).normalize().transformDirection(camera.matrixWorldInverse); D.uRimCol.value.setHex(T.sunColor); D.uRimK.value = T.rimK; } }
+    pShadow.update(player, T);
 
     const gait = R.clamp(player.vel / C.MAX_SPEED, 0, 1);
     if (!player.air && player.vel > 0.8) {
@@ -472,5 +522,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow }, mode.debug ? mode.debug() : {});
 })(window.R);
