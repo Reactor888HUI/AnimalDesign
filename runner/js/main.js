@@ -97,13 +97,22 @@
   const GRADE = {
     uniforms: { tDiffuse: { value: null }, uSat: { value: 1 }, uVib: { value: 0 }, uContrast: { value: 1 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uShadow: { value: new THREE.Vector3(1, 1, 1) }, uHigh: { value: new THREE.Vector3(1, 1, 1) }, uVig: { value: 0.2 },
       // god rays: the sun's place on the screen, strength, colour, number of samples, aspect
-      uSunUV: { value: new THREE.Vector2(0.5, 0.8) }, uRays: { value: 0 }, uRayCol: { value: new THREE.Color(1, 0.8, 0.6) }, uRayN: { value: 20 }, uAspect: { value: 1 }, uRayT: { value: 0.4 } },
+      uSunUV: { value: new THREE.Vector2(0.5, 0.8) }, uRays: { value: 0 }, uRayCol: { value: new THREE.Color(1, 0.8, 0.6) }, uRayN: { value: 20 }, uAspect: { value: 1 }, uRayT: { value: 0.4 }, uSpeed: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `
       uniform sampler2D tDiffuse; uniform float uSat, uVib, uContrast, uVig; uniform vec3 uTint, uShadow, uHigh; varying vec2 vUv;
-      uniform vec2 uSunUV; uniform float uRays, uRayN, uAspect, uRayT; uniform vec3 uRayCol;
+      uniform vec2 uSunUV; uniform float uRays, uRayN, uAspect, uRayT, uSpeed; uniform vec3 uRayCol;
       void main() {
         vec3 c = texture2D(tDiffuse, vUv).rgb;
+        // super speed: the edges of the picture smear outwards from the middle (the centre, where the dog
+        // is, stays sharp, so it does not make anyone dizzy)
+        if (uSpeed > 0.01) {
+          vec2 dc = vUv - vec2(0.5, 0.55);
+          float e = smoothstep(0.18, 0.62, length(dc * vec2(uAspect, 1.0) / uAspect));
+          vec3 acc = c;
+          for (int i = 1; i < 7; i++) acc += texture2D(tDiffuse, vUv - dc * float(i) * 0.012 * uSpeed * e).rgb;
+          c = mix(c, acc / 7.0, e);
+        }
         // god rays: march from this pixel towards the sun and gather the bright sky on the way; houses,
         // trees and the far skyline in between are dark, so they cut the light into beams
         if (uRays > 0.003) {
@@ -221,6 +230,7 @@
       document.documentElement.dataset.theme = T.lampK > 0.5 ? 'night' : 'day';
     }
   }
+  let superHinted = false;
   const skylineCol = new THREE.Color(), skyGlow = new THREE.Color(), lampDir = new THREE.Vector3();
   const rayV = new THREE.Vector3(), rayD = new THREE.Vector3(), rayP = new THREE.Vector3();
   const TOD_NAMES = { auto: 'авто (день, закат, ночь, рассвет)', day: 'день', sunset: 'закат', night: 'ночь' };
@@ -305,6 +315,7 @@
   const fx = new R.FX(scene);
   const traffic = new R.Traffic(scene, world, 9);
   const life = new R.StreetLife(scene, world, au);
+  const speedTrail = new R.SpeedTrail(scene);
   if (modeName === 'runner') life.addPeople(coarse ? 3 : 5);
   const rig = new R.CameraRig(camera, world);
 
@@ -372,6 +383,7 @@
     else if (name === 'jump2') au.hop2();
     else if (name === 'launch') { au.whoosh(); au.hop2(); }
     else if (name === 'slide') au.whoosh();
+    else if (name === 'super') { if (au.boost) au.boost(!!v); if (v && !superHinted) { superHinted = true; ctx.say('Суперскорость!', 'long'); } }
     else if (name === 'walljump') { au.thump(0.4); au.hop2(); }
     else if (name === 'crash') { au.yelp(); au.thump(1); ctx.say('Неудачное приземление! Лапа болит', 'bad'); }
     else if (name === 'healed') { au.chime(); ctx.say('Лапа зажила, можно бежать галопом'); }
@@ -505,6 +517,11 @@
     camera.updateMatrixWorld();
     { const o = T.sunOffset, D = R.dogLight; if (D) { D.uRimDir.value.set(o[0], o[1], o[2]).normalize().transformDirection(camera.matrixWorldInverse); D.uRimCol.value.setHex(T.sunColor); D.uRimK.value = T.rimK; } }
     pShadow.update(player, T);
+    // super speed and arrow flights: light streaks, the wind, smeared edges
+    const zoom = Math.max(player.superK || 0, player.arrowK || 0);
+    if (!ctx.paused) speedTrail.update(dt, player, zoom, T.lampK > 0.85);
+    if (au.setWind) au.setWind(ctx.paused ? 0 : zoom * R.clamp(player.vel / C.MAX_SPEED, 0, 1.4));
+    if (gradePass) gradePass.uniforms.uSpeed.value = zoom * R.clamp((player.vel - 12) / 10, 0, 1) * (level >= 2 ? 1 : 0.7);
     // god rays: where the sun is on the screen (it may be off the screen: the beams still reach in),
     // none when it is behind the camera; dust motes follow the camera and drift
     if (gradePass) {
@@ -581,7 +598,7 @@
       b.m.material.opacity = hidden ? 0 : 0.55 * (1 - Math.min(0.6, up * 0.22));
       b.m.position.set(b.o.x, (b.o.ground || 0) + 0.09, b.o.z);
     }
-    lines.style.opacity = R.clamp((gait - 0.7) * 1.2, 0, 0.22).toFixed(2);   // subtle: strong speed lines made people dizzy
+    lines.style.opacity = Math.max(R.clamp((gait - 0.7) * 1.2, 0, 0.22), 0.5 * (player.superK || 0)).toFixed(2);   // subtle: strong speed lines made people dizzy
 
     if (composer && postOn && level >= 1) composer.render(dt);
     else renderer.render(scene, camera);
@@ -611,5 +628,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life, map, get quests() { return quests; }, get wardrobe() { return wardrobe; } }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life, map, speedTrail, get quests() { return quests; }, get wardrobe() { return wardrobe; } }, mode.debug ? mode.debug() : {});
 })(window.R);

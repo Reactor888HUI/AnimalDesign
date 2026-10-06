@@ -25,6 +25,10 @@
       // the body is long: besides the middle, the chest and the rump are kept out of things too
       this.halfLen = 0.45;
       this.maxSpeed = C.MAX_SPEED;      // a mode can ask for a calmer dog
+      // super speed (the runner): hold full gallop and the whippet stretches out like an arrow and goes
+      // ~40 % faster, while its energy lasts. arrow: a flight off a kicker or a roof, stretched and steerable
+      this.canSuper = false; this.superK = 0; this.superOn = false; this.energy = 1; this.fullT = 0;
+      this.arrow = false; this.arrowT = 0; this.arrowK = 0;
       this.jumpBuf = 0; this.coyote = 0; this.air = false;
       this.shake = 0; this.hitCd = 0; this.dustT = 0;
       // tricks (runner): a slide under barriers, a jump off a wall; done tricks are queued for the mode
@@ -103,15 +107,27 @@
       // the gas pedal is smoothed, so starts and stops are not jerky
       this.thrS = damp(this.thrS, thr, thr > this.thrS ? 5 : 10, dt);
 
+      // super speed: full stick at full gallop for a moment switches it on; letting go, a sharp turn
+      // against the run, a crash or a sore paw, or no energy left switch it off
+      const SUPER = 1.4;
+      if (this.canSuper) {
+        const full = this.thrS > 0.94 && this.speed > this.maxSpeed * 0.93 && this.limp === 0 && this.crash < 0 && this.slide < 0;
+        this.fullT = full && !this.air ? this.fullT + dt : (full ? this.fullT : 0);
+        if (!this.superOn && this.fullT > 0.9 && this.energy > 0.2) { this.superOn = true; this.emit('super', 1); }
+        if (this.superOn && (!full && !this.air || this.energy <= 0 || this.limp > 0 || this.crash >= 0)) { this.superOn = false; this.emit('super', 0); }
+        this.energy = clamp(this.energy + (this.superOn ? -dt / 7 : dt / 10), 0, 1);
+      }
+      this.superK = damp(this.superK, this.superOn ? 1 : 0, this.superOn ? 2.5 : 4, dt);
+      const topSpeed = this.maxSpeed * (1 + (SUPER - 1) * this.superK);
       // throttle: ease towards the speed asked for (half stick = half speed), brake hard, coast softly
       if (this.thrS > 0.02) {
-        const target = this.maxSpeed * Math.min(1, this.thrS * 1.08);
-        if (this.speed < target) this.speed += C.ACCEL * (0.35 + 0.65 * this.thrS) * (1 - 0.7 * sf * sf) * dt;
+        const target = topSpeed * Math.min(1, this.thrS * 1.08);
+        if (this.speed < target) this.speed += C.ACCEL * (0.35 + 0.65 * this.thrS) * (this.speed > this.maxSpeed ? 0.45 : 1 - 0.7 * sf * sf) * dt;
         else this.speed -= C.COAST * 1.4 * dt;
       } else if (thr < 0) this.speed -= C.BRAKE * -thr * (this.steerS * this.steerS > 0.09 ? 0.35 : 1) * dt;
       else this.speed -= C.COAST * (0.6 + sf) * dt;
       // a sore paw: no galloping until it gets better
-      const cap = this.limp > 0 ? Math.min(this.maxSpeed * (1 - 0.62 * this.limp), this.limp > 0.4 ? 5.5 : this.maxSpeed) : this.maxSpeed;
+      const cap = this.limp > 0 ? Math.min(this.maxSpeed * (1 - 0.62 * this.limp), this.limp > 0.4 ? 5.5 : this.maxSpeed) : Math.max(topSpeed, this.maxSpeed);
       if (this.slide >= 0) this.speed = Math.max(3, (this.slideSpeed *= Math.exp(-0.7 * dt)));
       this.speed = clamp(this.speed, 0, cap);
       if (this.crash >= 0) this.speed *= Math.exp(-5 * dt);
@@ -122,7 +138,7 @@
       const sliding = thr < 0 && this.speed > 4 && Math.abs(this.steerS) > 0.3;
       if (dirMode) {
         // turn towards the stick: quick when slow, wider arcs at a gallop, a little in the air
-        const maxRate = R.lerp(6.5, 3.6, sf) * (this.air ? this.airTurn * 0.85 : 1);
+        const maxRate = R.lerp(6.5, 3.6, sf) * (1 - 0.25 * this.superK) * (this.air ? this.airTurn * (this.arrow ? 1.25 : 0.85) : 1);
         this.yawRate = damp(this.yawRate, clamp(diff * 7, -maxRate, maxRate), 12, dt);
         this.steerS = clamp(-this.yawRate / C.TURN_RATE, -1, 1);
         // a sharp turn at speed costs some speed (paws skid)
@@ -136,7 +152,8 @@
 
       // velocity chases the facing direction; low grip at speed makes the dog drift
       const fx_ = -Math.sin(this.heading), fz_ = -Math.cos(this.heading);
-      const grip = this.air ? this.airGrip : sliding ? 2.6 : R.lerp(C.GRIP_LOW, C.GRIP_HIGH, sf * sf);
+      // in an arrow flight the path follows the dog's nose much more: it is steered like a glider
+      const grip = this.air ? this.airGrip * (this.arrow ? 1.8 : 1) : sliding ? 2.6 : R.lerp(C.GRIP_LOW, C.GRIP_HIGH, sf * sf) * (1 - 0.35 * this.superK);
       const k = 1 - Math.exp(-grip * dt);
       this.vx += (fx_ * this.speed - this.vx) * k;
       this.vz += (fz_ * this.speed - this.vz) * k;
@@ -221,6 +238,7 @@
         // short hop when the button is let go early; a little hang time at the top of the arc
         let g = C.GRAVITY * (this.vy > 0 && !input.jumpHeld ? 2.3 : 1);
         if (Math.abs(this.vy) < 2.4 && input.jumpHeld) g *= 0.55;
+        if (this.arrow && this.vy < 2) g *= 0.72;                // an arrow glides a little
         this.vy -= g * dt;
         this.y += this.vy * dt;
         if (this.y <= ground) {
@@ -241,6 +259,7 @@
             this.emit('land', impact);
           }
           this.y = ground; this.vy = 0;
+          if (this.arrow) { if (this.arrowT > 0.45 && !bad) this.tricks.push('arrow'); this.arrow = false; }
           if (this.flip >= 0) { this.flip = -1; this.lean.rotation.x = R.angDiff(0, this.lean.rotation.x); }
         }
       } else {
@@ -260,9 +279,16 @@
           fx.ring(this.x, this.y + 0.2, this.z, { color: theme.spark, count: 14, speed: 4, up: 0.4, size: 0.3, grow: 1.8, opacity: 0.9, life: 0.5 });
           this.emit('launch', along);
           this.tricks.push('launch');
+          if (this.canSuper) { this.arrow = true; this.arrowT = 0; }
         }
       }
       this.kick = !this.air && under && under.kick ? under : null;
+      // running off a roof (or anything high) at a gallop: an arrow flight too
+      if (this.canSuper && this.air && !this.arrow && !this.wasAir && this.lastGroundY > 1.5 && this.vel > 11 && this.vy <= 0.5) { this.arrow = true; this.arrowT = 0; }
+      if (this.arrow) { this.arrowT += dt; if (!this.air) this.arrow = false; }
+      this.arrowK = damp(this.arrowK, this.arrow ? 1 : 0, this.arrow ? 6 : 9, dt);
+      if (!this.air) this.lastGroundY = ground;
+      this.wasAir = this.air;
 
       // dust while drifting or galloping
       const v = this.vel;
@@ -270,6 +296,11 @@
         const dir = Math.hypot(this.vx, this.vz) || 1;
         this.slip = 1 - (this.vx * fx_ + this.vz * fz_) / dir;
         this.dustT -= dt;
+        if (this.superK > 0.3 && this.dustT <= 0.02) {
+          const out = this.steerS * 2.5;
+          fx.emit(this.x - fx_ * 0.4, this.y + 0.08, this.z - fz_ * 0.4, { color: theme.dust, count: 2, speed: 2.2, up: 1.1, size: 0.3, grow: 3, opacity: 0.5, life: 0.6,
+            vx: -fx_ * 2 + fz_ * out, vz: -fz_ * 2 - fx_ * out });
+        }
         if (this.dustT <= 0 && (this.slip > 0.06 || v > 11)) {
           this.dustT = this.slip > 0.06 ? 0.035 : 0.09;
           fx.emit(this.x - fx_ * 0.6, this.y + 0.1, this.z - fz_ * 0.6, {
@@ -282,7 +313,8 @@
       // visuals
       this.root.position.set(this.x, this.y, this.z);
       this.root.rotation.y = this.heading;
-      this.lean.rotation.z = R.damp(this.lean.rotation.z, -this.steerS * sf * 0.24, 6, dt);
+      // banks into a turn; at super speed and in an arrow flight it really lies over, like a motorbike
+      this.lean.rotation.z = R.damp(this.lean.rotation.z, -this.steerS * sf * (0.24 + 0.5 * Math.max(this.superK, this.arrowK)), 6, dt);
       if (this.flip >= 0) {
         // somersault forward over 0.55 s
         this.flip = Math.min(1, this.flip + dt / 0.55);
@@ -291,7 +323,7 @@
         if (this.flip >= 1) { this.flip = -1; this.lean.rotation.x = 0; }
       } else {
         // nose up when climbing, down when falling; a slight dip when speeding up
-        const pitch = this.air ? clamp(this.vy * -0.035, -0.35, 0.35) : -clamp((this.thrS - sf) * 0.08, -0.05, 0.08);
+        const pitch = this.air ? clamp(this.vy * (this.arrow ? -0.045 : -0.035), -0.35, 0.35) : -clamp((this.thrS - sf) * 0.08, -0.05, 0.08) + 0.04 * this.superK;
         this.lean.rotation.x = R.damp(this.lean.rotation.x, pitch, 7, dt);
       }
       // squash and stretch spring
@@ -311,6 +343,7 @@
       this.ent.update(dt, {
         speed01: clamp(v / C.MAX_SPEED, 0, 1), speed: v, air: this.air, vy: this.vy, sniff: this.sniff,
         turn: this.yawRate, flip: this.flip, crash: this.crash, limp: this.limp, land: this.lastImpact, slide: this.slide >= 0,
+        super: this.superK, arrow: this.arrowK,
       });
     }
   }

@@ -29,6 +29,7 @@ const FILES = [
   'js/player.js',
   'js/pwa.js',
   'js/quests.js',
+  'js/speedfx.js',
   'js/street.js',
   'js/traffic.js',
   'js/util.js',

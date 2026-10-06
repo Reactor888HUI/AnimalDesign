@@ -176,7 +176,7 @@
   // ground) and the multiplier grows; the chain pays out in bones when it ends; a crash loses it --
   const TRICKS = {
     flip: ['Сальто', 3], wall: ['От стены', 4], slide: ['Подкат', 1], bar: ['Под шлагбаумом', 4],
-    launch: ['Трамплин', 2], ring: ['Кольцо', 2], long: ['Дальний прыжок', 3], pigeons: ['Голуби', 1],
+    launch: ['Трамплин', 2], ring: ['Кольцо', 2], long: ['Дальний прыжок', 3], pigeons: ['Голуби', 1], arrow: ['Стрела', 4],
   };
   const CHAIN_T = 2.6;
   let chain = null;
@@ -193,7 +193,7 @@
       if (n === 'crash') {
         if (chain) ctx.say('Цепочка сорвалась!', 'bad');
         chain = null; el.trick.hidden = true;
-      } else if (TRICKS[n]) { addTrick(n); quest('trick:' + n); if (n === 'launch') quest('launch'); }
+      } else if (TRICKS[n]) { addTrick(n); quest('trick:' + n); if (n === 'launch') quest('launch'); if (ctx.au.trick) ctx.au.trick(n); }
     }
     player.tricks.length = 0;
     if (!chain) return;
@@ -204,7 +204,7 @@
       quest('chain', mult);
       bonesN += gain; el.bonesN.textContent = bonesN;
       ctx.say(mult > 1 ? 'Цепочка ×' + mult + ': +' + gain : TRICKS[chain.names[0]][0] + ' +' + gain, mult >= 3 ? 'long' : undefined);
-      ctx.au.chime(); if (mult > 1) ctx.au.pick(4 + mult * 2);
+      if (ctx.au.fanfare && mult > 1) ctx.au.fanfare(mult); else ctx.au.chime();
       chain = null; el.trick.hidden = true;
     }
   }
@@ -274,7 +274,7 @@
       const { scene, world, $, au } = ctx;
       player = new R.Player(dogEnt);
       // the whippet steers well in the air, but a bad landing hurts
-      player.airTurn = 1.0; player.airGrip = 3.2; player.canCrash = true; player.halfLen = 0.6;
+      player.airTurn = 1.0; player.airGrip = 3.2; player.canCrash = true; player.halfLen = 0.6; player.canSuper = true;
       // where the dog will land: a ring on the ground while it is high in the air
       landRing = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.62, 28), new THREE.MeshBasicMaterial({ color: 0x7dff9a, transparent: true, opacity: 0.8, depthWrite: false }));
       landRing.rotation.x = -Math.PI / 2; landRing.renderOrder = 3; landRing.visible = false;
@@ -295,7 +295,7 @@
       try { jumpBest = +localStorage.getItem('runner-jump-best') || 0; } catch (e) {}
       el = {
         bonesN: $('bonesN'), jumpLast: $('jumpLast'), jumpBest: $('jumpBest'), trick: $('trick'), trickNames: $('trickNames'), trickMult: $('trickMult'), trickTime: $('trickTime'),
-        speedFill: $('speedFill'), speedNum: $('speedNum'), chaseFill: $('chaseFill'),
+        speedFill: $('speedFill'), speedNum: $('speedNum'), chaseFill: $('chaseFill'), boostFill: $('boostFill'), boostRow: $('boostRow'),
         score: $('score'), combo: $('combo'), banner: $('banner'), flash: $('flash'),
         best: $('best'), arrow: $('arrow'), cdist: $('cdist'),
       };
@@ -374,6 +374,8 @@
       // HUD
       const v = player.vel, sf = R.clamp(v / C.MAX_SPEED, 0, 1);
       el.speedFill.style.transform = 'scaleX(' + sf.toFixed(3) + ')';
+      el.boostFill.style.transform = 'scaleX(' + player.energy.toFixed(3) + ')';
+      el.boostRow.classList.toggle('on', player.superOn);
       el.speedNum.textContent = Math.round(v * 2.4);
       el.chaseFill.style.transform = 'scaleX(' + R.clamp(1 - cat.dist / C.CAT_RANGE, 0, 1).toFixed(3) + ')';
       bannerA = R.clamp(bannerA + (cat.dist < 14 ? 1 : -1) * dt * 3, 0, 1);
@@ -388,7 +390,7 @@
     // the map: where the cat is
     mapMarkers() { return cat ? [{ x: cat.x, z: cat.z, color: '#ff4d6d', label: 'кот' }] : []; },
     // how tense the game is now (0..1), for the music: the cat close, a long chain going
-    tension() { return R.clamp((cat.dist < 32 ? 0.35 + 0.6 * (1 - cat.dist / 32) : 0.1) + (chain ? 0.12 : 0), 0, 1); },
+    tension() { return R.clamp((cat.dist < 32 ? 0.35 + 0.6 * (1 - cat.dist / 32) : 0.1) + (chain ? 0.12 : 0) + 0.45 * (player.superK || 0), 0, 1); },
     debug() { return { setBones: n => { bonesN = n; lastBones = n; }, player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }), chain: () => chain }; },
   };
 })(window.R = window.R || {});

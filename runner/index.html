@@ -27,6 +27,7 @@
   <div class="stat panel">
     <div class="row"><label>Скорость</label><span><b id="speedNum">0</b><small>км/ч</small></span></div>
     <div class="bar"><i id="speedFill"></i></div>
+    <div id="boostRow" class="row sub boost"><label>Рывок</label><div class="bar"><i id="boostFill"></i></div></div>
     <div class="row sub bones"><label>Косточки</label><b id="bonesN">0</b></div>
     <div class="row sub bones"><label>Прыжок</label><span><b id="jumpLast">0</b><small>м · рекорд <span id="jumpBest">0</span></small></span></div>
   </div>
@@ -159,7 +160,7 @@
   <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
 </button>
 
-<div id="hint" class="ui panel r-only"><kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания</div>
+<div id="hint" class="ui panel r-only"><kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; держи <kbd>W</kbd> на галопе — суперскорость &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания</div>
 
 <div id="touchUI" hidden>
   <div id="stickHint">куда бежать</div>
@@ -197,6 +198,7 @@
 <script src="js/whippet.js"></script>
 <script src="js/input.js"></script>
 <script src="js/fx.js"></script>
+<script src="js/speedfx.js"></script>
 <script src="js/player.js"></script>
 <script src="js/cat.js"></script>
 <script src="js/chickens.js"></script>

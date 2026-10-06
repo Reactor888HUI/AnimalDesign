@@ -431,19 +431,21 @@
     }
     if (front) {
       // gallop fore leg: snaps up under the chest, then swings far forward and reaches out to land
-      const reach = 0.1;
+      const reach = 0.1 + 0.07 * SUPERK;
       const k = sstep(0.12, 0.9, s);
       return { u: -step * 0.5 + (step + reach) * k - reach * sstep(0.88, 1, s), v: lift * Math.pow(bump(Math.min(1, s / 0.9)), 0.7) * (1 - 0.6 * sstep(0.55, 0.9, s)), fold: -1.9 * bump(Math.min(1, s / 0.7)), stance: 0 };
     }
     // gallop hind leg: kicks out far behind first (extended flight), then folds and swings under the belly
-    const back = 0.12;
+    const back = 0.12 + 0.08 * SUPERK;
     return { u: -step * 0.5 - back * bump(Math.min(1, s / 0.4)) + step * sstep(0.25, 0.95, s), v: lift * Math.pow(bump(s), 0.8), fold: 1.3 * bump(clamp((s - 0.15) / 0.75, 0, 1)), stance: 0 };
   }
 
   // a whole-body pose for one gait at one phase
+  // super speed (0..1): the gallop opens up into long, flat, stretched bounds
+  let SUPERK = 0;
   function gaitPose(gait, phi, v, limp) {
     const G = GAITS[gait], duty = G.duty(v), f = G.f(v);
-    const step = clamp(duty * v / f / SCALE, 0, gait === 'gallop' ? 0.62 : 0.5);
+    const step = clamp(duty * v / f / SCALE, 0, gait === 'gallop' ? 0.62 + 0.16 * SUPERK : 0.5);
     const gal = gait === 'gallop';
     const p = { feet: {}, dy: 0, pitch: 0, flex: 0, neck: 0, head: 0, tail: 0, ears: 0.2, scap: 0 };
     for (const L of LEGS) {
@@ -460,11 +462,13 @@
     } else {
       // double suspension: up in both flights; the back rounds when gathered and stretches when extended
       const ext = bump(clamp((frac(phi) - 0.17) / 0.3, 0, 1)), gat = bump(clamp((frac(phi - 0.58)) / 0.4, 0, 1));
-      p.dy = 0.03 * ext + 0.022 * gat - 0.015;
-      p.flex = 0.32 * Math.cos(TAU * (phi - 0.88));
-      p.pitch = 0.07 * Math.sin(TAU * (phi - 0.12));
-      p.neck = -0.62 + 0.06 * Math.sin(TAU * phi); p.head = 0.48;
-      p.tail = 0.75 + 0.18 * Math.sin(TAU * phi + 1); p.ears = -1;
+      const k = SUPERK;
+      p.dy = (0.03 + 0.02 * k) * ext + 0.022 * gat - 0.015 - 0.012 * k;
+      p.flex = (0.32 + 0.14 * k) * Math.cos(TAU * (phi - 0.88)) - 0.06 * k;
+      p.pitch = 0.07 * (1 - 0.5 * k) * Math.sin(TAU * (phi - 0.12));
+      // at super speed the head and neck reach low and straight forward, the tail streams out behind
+      p.neck = -0.62 - 0.3 * k + 0.06 * Math.sin(TAU * phi); p.head = 0.48 + 0.2 * k;
+      p.tail = 0.75 - 0.45 * k + 0.18 * (1 - 0.6 * k) * Math.sin(TAU * phi + 1); p.ears = -1;
       p.scap = 0.18 * Math.sin(TAU * (phi - 0.5));
     }
     if (limp > 0 && !gal) {
@@ -516,7 +520,7 @@
     const root = new THREE.Group(); root.add(scaled);
 
     // state
-    let phi = 0, t = 0, airW = 0, wasAir = false, landT = 0, atkT = 0, eatT = 0, roll = 0, look = 0, crashW = 0, slideW = 0;
+    let phi = 0, t = 0, airW = 0, wasAir = false, landT = 0, atkT = 0, eatT = 0, roll = 0, look = 0, crashW = 0, slideW = 0, arrowW = 0;
     const wS = { stand: 1, walk: 0, trot: 0, gallop: 0 };
     const P = emptyPose();
 
@@ -603,6 +607,7 @@
       update(dt, s) {
         t += dt;
         const limp = s.limp || 0;
+        SUPERK = s.super || 0;
         const v = (s.speed !== undefined ? s.speed : s.speed01 * C.MAX_SPEED);
         // gait weights by speed (the sore leg does not gallop)
         const want = {
@@ -638,6 +643,21 @@
           ap.pitch = clamp((s.vy || 0) * 0.02, -0.15, 0.15);
           for (const k of KEYS) P[k] = P[k] * (1 - airW) + ap[k] * airW;
           for (const L of LEGS) { const a = P.feet[L], b = ap.feet[L]; a.u = a.u * (1 - airW) + b.u * airW; a.v = a.v * (1 - airW) + b.v * airW; a.fold = a.fold * (1 - airW) + b.fold * airW; }
+        }
+        // an arrow flight: fully stretched, front legs reaching far forward, hind legs straight out behind,
+        // head low and forward, tail straight back (the photos of whippets at full stretch)
+        arrowW = R.damp(arrowW, s.arrow || 0, 8, dt);
+        if (arrowW > 0.01) {
+          const w = arrowW;
+          for (const L of LEGS) {
+            const a = P.feet[L], fr = L[1] === 'F', side = L[0] === 'L' ? 0.02 : -0.02;
+            a.u = a.u * (1 - w) + (fr ? 0.24 + side : -0.25 - side) * w;
+            a.v = a.v * (1 - w) + (fr ? 0.14 : 0.13) * w;
+            a.fold = a.fold * (1 - w) + (fr ? -0.25 : 0.05) * w;
+          }
+          P.flex = P.flex * (1 - w) - 0.34 * w; P.dy = P.dy * (1 - w) + 0.02 * w; P.pitch *= 1 - w;
+          P.neck = P.neck * (1 - w) - 0.95 * w; P.head = P.head * (1 - w) + 0.7 * w;
+          P.tail = P.tail * (1 - w) + 0.2 * w; P.ears = P.ears * (1 - w) - 1 * w; P.scap = P.scap * (1 - w) + 0.25 * w;
         }
         // landing: legs give and the body dips
         if (landT > 0) { const k = bump(1 - landT / 0.28); P.dy -= 0.045 * k * Math.min(1, (s.land || 8) / 10); P.flex += 0.1 * k; }
@@ -676,7 +696,8 @@
 
         // lean into turns like a motorbike; look where we are going
         const turn = s.turn || 0;
-        roll = R.damp(roll, clamp(-turn * Math.max(v, 2) * 0.014 * (s.air ? 1.6 : 1), -0.4, 0.4), 6, dt);
+        const lean = Math.max(SUPERK, s.arrow || 0), lim = 0.4 + 0.35 * lean;
+        roll = R.damp(roll, clamp(-turn * Math.max(v, 2) * 0.014 * (s.air ? 1.6 : 1) * (1 + 0.6 * lean), -lim, lim), 6, dt);
         bank.rotation.z = roll;
         look = R.damp(look, clamp(turn * 0.18, -0.35, 0.35), 5, dt);
         pose(P, extra);

@@ -53,15 +53,17 @@
       const dist = 4.6, h = 2.6 + lift;
       const bx = Math.sin(this.heading), bz = Math.cos(this.heading);
       // follow the dog's position softly, aiming a little ahead so it does not drift off-centre
-      const K = 6;
-      this.pos.x = damp(this.pos.x, p.x + bx * dist + p.vx / K, K, dt);
+      // (above the normal top speed the look-ahead stops growing: at super speed the dog stays in the
+      // same place on the screen and the camera falls a little behind, which reads as more speed)
+      const K = 6, vk = Math.min(1, C.MAX_SPEED / Math.max(1e-3, Math.hypot(p.vx, p.vz))), vx = p.vx * vk, vz = p.vz * vk;
+      this.pos.x = damp(this.pos.x, p.x + bx * dist + vx / K, K, dt);
       this.pos.y = damp(this.pos.y, h, 3, dt);
-      this.pos.z = damp(this.pos.z, p.z + bz * dist + p.vz / K, K, dt);
+      this.pos.z = damp(this.pos.z, p.z + bz * dist + vz / K, K, dt);
       this.world.pushOut(this.pos, 0.7);
       const cam = this.cam;
       cam.position.copy(this.pos);
       // look at a point just ahead of the dog, at a fixed downward tilt
-      this.look.set(p.x - bx * 2.2 + p.vx / K, 0.5 + this.yG + Math.max(0, this.yS - this.yG) * 0.6, p.z - bz * 2.2 + p.vz / K);
+      this.look.set(p.x - bx * 2.2 + vx / K, 0.5 + this.yG + Math.max(0, this.yS - this.yG) * 0.6, p.z - bz * 2.2 + vz / K);
       if (!this.lookS) this.lookS = this.look.clone();
       const k = 1 - Math.exp(-8 * dt);
       this.lookS.x += (this.look.x - this.lookS.x) * k;

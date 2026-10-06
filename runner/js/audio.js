@@ -184,6 +184,41 @@
     tone('square', [[0, 660], [0.18, 660]], 0.08, 0.18, 0, 1500, 0.8);
     tone('square', [[0, 440], [0.3, 380]], 0.08, 0.3, 0.2, 1200, 0.8);
   };
+  // ---- speed and tricks -------------------------------------------------------------------------
+  // the wind at super speed: a noise loop through a band filter, louder and higher the faster
+  A.setWind = function (k) {
+    if (!A.ctx || A.ctx.state !== 'running') return;
+    const c = A.ctx, t = c.currentTime;
+    if (!A.wind) {
+      const src = c.createBufferSource(); src.buffer = A.noise; src.loop = true;
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.7; bp.frequency.value = 500;
+      const g = c.createGain(); g.gain.value = 0;
+      src.connect(bp); bp.connect(g); g.connect(A.master); src.start();
+      A.wind = { bp, g };
+    }
+    A.wind.g.gain.setTargetAtTime(0.22 * k * k, t, 0.15);
+    A.wind.bp.frequency.setTargetAtTime(450 + 900 * k, t, 0.2);
+  };
+  // super speed on: a rising whoosh with a low thump; off: a falling sigh
+  A.boost = on => {
+    if (!ok()) return;
+    if (on) { noise(400, 0.8, 0.22, 0.45, 0, 'bandpass'); tone('sawtooth', [[0, 110], [0.35, 330]], 0.08, 0.4, 0, 700, 1.5); tone('sine', [[0, 90], [0.15, 45]], 0.3, 0.2); }
+    else noise(700, 0.8, 0.1, 0.35, 0, 'bandpass');
+  };
+  // one sound for each trick
+  A.trick = name => {
+    if (!ok()) return;
+    if (name === 'flip') { tone('triangle', [[0, 500], [0.25, 1300]], 0.12, 0.3); noise(1200, 1.2, 0.08, 0.25); }
+    else if (name === 'wall') { tone('sine', [[0, 140], [0.08, 60]], 0.35, 0.12); tone('square', [[0, 300], [0.12, 900]], 0.06, 0.18, 0.04, 1200, 2); }
+    else if (name === 'slide') noise(2200, 0.6, 0.12, 0.45, 0, 'highpass');
+    else if (name === 'bar') { noise(1800, 1.5, 0.1, 0.18); tone('triangle', [[0, 880], [0.1, 1320]], 0.1, 0.15, 0.05); }
+    else if (name === 'launch') { tone('sawtooth', [[0, 200], [0.4, 700]], 0.07, 0.45, 0, 900, 1.2); noise(600, 0.7, 0.15, 0.5); }
+    else if (name === 'arrow') { for (let i = 0; i < 4; i++) tone('triangle', [[0, 660 * Math.pow(1.26, i)], [0.1, 700 * Math.pow(1.26, i)]], 0.09, 0.14, i * 0.06); }
+    else if (name === 'long') tone('triangle', [[0, 520], [0.3, 780]], 0.1, 0.3);
+    else if (name === 'pigeons') noise(1400, 1, 0.06, 0.2);
+  };
+  // a chain paid out: a fanfare, longer for a bigger chain
+  A.fanfare = n => { if (!ok()) return; const notes = [523, 659, 784, 1047, 1319]; for (let i = 0; i < Math.min(5, n + 1); i++) tone('triangle', [[0, notes[i]], [0.15, notes[i]]], 0.12, 0.2 + (i === n ? 0.3 : 0), i * 0.09); };
   // the wardrobe's voices: a duck's quack, a dog that meows, a squeaky toy; a bell on the collar
   A.quack = () => {
     if (!ok()) return;
