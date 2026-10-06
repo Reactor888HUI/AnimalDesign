@@ -110,6 +110,10 @@
     bonesMesh.instanceMatrix.needsUpdate = true;
   }
 
+  // ---- quests: what happens is reported to the day's quests (main.js makes them) ----------------
+  let ctxQ = null, lastBones = 0, gallopM = 0, placeT = 0;
+  const quest = (ev, v, x) => { if (ctxQ) ctxQ.on(ev, v, x); };
+
   // ---- rings in the air: fly through for bones; several in one flight multiply ---------------
   const ringObjs = new Map();          // key -> { mesh, d, active, t, prev }
   let ringGeo = null, flightRings = 0;
@@ -151,6 +155,7 @@
           au.chime(); au.pick(6 + mult * 2);
           fx.ring(d.x, d.y, d.z, { color: 0xffe27a, count: 16, speed: 4, up: 0.2, size: 0.3, grow: 1.6, opacity: 0.95, life: 0.6 });
           addTrick('ring');
+          quest('ring'); if (flightRings === 2) quest('rings2');
         }
         o.prev = side;
         // looks: spins slowly and pulses; a used ring is a faint ghost until it comes back
@@ -188,7 +193,7 @@
       if (n === 'crash') {
         if (chain) ctx.say('Цепочка сорвалась!', 'bad');
         chain = null; el.trick.hidden = true;
-      } else if (TRICKS[n]) addTrick(n);
+      } else if (TRICKS[n]) { addTrick(n); quest('trick:' + n); if (n === 'launch') quest('launch'); }
     }
     player.tricks.length = 0;
     if (!chain) return;
@@ -196,6 +201,7 @@
     el.trickTime.style.transform = 'scaleX(' + R.clamp(chain.t / CHAIN_T, 0, 1).toFixed(3) + ')';
     if (chain.t <= 0) {
       const mult = Math.min(5, chain.names.length), gain = chain.pts * mult;
+      quest('chain', mult);
       bonesN += gain; el.bonesN.textContent = bonesN;
       ctx.say(mult > 1 ? 'Цепочка ×' + mult + ': +' + gain : TRICKS[chain.names[0]][0] + ' +' + gain, mult >= 3 ? 'long' : undefined);
       ctx.au.chime(); if (mult > 1) ctx.au.pick(4 + mult * 2);
@@ -219,6 +225,7 @@
       takeoff = null; flightRings = 0;
       if (p.crash >= 0 || dist < 3) return;
       if (dist > 10) addTrick('long');
+      quest('jump', dist);
       el.jumpLast.textContent = dist.toFixed(1);
       if (dist > jumpBest) {
         const first = jumpBest === 0;
@@ -317,6 +324,7 @@
         const mult = Math.min(5, combo + 1);
         addScore(mult);
         ctx.say(mult > 1 ? '+' + mult + ' кот, комбо!' : '+1 кот');
+        quest('cat'); quest('combo', mult); if (T.lampK > 0.3) quest('catDark');
         au.meow(); au.chime();
         if (dogEnt.trigger) dogEnt.trigger('attack');
         el.combo.textContent = mult > 1 ? '×' + mult : '';
@@ -339,9 +347,23 @@
 
       cluckCd -= dt; barkCd -= dt;
       const near = cat.dist < 12;
-      if (near && !wasNear && barkCd <= 0) { au.bark(); barkCd = 4; }
+      if (near && !wasNear && barkCd <= 0) { if (ctx.wardrobe) ctx.wardrobe.bark(); else au.bark(); barkCd = 4; quest('bark'); }
       wasNear = near;
 
+      ctxQ = ctx.quests || null;
+      if (ctxQ) {
+        if (bonesN > lastBones) quest('bones', bonesN - lastBones);
+        if (player.vel > 11 && !player.air) gallopM += player.vel * dt;
+        if (gallopM >= 10) { quest('gallop', Math.floor(gallopM)); gallopM -= Math.floor(gallopM); }
+        placeT -= dt;
+        if (placeT <= 0) {
+          placeT = 0.5;
+          const cell = world.cells.get(Math.round(player.x / C.P) + ',' + Math.round(player.z / C.P));
+          const local = Math.max(Math.abs(player.x - Math.round(player.x / C.P) * C.P), Math.abs(player.z - Math.round(player.z / C.P) * C.P));
+          if (cell && local < C.B / 2 && ['garages', 'plaza', 'square', 'park'].includes(cell.type)) quest('place', 1, cell.type);
+        }
+      }
+      lastBones = bonesN;
       updateBones(dt, ctx);
       updateRings(dt, ctx);
       trackJump(ctx);
@@ -367,6 +389,6 @@
     mapMarkers() { return cat ? [{ x: cat.x, z: cat.z, color: '#ff4d6d', label: 'кот' }] : []; },
     // how tense the game is now (0..1), for the music: the cat close, a long chain going
     tension() { return R.clamp((cat.dist < 32 ? 0.35 + 0.6 * (1 - cat.dist / 32) : 0.1) + (chain ? 0.12 : 0), 0, 1); },
-    debug() { return { player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }), chain: () => chain }; },
+    debug() { return { setBones: n => { bonesN = n; lastBones = n; }, player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }), chain: () => chain }; },
   };
 })(window.R = window.R || {});

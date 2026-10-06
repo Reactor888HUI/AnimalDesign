@@ -184,6 +184,14 @@
     tone('square', [[0, 660], [0.18, 660]], 0.08, 0.18, 0, 1500, 0.8);
     tone('square', [[0, 440], [0.3, 380]], 0.08, 0.3, 0.2, 1200, 0.8);
   };
+  // the wardrobe's voices: a duck's quack, a dog that meows, a squeaky toy; a bell on the collar
+  A.quack = () => {
+    if (!ok()) return;
+    for (const d of [0, 0.2]) tone('sawtooth', [[0, 520], [0.04, 620], [0.16, 380]], 0.22, 0.17, d, 900, 2.5);
+  };
+  A.dogMeow = () => { if (ok()) { tone('sawtooth', [[0, 380], [0.12, 620], [0.4, 420]], 0.2, 0.45, 0, 900, 2); } };
+  A.squeak = () => { if (ok()) for (const d of [0, 0.16]) tone('square', [[0, 1500], [0.05, 2300], [0.12, 1700]], 0.07, 0.12, d, 2000, 3); };
+  A.jingle = v => { if (ok()) for (let i = 0; i < 2; i++) tone('triangle', [[0, 3100 + i * 900], [0.2, 3000 + i * 900]], 0.035 * (v || 1), 0.22, i * 0.03); };
   // a flock taking off: a quick ripple of wing claps
   A.flutter = v => { if (!ok() || v <= 0.02) return; for (let i = 0; i < 7; i++) noise(900 + Math.random() * 900, 0.9, 0.05 * v, 0.06, i * 0.045 + Math.random() * 0.03); };
   A.alert = () => { if (ok()) tone('triangle', [[0, 520], [0.1, 900]], 0.08, 0.12); };

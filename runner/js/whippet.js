@@ -289,9 +289,18 @@
         for (let j = 0; j < 4; j++) { SI.push(si[v * 4 + j]); SW.push(sw[v * 4 + j]); }
       }
     }
+    // remember each vertex's coat class (0 coat, 1 white, 2 dark) and colour, for other coats (setCoat)
+    const VC = new Uint8Array(P2.length / 3);
+    for (let t = 0, f = 0; t < idx.length; t += 3, f++) {
+      const vs = [...corners.get(grp[f])], n = [0, 0, 0];
+      for (const v of vs) n[cls[v]]++;
+      const want = n[2] * 2 > vs.length ? 2 : n[1] * 2 >= vs.length ? 1 : 0;
+      VC[t] = VC[t + 1] = VC[t + 2] = want;
+    }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(P2, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(C2, 3));
+    g.userData.cls = VC; g.userData.base = Float32Array.from(C2);
     g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4));
     g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
     g.computeVertexNormals();
@@ -377,7 +386,10 @@
     tag.rotation.x = Math.PI / 2; tag.position.set(0, -0.055, -0.02);
     collar.add(tag);
     for (const o of [collar, tag]) o.castShadow = true;
-    return { ears };
+    // places to hang things on (the wardrobe): the top of the skull, the face between the eyes
+    const crown = new THREE.Group(); crown.position.copy(at([0.383, 0.694], 'head')); head.add(crown);
+    const face = new THREE.Group(); face.position.copy(at([EYE[0] + 0.008, EYE[1] + 0.002], 'head')); head.add(face);
+    return { ears, earMat, collar, tag, crown, face };
   }
 
   // ---- 2-bone IK in the side plane ------------------------------------------------------------------
@@ -497,7 +509,7 @@
     mesh.add(bones.pelvis);
     mesh.updateMatrixWorld(true);
     mesh.bind(new THREE.Skeleton(list));
-    const { ears } = details(bones);
+    const { ears, earMat, collar, tag, crown, face } = details(bones);
 
     const bank = new THREE.Group(); bank.add(mesh);
     const scaled = new THREE.Group(); scaled.scale.setScalar(SCALE); scaled.add(bank);
@@ -555,6 +567,36 @@
 
     return {
       kind: 'whippet', root, bones, mesh,
+      anchors: { crown, face, collar, tag },
+      // another coat: { fawn: colour of the coat, white: of the white parts (optional), stripes: 0..1
+      // (brindle), metal: 0..1 (a shine) }. Without an argument: back to the whippet's own coat.
+      setCoat(coat) {
+        const g = mesh.geometry, cls = g.userData.cls, base = g.userData.base, col = g.attributes.color, pos = g.attributes.position;
+        const f = coat && coat.fawn ? new THREE.Color(coat.fawn) : COL.fawn, w = coat && coat.white ? new THREE.Color(coat.white) : null;
+        // each coat facet keeps its own shade (the back darker, the facet jitter): its brightness relative
+        // to the plain fawn, applied to the new colour
+        const fl = COL.fawn.r + COL.fawn.g + COL.fawn.b, kr = f.r, kg = f.g, kb = f.b;
+        for (let i = 0; i < cls.length; i += 3) {
+          // brindle: dark stripes running down the body (by the face's middle point)
+          let st = 1;
+          if (coat && coat.stripes) {
+            const zc = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3, yc = (pos.getY(i) + pos.getY(i + 1) + pos.getY(i + 2)) / 3;
+            if (Math.sin(zc * 95 + yc * 30 + Math.sin(yc * 40) * 2) > 0.35) st = 1 - 0.55 * coat.stripes;
+          }
+          for (let j = i; j < i + 3; j++) {
+            const r = base[j * 3], gg = base[j * 3 + 1], b = base[j * 3 + 2];
+            const k = (r + gg + b) / fl * st;
+            if (cls[j] === 0) col.setXYZ(j, kr * k, kg * k, kb * k);
+            else if (cls[j] === 1 && w) col.setXYZ(j, r / COL.white.r * w.r, gg / COL.white.g * w.g, b / COL.white.b * w.b);
+            else col.setXYZ(j, r, gg, b);
+          }
+        }
+        col.needsUpdate = true;
+        earMat.color.setRGB(kr / COL.fawn.r, kg / COL.fawn.g, kb / COL.fawn.b);
+        mat.metalness = coat && coat.metal ? 0.55 * coat.metal : 0;
+        mat.roughness = coat && coat.metal ? 0.52 - 0.25 * coat.metal : 0.52;
+        mat.envMapIntensity = coat && coat.metal ? 1.2 : 0.5;
+      },
       get phase() { return phi; },
       trigger(name) { if (name === 'attack') atkT = 0.45; else if (name === 'eat') eatT = 0.6; },
       // s: speed01, air, vy, turn (yaw rate), flip (0..1 or -1), crash (0..1 or -1), limp (0..1), land (impact)

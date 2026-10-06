@@ -350,3 +350,44 @@ body.is-touch #shint { display: none; }
 #bigmap .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 body:not(.mode-runner) #bigmap .leg-cat { display: none; }
 @media (max-height: 520px) { #bigmap .legend { display: none; } #bigmap .frame { width: min(92vw, calc(100vh - 90px)); } }
+
+/* ---- daily quests and the wardrobe ---- */
+#questBtn {
+  pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
+  top: calc(206px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px));
+  color: var(--ink); font: 700 12px/1 'Space Grotesk', system-ui, sans-serif;
+}
+#questBtn[hidden] { display: none; }
+#questBtn .star { color: var(--gold); font-size: 15px; }
+#questBtn b { font-size: 15px; }
+#questBtn .left { color: var(--ink-dim); font-weight: 500; font-size: 11px; }
+#questBtn.pop { animation: trickpop .35s ease-out; }
+@media (max-height: 460px), (max-width: 500px) { #questBtn { top: calc(178px + env(safe-area-inset-top, 0px)); } #questBtn .left { display: none; } }
+#quests { position: fixed; inset: 0; z-index: 110; display: flex; justify-content: flex-end; align-items: stretch; padding: 12px; pointer-events: none; }
+#quests[hidden] { display: none; }
+#quests .frame { pointer-events: auto; width: min(400px, 94vw); display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 16px; color: var(--ink); overflow: hidden; }
+#quests .head { display: flex; align-items: center; gap: 6px; }
+#quests .head [data-tab] { cursor: pointer; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink-dim); font: 700 12px/1 'Space Grotesk', system-ui, sans-serif; letter-spacing: .04em; }
+#quests .head [data-tab].on { color: var(--ink); border-color: var(--gold); }
+#quests .bal-wrap { margin-left: auto; color: var(--gold); font-weight: 700; }
+#quests .close { cursor: pointer; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--ink); }
+#quests .body { overflow-y: auto; display: grid; gap: 10px; align-content: start; padding-right: 2px; }
+#quests .quest { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); display: grid; gap: 7px; }
+#quests .quest.done { border-color: #45d483; }
+#quests .quest .t { display: flex; gap: 8px; justify-content: space-between; font-size: 13px; }
+#quests .quest .r { color: var(--gold); white-space: nowrap; }
+#quests .quest .bar { height: 6px; }
+#quests .quest .bar i { background: var(--gold); transform-origin: left; }
+#quests .quest.done .bar i { background: #45d483; }
+#quests .quest .p { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: var(--ink-dim); }
+#quests .reroll { cursor: pointer; border: 1px solid var(--line); background: transparent; color: var(--ink-dim); border-radius: 999px; padding: 4px 10px; font-size: 11px; }
+#quests .note, #quests .gift { margin: 0; font-size: 12px; color: var(--ink-dim); }
+#quests .gift { color: var(--gold); font-weight: 700; }
+#quests .slot h3 { margin: 4px 0 6px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-dim); }
+#quests .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+#quests .item { cursor: pointer; text-align: left; display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: 600 12.5px/1.25 system-ui, sans-serif; }
+#quests .item small { color: var(--ink-dim); font-weight: 500; font-size: 11px; }
+#quests .item.worn { border-color: var(--gold); background: rgba(255, 211, 106, .14); }
+#quests .item.can small { color: var(--gold); }
+#quests .item.lock { opacity: .55; }
+@media (max-width: 600px) { #quests { align-items: flex-end; padding: 8px; } #quests .frame { width: 100%; max-height: 62vh; } }

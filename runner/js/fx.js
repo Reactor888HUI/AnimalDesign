@@ -1,9 +1,9 @@
 (function (R) {
   class FX {
     constructor(scene) {
-      const tex = R.glowTexture();
+      const tex = this.glow = R.glowTexture();
       this.pool = [];
-      for (let i = 0; i < 128; i++) {
+      for (let i = 0; i < 192; i++) {
         const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
         s.visible = false;
         s.userData = { life: 0, max: 1, vx: 0, vy: 0, vz: 0, s0: 1, s1: 1, o: 1 };
@@ -23,6 +23,8 @@
         u.s0 = o.size || 0.4; u.s1 = u.s0 * (o.grow || 2.2); u.o = o.opacity || 0.5;
         s.material.color.setHex(o.color);
         s.material.opacity = u.o;
+        s.material.map = o.map || this.glow;          // a shape (heart, star ...) or the soft glow
+        s.material.rotation = o.map ? (Math.random() - 0.5) * 0.8 : 0;
         s.scale.set(u.s0, u.s0, 1);
         s.visible = true;
       }
@@ -39,6 +41,7 @@
         u.s0 = o.size || 0.4; u.s1 = u.s0 * (o.grow || 2.2); u.o = o.opacity || 0.5;
         s.material.color.setHex(o.color);
         s.material.opacity = u.o;
+        s.material.map = this.glow; s.material.rotation = 0;
         s.scale.set(u.s0, u.s0, 1);
         s.visible = true;
       }

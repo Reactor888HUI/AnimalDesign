@@ -313,7 +313,7 @@
   const toast = $('toast');
   let toastT = 0;
   const ctx = {
-    scene, camera, renderer, world, fx, traffic, rig, input, au, $, coarse, get life() { return life; },
+    scene, camera, renderer, world, fx, traffic, rig, input, au, $, coarse, get life() { return life; }, get map() { return map; },
     theme: () => daytime.live || daytime.update(0),
     setTheme, daytime, lockTheme(name) { setTheme(name, true); themeLocked = true; },
     say(text, kind) {
@@ -334,6 +334,19 @@
   let level = coarse ? 1 : 2;
   const player = ctx.player = mode.start(ctx);
   // the district map (not in the guard's yard: one yard, nothing to find)
+  // daily quests and the wardrobe (the runner): the panel, the dog's outfit, toasts when a quest is done
+  let quests = null, wardrobe = null, questPanel = null;
+  if (modeName === 'runner' && R.Quests) {
+    quests = ctx.quests = new R.Quests();
+    wardrobe = ctx.wardrobe = new R.Wardrobe();
+    wardrobe.attach(player.ent, au);
+    questPanel = new R.QuestPanel(ctx, quests, wardrobe);
+    quests.onDone = (q, bonus) => {
+      au.chime(); setTimeout(() => au.pick(10), 180);
+      ctx.say(bonus ? 'Все задания дня! +2 ★' : 'Задание выполнено! +' + q.stars + ' ★', 'long');
+      const b = $('questBtn'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+    };
+  }
   const map = mode.mapMarkers ? new R.DistrictMap(ctx, { markers: () => mode.mapMarkers(), travel: modeName === 'runner' }) : null;
   if (themeLocked === false) setTheme(daytime.mode, true);
   world.update(player.x, player.z, 99);
@@ -480,6 +493,15 @@
       rig.update(dt, player, now / 1000, input);
     }
     if (map) map.update(dt);
+    if (wardrobe && !ctx.paused) wardrobe.update(dt, player, fx, T.lampK > 0.5);
+    // the wardrobe open: the camera comes round to the front of the dog and slowly circles it
+    if (questPanel && questPanel.open && questPanel.tab === 'wardrobe') {
+      const a = player.heading + Math.PI * 0.72 + Math.sin(now / 2600) * 0.35, wide = innerWidth > 600;
+      camera.position.set(player.x - Math.sin(a) * 2.5, (player.y || 0) + 1.15, player.z - Math.cos(a) * 2.5);
+      // keep the dog clear of the panel (right on wide screens, bottom on phones)
+      const side = wide ? 0.9 : 0, rx = Math.cos(a) * side, rz = -Math.sin(a) * side;
+      camera.lookAt(player.x - rx, (player.y || 0) + (wide ? 0.75 : 0.35), player.z - rz);
+    }
     camera.updateMatrixWorld();
     { const o = T.sunOffset, D = R.dogLight; if (D) { D.uRimDir.value.set(o[0], o[1], o[2]).normalize().transformDirection(camera.matrixWorldInverse); D.uRimCol.value.setHex(T.sunColor); D.uRimK.value = T.rimK; } }
     pShadow.update(player, T);
@@ -589,5 +611,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life, map }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life, map, get quests() { return quests; }, get wardrobe() { return wardrobe; } }, mode.debug ? mode.debug() : {});
 })(window.R);

@@ -82,4 +82,21 @@
     skyCache[name] = tex;
     return tex;
   };
+  // small white shapes for particles (tinted by the particle colour): heart, star, bubble, flame, note, paw
+  const shapeCache = {};
+  R.shapeTexture = function (kind) {
+    if (shapeCache[kind]) return shapeCache[kind];
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.strokeStyle = '#fff'; g.translate(32, 32);
+    g.beginPath();
+    if (kind === 'heart') { g.moveTo(0, 22); g.bezierCurveTo(-30, 2, -24, -24, 0, -10); g.bezierCurveTo(24, -24, 30, 2, 0, 22); g.fill(); }
+    else if (kind === 'star') { for (let i = 0; i < 10; i++) { const r = i % 2 ? 11 : 27, a = i / 10 * Math.PI * 2 - Math.PI / 2; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.fill(); }
+    else if (kind === 'bubble') { g.lineWidth = 4; g.arc(0, 0, 22, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.arc(-8, -9, 5, 0, Math.PI * 2); g.fill(); }
+    else if (kind === 'flame') { g.moveTo(0, -28); g.bezierCurveTo(18, -6, 20, 10, 0, 26); g.bezierCurveTo(-20, 10, -18, -6, 0, -28); g.fill(); }
+    else if (kind === 'note') { g.fillRect(4, -24, 5, 34); g.ellipse(-2, 12, 11, 8, -0.4, 0, Math.PI * 2); g.fill(); g.fillRect(4, -24, 16, 6); }
+    else if (kind === 'paw') { g.ellipse(0, 8, 13, 11, 0, 0, Math.PI * 2); g.fill(); for (const [x, y] of [[-15, -6], [-6, -16], [6, -16], [15, -6]]) { g.beginPath(); g.ellipse(x, y, 5, 6.5, 0, 0, Math.PI * 2); g.fill(); } }
+    const t = new THREE.CanvasTexture(c);
+    shapeCache[kind] = t;
+    return t;
+  };
 })(window.R = window.R || {});

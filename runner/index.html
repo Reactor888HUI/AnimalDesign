@@ -47,6 +47,17 @@
 </div>
 
 <div id="toast" class="ui"></div>
+<button id="questBtn" class="ui panel r-only" type="button" aria-label="Задания и гардероб (J)" hidden><span class="star">★</span><b class="stars">0</b><span class="left"></span></button>
+<div id="quests" hidden>
+  <div class="frame panel">
+    <div class="head">
+      <button type="button" data-tab="quests">Задания дня</button><button type="button" data-tab="wardrobe">Гардероб</button>
+      <span class="bal-wrap">★ <b class="bal">0</b></span>
+      <button class="close" type="button" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="body"></div>
+  </div>
+</div>
 <button id="minimap" class="ui panel" type="button" aria-label="Карта района (K)" hidden><canvas width="264" height="264"></canvas></button>
 <div id="bigmap" hidden>
   <div class="frame panel">
@@ -148,7 +159,7 @@
   <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
 </button>
 
-<div id="hint" class="ui panel r-only"><kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта</div>
+<div id="hint" class="ui panel r-only"><kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания</div>
 
 <div id="touchUI" hidden>
   <div id="stickHint">куда бежать</div>
@@ -192,6 +203,8 @@
 <script src="js/traffic.js"></script>
 <script src="js/street.js"></script>
 <script src="js/map.js"></script>
+<script src="js/wardrobe.js"></script>
+<script src="js/quests.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/music.js"></script>
 <script src="js/camera.js"></script>
