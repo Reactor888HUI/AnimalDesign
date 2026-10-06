@@ -3,7 +3,9 @@ exports.run = async t => {
   const page = await t.open('runner/index.html?noworker&nopost#runner');
   const r = await page.evaluate(() => {
     const r = window.__runner, M = window.R.modes.runner, ctx = r.ctx, p = r.player, inp = r.input;
-    const go = n => { for (let i = 0; i < n; i++) { ctx.traffic.update(1 / 30, p); M.update(1 / 30, ctx); r.world.update(p.x, p.z, 2); ctx.fx.update(1 / 30); r.rig.update(1 / 30, p, i / 30); } };
+    // no traffic here: a passing car could knock the dog and spoil the speed checks
+    r.world.dynamic = [];
+    const go = n => { for (let i = 0; i < n; i++) { M.update(1 / 30, ctx); r.world.update(p.x, p.z, 2); ctx.fx.update(1 / 30); r.rig.update(1 / 30, p, i / 30); } };
     const out = {};
     go(20); inp.throttle = 1; go(60); out.speed = p.vel;
     inp._jumpEdge = true; inp.jumpHeld = true; go(8); out.jumpY = p.y;

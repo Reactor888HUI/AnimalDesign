@@ -33,6 +33,7 @@
     scap: [0.20, 0.50], hum: [0.275, 0.37], fore: [0.22, 0.25], past: [0.225, 0.075], fpaw: [0.24, 0.03], ftoe: [0.272, 0.014],
     femur: [-0.235, 0.425], tibia: [-0.15, 0.265], meta: [-0.30, 0.11], hpaw: [-0.292, 0.03], htoe: [-0.262, 0.014],
   };
+  const EYE = [0.405, 0.657, 0.036];          // the eye on the head (u, v, side)
   const FX = 0.055, HX = 0.06;                 // half distance between the legs (front, hind)
   const GROUND = 0.03;                         // height of the paw joint when the paw stands
 
@@ -58,15 +59,38 @@
 
   // ---- colours -----------------------------------------------------------------------------------
   const COL = {
-    fawn: new THREE.Color(0xd09a5e), fawnDark: new THREE.Color(0xa9773f), white: new THREE.Color(0xe8dfd2),
-    nose: new THREE.Color(0x1d1715), pink: new THREE.Color(0xd59a86),
+    fawn: new THREE.Color(0xb46d33), fawnDark: new THREE.Color(0x8e5226), white: new THREE.Color(0xf1e9de),
+    nose: new THREE.Color(0x161110), rim: new THREE.Color(0x3a2214), pink: new THREE.Color(0xd0907e),
   };
+  // rim light: the edges of the coat that face the sun glow in its colour (strong against a low
+  // sunset sun, faint at noon, cool under the moon). main.js sets these every frame.
+  R.dogLight = R.dogLight || {
+    uRimCol: { value: new THREE.Color(1, 0.8, 0.6) }, uRimDir: { value: new THREE.Vector3(0, 1, 0) }, uRimK: { value: 0.4 },
+  };
+  function withRim(mat) {
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, R.dogLight);
+      sh.fragmentShader = 'uniform vec3 uRimCol, uRimDir;\nuniform float uRimK;\n' + sh.fragmentShader.replace(
+        'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+        `float rimF = smoothstep(0.12, 0.7, 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0));
+        outgoingLight += uRimCol * uRimK * 1.6 * rimF * (0.2 + 0.8 * clamp(dot(normal, uRimDir) + 0.3, 0.0, 1.0));
+        gl_FragColor = vec4( outgoingLight, diffuseColor.a );`);
+    };
+    mat.customProgramCacheKey = () => 'whippet-rim';
+    return mat;
+  }
   const mix = (a, b, t) => a.clone().lerp(b, clamp(t, 0, 1));
 
-  // ---- geometry: tubes of elliptic rings, each ring weighted to one or two bones ------------------
-  // ring: [u, v, rN (in-plane radius), rX (side radius), [[bone, w], ...]], x offset per tube
+  // ---- geometry: tubes of rings, each ring weighted to one or two bones -----------------------------
+  // ring: [u, v, rN, rX, [[bone, w], ...], inward, shape], x offset per tube.
+  //   rN: radius in the side plane on the "first" side (up for the body, forward for a leg),
+  //   rX: half width; shape (optional): dn = radius on the other side (down / back),
+  //   sq = squareness (2 = ellipse, more = flatter sides), keel = narrower towards the dn side
+  //   (the deep, egg-shaped chest), crown = narrower towards the first side (the croup seen from
+  //   behind), so a section need not be a plain ellipse.
   function buildGeometry(boneIndex) {
-    const pos = [], col = [], si = [], sw = [], idx = [];
+    const pos = [], col = [], si = [], sw = [], idx = [], grp = [];
+    let ng = 0;
     function tube(rings, x, segs, colorFn, capStart, capEnd) {
       const base = pos.length / 3, n = rings.length;
       const tan = rings.map((r, i) => {
@@ -80,22 +104,28 @@
         for (let k = 0; k < 4; k++) { si.push(ws[k] ? boneIndex[ws[k][0]] : 0); sw.push(ws[k] ? ws[k][1] : 0); }
       };
       rings.forEach((r, i) => {
-        const [u, v, rn, rx, w, inward] = r, [tu, tv] = tan[i], nu = -tv, nv = tu, xr = x * (1 - (inward || 0));
+        const [u, v, rn, rx, w, inward, sh] = r, [tu, tv] = tan[i], nu = -tv, nv = tu, xr = x * (1 - (inward || 0));
+        const dn = sh && sh.dn !== undefined ? sh.dn : rn, e = 2 / ((sh && sh.sq) || 2), keel = (sh && sh.keel) || 0, crown = (sh && sh.crown) || 0;
         for (let k = 0; k < segs; k++) {
           const a = k / segs * TAU, ca = Math.cos(a), sa = Math.sin(a);
-          push(u + nu * rn * ca, v + nv * rn * ca, xr + rx * sa, colorFn(i, ca, sa, u, v, nu * ca, nv * ca), w);
+          const pc = Math.sign(ca) * Math.pow(Math.abs(ca), e), ps = Math.sign(sa) * Math.pow(Math.abs(sa), e);
+          const rr = ca >= 0 ? rn : dn, wx = rx * (1 - keel * Math.max(0, -ca) - crown * Math.max(0, ca));
+          const pu = u + nu * rr * pc, pv = v + nv * rr * pc, px = xr + wx * ps;
+          push(pu, pv, px, colorFn(i, ca, sa, u, v, nu * ca, nv * ca, false, [pu, pv, px]), w);
         }
       });
       for (let i = 0; i + 1 < n; i++) for (let k = 0; k < segs; k++) {
         const a = base + i * segs + k, b = base + i * segs + (k + 1) % segs, c = a + segs, d = b + segs;
-        idx.push(a, b, c, b, d, c);
+        idx.push(a, b, c, b, d, c); grp.push(ng, ng); ng++;
       }
       const cap = (i, dir) => {
         const r = rings[i], [tu, tv] = tan[i], ci = pos.length / 3;
-        push(r[0] + tu * dir * r[2] * 0.6, r[1] + tv * dir * r[2] * 0.6, x, colorFn(i, 0, 0, r[0], r[1], 0, 0, true), r[4]);
+        const cu = r[0] + tu * dir * r[2] * 0.6, cv = r[1] + tv * dir * r[2] * 0.6;
+        push(cu, cv, x, colorFn(i, 0, 0, r[0], r[1], 0, 0, true, [cu, cv, x]), r[4]);
         for (let k = 0; k < segs; k++) {
           const a = base + i * segs + k, b = base + i * segs + (k + 1) % segs;
           if (dir > 0) idx.push(a, ci, b); else idx.push(b, ci, a);
+          grp.push(ng++);
         }
       };
       if (capStart) cap(0, -1);
@@ -104,65 +134,77 @@
 
     // body: from the tail root to the forechest. Under the chest and belly the coat is white.
     const W = (...a) => a;
+    // [u, top, bottom, half width, weights, shape]: proportions from the side photo (withers = 1):
+    // chest down to the elbow (brisket 0.54 off the ground) and held low to well behind the elbow,
+    // then a steep tuck-up (0.70) into a slim loin with a slight arch; the croup slopes to a low tail
+    const B = (u, top, bot, w, wt, sh) => [u, (top + bot) / 2, (top - bot) / 2, w, wt, 0, sh];
+    const CH = { keel: 0.35 }, LO = { keel: 0.1 }, CR = { crown: 0.35 };
+    // the topline: highest at the withers, a slight dip behind them, an arch over the loin, the croup
+    // falling to the tail. The hindquarters are narrow on top: the thighs give the width (below).
     const body = [
-      // croup sloping down to a low tail set, an arched loin, moderate tuck-up, chest to the elbow
-      [-0.335, 0.40, 0.034, 0.034, W(['pelvis', 1])],
-      [-0.31, 0.41, 0.058, 0.056, W(['pelvis', 1])],
-      [-0.26, 0.425, 0.078, 0.072, W(['pelvis', 1])],
-      [-0.19, 0.44, 0.075, 0.066, W(['pelvis', 0.75], ['lumbar', 0.25])],
-      [-0.11, 0.45, 0.07, 0.057, W(['pelvis', 0.3], ['lumbar', 0.7])],
-      [-0.04, 0.448, 0.078, 0.06, W(['lumbar', 1])],
-      [0.03, 0.435, 0.10, 0.067, W(['lumbar', 0.55], ['chest', 0.45])],
-      [0.10, 0.415, 0.118, 0.077, W(['chest', 1])],
-      [0.17, 0.395, 0.135, 0.082, W(['chest', 1])],
-      [0.235, 0.395, 0.118, 0.079, W(['chest', 1])],
-      [0.29, 0.41, 0.09, 0.07, W(['chest', 0.8], ['neck1', 0.2])],
-      [0.315, 0.45, 0.05, 0.05, W(['chest', 0.4], ['neck1', 0.6])],
+      B(-0.322, 0.44, 0.39, 0.03, W(['pelvis', 1])),
+      B(-0.30, 0.47, 0.36, 0.05, W(['pelvis', 1]), CR),
+      B(-0.262, 0.497, 0.355, 0.062, W(['pelvis', 1]), CR),
+      B(-0.19, 0.515, 0.372, 0.062, W(['pelvis', 0.75], ['lumbar', 0.25]), LO),
+      B(-0.12, 0.523, 0.392, 0.058, W(['pelvis', 0.3], ['lumbar', 0.7]), LO),
+      B(-0.06, 0.52, 0.378, 0.058, W(['lumbar', 1]), LO),
+      B(0.0, 0.513, 0.33, 0.07, W(['lumbar', 0.7], ['chest', 0.3]), CH),
+      B(0.05, 0.514, 0.296, 0.083, W(['lumbar', 0.4], ['chest', 0.6]), CH),
+      B(0.10, 0.521, 0.282, 0.09, W(['chest', 1]), CH),
+      B(0.17, 0.53, 0.276, 0.093, W(['chest', 1]), CH),
+      B(0.235, 0.525, 0.29, 0.086, W(['chest', 1]), CH),
+      B(0.29, 0.5, 0.335, 0.072, W(['chest', 0.8], ['neck1', 0.2]), CH),
+      B(0.315, 0.495, 0.405, 0.05, W(['chest', 0.4], ['neck1', 0.6])),
     ];
     for (const r of body) r[3] *= 1.12;   // a touch wider than life: reads better from behind
-    tube(body, 0, 20, (i, ca, sa, u, v, nu, nv, isCap) => {
+    tube(body, 0, 16, (i, ca, sa, u, v, nu, nv, isCap) => {
       // white under the chest and belly, a white front of the chest; darker along the back
       const down = -nv, fwd = nu;
-      let c = mix(COL.fawn, COL.fawnDark, sstep(0.55, 1, nv) * 0.6);
-      const belly = sstep(0.35, 0.8, down) * sstep(-0.16, -0.06, u);
-      const front = sstep(0.18, 0.27, u) * sstep(0.0, 0.5, fwd - nv * 0.3);
-      return mix(c, COL.white, Math.max(belly, front, isCap && u > 0.2 ? 1 : 0));
+      if (isCap && u > 0.2) return COL.white;
+      if (down > 0.45 && u > -0.15) return COL.white;                    // belly and brisket
+      if (u > 0.2 && fwd - nv * 0.3 > 0.12) return COL.white;           // the front of the chest
+      return mix(COL.fawn, COL.fawnDark, sstep(0.5, 1, nv) * 0.75);     // darker along the back
     }, true, true);
 
-    // neck: long and arched; white throat
+    // neck: long, an arched crest flowing into the withers (the first radius: the back of the neck),
+    // a thick base; the throat and the front are white
     const neck = [
-      [0.25, 0.45, 0.075, 0.058, W(['chest', 0.7], ['neck1', 0.3])],
-      [0.285, 0.505, 0.064, 0.052, W(['neck1', 1])],
-      [0.305, 0.555, 0.054, 0.047, W(['neck1', 0.4], ['neck2', 0.6])],
-      [0.325, 0.595, 0.048, 0.043, W(['neck2', 0.7], ['head', 0.3])],
-      [0.345, 0.622, 0.046, 0.042, W(['head', 1])],
+      [0.25, 0.45, 0.082, 0.058, W(['chest', 0.7], ['neck1', 0.3]), 0, { dn: 0.07 }],
+      [0.285, 0.505, 0.067, 0.052, W(['neck1', 1]), 0, { dn: 0.058 }],
+      [0.305, 0.555, 0.056, 0.046, W(['neck1', 0.4], ['neck2', 0.6]), 0, { dn: 0.047 }],
+      [0.325, 0.595, 0.049, 0.042, W(['neck2', 0.7], ['head', 0.3]), 0, { dn: 0.042 }],
+      [0.345, 0.622, 0.045, 0.04, W(['head', 1])],
     ];
-    tube(neck, 0, 12, (i, ca, sa, u, v, nu, nv) => mix(COL.fawn, COL.white, sstep(0.2, 0.7, nu - nv * 0.2)), false, false);
+    tube(neck, 0, 12, (i, ca, sa, u, v, nu, nv) => nu > 0.12 ? COL.white : COL.fawn, false, false);
 
-    // head: skull, stop, long fine muzzle; white blaze and white chin
+    // head: a broad skull with the cheeks, a clear stop, a long narrow muzzle (narrower than high)
+    const MZ = { keel: 0.15 };
     const head = [
-      // a long, lean, flat-skulled head (slimmer than before, like the photo)
-      [0.33, 0.64, 0.038, 0.038, W(['head', 1])],
-      [0.365, 0.65, 0.046, 0.045, W(['head', 1])],
-      [0.405, 0.647, 0.041, 0.041, W(['head', 1])],
-      [0.445, 0.634, 0.033, 0.033, W(['head', 1])],
-      [0.49, 0.619, 0.026, 0.025, W(['head', 1])],
-      [0.535, 0.605, 0.019, 0.018, W(['head', 1])],
-      [0.562, 0.596, 0.012, 0.011, W(['head', 1])],
+      [0.33, 0.64, 0.036, 0.036, W(['head', 1])],
+      [0.36, 0.65, 0.046, 0.046, W(['head', 1])],
+      [0.395, 0.652, 0.044, 0.046, W(['head', 1])],
+      [0.425, 0.643, 0.036, 0.034, W(['head', 1]), 0, MZ],
+      [0.46, 0.628, 0.03, 0.025, W(['head', 1]), 0, MZ],
+      [0.50, 0.615, 0.024, 0.02, W(['head', 1]), 0, MZ],
+      [0.535, 0.604, 0.018, 0.015, W(['head', 1]), 0, MZ],
+      [0.562, 0.596, 0.011, 0.01, W(['head', 1])],
     ];
-    tube(head, 0, 14, (i, ca, sa, u, v, nu, nv, isCap) => {
-      if (isCap && u > 0.545) return COL.nose;
-      const blaze = sstep(0.6, 0.95, nv) * sstep(0.38, 0.44, u) * sstep(0.35, 0.0, Math.abs(sa));
-      const chin = sstep(0.3, 0.8, -nv) * sstep(0.39, 0.45, u);
-      const muzzle = sstep(0.46, 0.54, u) * 0.55;
-      return mix(COL.fawn, COL.white, Math.max(blaze, chin, muzzle));
+    tube(head, 0, 14, (i, ca, sa, u, v, nu, nv, isCap, P) => {
+      if (isCap) return u > 0.5 ? COL.nose : COL.fawn;
+      const [pu, pv, px] = P;
+      if (Math.abs(pu - EYE[0]) < 0.022 && Math.abs(pv - EYE[1]) < 0.015 && Math.abs(px) > 0.02) return COL.rim;
+      if (u > 0.545) return COL.nose;                                    // the leather of the nose
+      if (nv > 0.55 && Math.abs(sa) < 0.45 && u > 0.40) return COL.white; // the blaze up between the eyes
+      if (u > 0.455 && nv < 0.5) return COL.white;                       // white muzzle
+      if (nv < -0.3 && u > 0.37) return COL.white;                       // chin and lower jaw
+      return COL.fawn;
     }, true, true);
 
     // tail: thin, low, a slight upward curl; white tip
     const tl = [
-      [-0.30, 0.418, 0.024, 0.024, W(['pelvis', 0.5], ['tail1', 0.5])],
-      [-0.33, 0.39, 0.02, 0.02, W(['tail1', 1])],
-      [-0.355, 0.36, 0.017, 0.017, W(['tail1', 0.5], ['tail2', 0.5])],
+      [-0.30, 0.418, 0.028, 0.026, W(['pelvis', 0.5], ['tail1', 0.5])],
+      [-0.33, 0.39, 0.022, 0.021, W(['tail1', 1])],
+      [-0.355, 0.36, 0.018, 0.018, W(['tail1', 0.5], ['tail2', 0.5])],
       [-0.375, 0.325, 0.015, 0.015, W(['tail2', 1])],
       [-0.39, 0.29, 0.013, 0.013, W(['tail2', 0.5], ['tail3', 0.5])],
       [-0.4, 0.245, 0.011, 0.011, W(['tail3', 1])],
@@ -170,50 +212,88 @@
       [-0.4, 0.158, 0.007, 0.007, W(['tail4', 1])],
       [-0.39, 0.12, 0.004, 0.004, W(['tail4', 1])],
     ];
-    tube(tl, 0, 6, i => mix(COL.fawn, COL.white, sstep(5.5, 7, i)), false, true);
+    tube(tl, 0, 6, (i, ca, sa, u, v, nu, nv) => i >= 6 ? COL.white : nv < -0.5 && i >= 2 ? mix(COL.fawn, COL.white, 0.5) : COL.fawn, false, true);
 
     // legs
     for (const s of ['L', 'R']) {
       const xf = sideX(s, true), xh = sideX(s, false);
+      // front: shoulder, upper arm, a pointed elbow at the brisket, a thin straight forearm, a
+      // sloping pastern, an oval paw with a flat sole. The lower leg stands a little out from the body.
+      const PAW = { dn: 0.018, sq: 3 }, OUT = -0.1;
       const front = [
         [0.19, 0.47, 0.05, 0.03, W(['scap' + s, 1]), 0.7],
-        [0.245, 0.40, 0.05, 0.034, W(['scap' + s, 0.6], ['hum' + s, 0.4]), 0.25],
-        [0.265, 0.34, 0.042, 0.032, W(['hum' + s, 1])],
-        [0.235, 0.275, 0.033, 0.027, W(['hum' + s, 0.5], ['fore' + s, 0.5])],
-        [0.222, 0.215, 0.023, 0.02, W(['fore' + s, 1])],
-        [0.223, 0.14, 0.018, 0.016, W(['fore' + s, 1])],
-        [0.225, 0.082, 0.017, 0.016, W(['fore' + s, 0.5], ['past' + s, 0.5])],
-        [0.232, 0.05, 0.016, 0.015, W(['past' + s, 1])],
-        [0.243, 0.028, 0.02, 0.019, W(['past' + s, 0.3], ['fpaw' + s, 0.7])],
-        [0.262, 0.02, 0.017, 0.017, W(['fpaw' + s, 1])],
-        [0.276, 0.016, 0.009, 0.01, W(['fpaw' + s, 1])],
+        [0.245, 0.40, 0.056, 0.037, W(['scap' + s, 0.6], ['hum' + s, 0.4]), 0.25],
+        [0.262, 0.335, 0.044, 0.032, W(['hum' + s, 1]), 0.05],
+        [0.232, 0.268, 0.028, 0.025, W(['hum' + s, 0.5], ['fore' + s, 0.5]), 0, { dn: 0.038 }],
+        [0.222, 0.212, 0.021, 0.019, W(['fore' + s, 1]), OUT],
+        [0.223, 0.145, 0.016, 0.015, W(['fore' + s, 1]), OUT],
+        [0.225, 0.085, 0.016, 0.016, W(['fore' + s, 0.5], ['past' + s, 0.5]), OUT],
+        [0.232, 0.052, 0.013, 0.013, W(['past' + s, 1]), OUT],
+        [0.243, 0.027, 0.017, 0.022, W(['past' + s, 0.25], ['fpaw' + s, 0.75]), OUT, PAW],
+        [0.262, 0.021, 0.017, 0.023, W(['fpaw' + s, 1]), OUT, PAW],
+        [0.279, 0.016, 0.01, 0.016, W(['fpaw' + s, 1]), OUT, { dn: 0.01, sq: 3 }],
       ];
-      tube(front, xf, 12, (i, ca, sa, u, v, nu) => {
-        // white socks and a white front of the leg
-        return mix(COL.fawn, COL.white, Math.max(sstep(0.17, 0.09, v), sstep(0.3, 0.2, v) * sstep(0, 0.6, nu)));
-      }, false, true);
+      const inner = sa => sa * (s === 'R' ? -1 : 1) > 0.3;                 // the side facing the other leg
+      tube(front, xf, 8, (i, ca, sa, u, v, nu) => (v < 0.15 || (v < 0.3 && (nu > 0.2 || inner(sa))) ? COL.white : COL.fawn), false, true);
+      // hind: a broad thigh (more muscle behind), the stifle, the long "second thigh" sloping back,
+      // a sharp hock with its point behind, a thin upright metatarsus, an oval paw
       const hind = [
-        [-0.215, 0.445, 0.06, 0.03, W(['pelvis', 0.5], ['femur' + s, 0.5]), 0.8],
-        [-0.212, 0.385, 0.074, 0.042, W(['femur' + s, 1]), 0.35],
-        [-0.19, 0.315, 0.06, 0.038, W(['femur' + s, 1])],
-        [-0.16, 0.268, 0.037, 0.028, W(['femur' + s, 0.5], ['tibia' + s, 0.5])],
-        [-0.205, 0.22, 0.034, 0.024, W(['tibia' + s, 1])],
-        [-0.255, 0.165, 0.025, 0.019, W(['tibia' + s, 1])],
-        [-0.297, 0.115, 0.019, 0.017, W(['tibia' + s, 0.5], ['meta' + s, 0.5])],
-        [-0.297, 0.07, 0.016, 0.015, W(['meta' + s, 1])],
-        [-0.292, 0.028, 0.02, 0.019, W(['meta' + s, 0.3], ['hpaw' + s, 0.7])],
-        [-0.274, 0.02, 0.017, 0.017, W(['hpaw' + s, 1])],
-        [-0.26, 0.016, 0.009, 0.01, W(['hpaw' + s, 1])],
+        // the thigh grows out of the croup (its top inside the body) and is the widest part behind
+        [-0.228, 0.468, 0.05, 0.034, W(['pelvis', 0.6], ['femur' + s, 0.4]), 0.55],   // kept inside the croup: no flicker
+        [-0.215, 0.39, 0.07, 0.047, W(['femur' + s, 1]), 0.25, { dn: 0.088 }],
+        [-0.188, 0.318, 0.055, 0.037, W(['femur' + s, 1]), 0.1, { dn: 0.058 }],
+        [-0.157, 0.268, 0.034, 0.025, W(['femur' + s, 0.5], ['tibia' + s, 0.5]), 0],
+        [-0.2, 0.222, 0.026, 0.021, W(['tibia' + s, 1]), OUT, { dn: 0.036 }],
+        [-0.25, 0.166, 0.02, 0.016, W(['tibia' + s, 1]), OUT, { dn: 0.024 }],
+        [-0.293, 0.118, 0.016, 0.015, W(['tibia' + s, 0.5], ['meta' + s, 0.5]), OUT, { dn: 0.026 }],
+        [-0.298, 0.074, 0.012, 0.012, W(['meta' + s, 1]), OUT],
+        [-0.296, 0.042, 0.013, 0.013, W(['meta' + s, 0.5], ['hpaw' + s, 0.5]), OUT],
+        [-0.29, 0.026, 0.017, 0.022, W(['meta' + s, 0.2], ['hpaw' + s, 0.8]), OUT, PAW],
+        [-0.274, 0.021, 0.017, 0.023, W(['hpaw' + s, 1]), OUT, PAW],
+        [-0.257, 0.016, 0.01, 0.016, W(['hpaw' + s, 1]), OUT, { dn: 0.01, sq: 3 }],
       ];
-      tube(hind, xh, 12, (i, ca, sa, u, v, nu) => mix(COL.fawn, COL.white, Math.max(sstep(0.12, 0.06, v), sstep(0.3, 0.2, v) * sstep(0.2, -0.4, sa * (s === 'R' ? -1 : 1)) * 0.8)), false, true);
+      tube(hind, xh, 8, (i, ca, sa, u, v, nu) => (v < 0.125 || (v < 0.3 && inner(sa)) ? COL.white : COL.fawn), false, true);
     }
 
+    // one colour per face (a quad of the tube, or a triangle of a cap): white if most of its corners
+    // are, dark if most are dark, else the mean of its coat colours. So the white patches have crisp
+    // edges that run along the facets.
+    const P2 = [], C2 = [], SI = [], SW = [], cls = [];
+    const wb = COL.white.b, fb = COL.fawn.b;
+    for (let v = 0; v < col.length / 3; v++) {
+      const r = col[v * 3], g_ = col[v * 3 + 1], b_ = col[v * 3 + 2];
+      cls.push(0.3 * r + 0.59 * g_ + 0.11 * b_ < 0.2 ? 2 : (b_ - fb) / (wb - fb) > 0.5 ? 1 : 0);
+    }
+    const corners = new Map();
+    for (let t = 0; t < idx.length; t += 3) {
+      const gi = grp[t / 3]; if (!corners.has(gi)) corners.set(gi, new Set());
+      for (let j = 0; j < 3; j++) corners.get(gi).add(idx[t + j]);
+    }
+    const gcol = new Map();
+    for (const [gi, set] of corners) {
+      const vs = [...set], n = [0, 0, 0];
+      for (const v of vs) n[cls[v]]++;
+      const want = n[2] * 2 > vs.length ? 2 : n[1] * 2 >= vs.length ? 1 : 0;
+      const c = new THREE.Color(0, 0, 0); let k = 0;
+      for (const v of vs) if (cls[v] === want) { c.r += col[v * 3]; c.g += col[v * 3 + 1]; c.b += col[v * 3 + 2]; k++; }
+      if (!k) for (const v of vs) { c.r += col[v * 3]; c.g += col[v * 3 + 1]; c.b += col[v * 3 + 2]; k++; }
+      c.multiplyScalar(1 / k);
+      // the coat is not plastic: each facet a shade lighter or darker (a fixed hash, so it never flickers)
+      const h = Math.sin(gi * 12.9898 + 78.233) * 43758.5453, jit = (h - Math.floor(h) - 0.5) * (want === 0 ? 0.1 : 0.03);
+      gcol.set(gi, c.multiplyScalar(1 + jit));
+    }
+    for (let t = 0; t < idx.length; t += 3) {
+      const fc = gcol.get(grp[t / 3]);
+      for (const v of [idx[t], idx[t + 1], idx[t + 2]]) {
+        P2.push(pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2]); C2.push(fc.r, fc.g, fc.b);
+        for (let j = 0; j < 4; j++) { SI.push(si[v * 4 + j]); SW.push(sw[v * 4 + j]); }
+      }
+    }
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
-    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
-    g.setIndex(idx);
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P2, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(C2, 3));
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(SI, 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(SW, 4));
     g.computeVertexNormals();
     return g;
   }
@@ -222,29 +302,66 @@
   function details(bones) {
     const head = bones.head, std = (c, r) => new THREE.MeshStandardMaterial({ color: c, roughness: r === undefined ? 0.6 : r, metalness: 0 });
     const at = (p, j, x) => new THREE.Vector3(x || 0, p[1] - J[j][1], -(p[0] - J[j][0]));
-    const eyeMat = std(0x120c08, 0.15);
-    for (const s of [-1, 1]) {
-      const e = new THREE.Mesh(new THREE.SphereGeometry(0.0115, 10, 8), eyeMat);
-      e.position.copy(at([0.408, 0.657], 'head', s * 0.034));
-      head.add(e);
-    }
-    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.017, 10, 8), std(0x161210, 0.3));
-    nose.scale.set(1.05, 0.85, 0.9); nose.position.copy(at([0.56, 0.6], 'head'));
-    head.add(nose);
-    // rose ears: a small folded flap lying back along the skull, pink inside
-    const ears = [];
-    for (const s of [-1, 1]) {
+    // eyes and nose in one glossy mesh: large dark almond eyes (set in the dark rims painted on the
+    // head), a black nose. Low-poly like the rest.
+    const parts = [];
+    const piece = (r, sc, p, c) => {
+      const g = new THREE.IcosahedronGeometry(r, 1).toNonIndexed();
+      g.scale(sc[0], sc[1], sc[2]); g.translate(p.x, p.y, p.z);
+      const n = g.attributes.position.count, cc = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { cc[i * 3] = c.r; cc[i * 3 + 1] = c.g; cc[i * 3 + 2] = c.b; }
+      g.setAttribute('color', new THREE.BufferAttribute(cc, 3));
+      g.deleteAttribute('uv');
+      parts.push(g);
+    };
+    const eyeCol = new THREE.Color(0x1c0e07);
+    for (const s of [-1, 1]) piece(0.014, [0.62, 0.8, 1.3], at([EYE[0], EYE[1]], 'head', s * EYE[2]), eyeCol);
+    piece(0.0145, [1.05, 0.85, 0.9], at([0.561, 0.6], 'head'), COL.nose);
+    const join = list => {
       const g = new THREE.BufferGeometry();
-      // base, upper fold, tip (pointing back), lower edge, inner fold
-      const v = [0, 0, 0, s * 0.026, 0.022, 0.03, s * 0.03, 0.004, 0.088, s * 0.02, -0.03, 0.058, s * 0.004, 0.03, 0.055, s * 0.012, -0.012, 0.01];
-      g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
-      g.setIndex(s > 0 ? [0, 1, 5, 1, 3, 5, 1, 2, 3, 0, 4, 1, 4, 2, 1] : [0, 5, 1, 1, 5, 3, 1, 3, 2, 0, 1, 4, 4, 1, 2]);
+      for (const n of ['position', 'color']) g.setAttribute(n, new THREE.Float32BufferAttribute(list.flatMap(x => Array.from(x.attributes[n].array)), 3));
       g.computeVertexNormals();
-      const outer = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xb98a5c, roughness: 0.7, side: THREE.FrontSide }));
-      const inner = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xd59a86, roughness: 0.8, side: THREE.BackSide }));
-      const ear = new THREE.Group();
-      ear.add(outer, inner);
-      ear.position.copy(at([0.37, 0.675], 'head', s * 0.028));
+      return g;
+    };
+    const glossy = new THREE.Mesh(join(parts),
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.18, metalness: 0, flatShading: true }));
+    glossy.castShadow = true;
+    head.add(glossy);
+    // rose ears: a small thin flap folded back along the skull, the fold turned over so the pink
+    // inside shows at the front edge; the tip points back and a little down
+    const ears = [];
+    const earMat = withRim(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0, flatShading: true }));
+    for (const s of [-1, 1]) {
+      const P = [], Cc = [], N = 6, outer = COL.fawnDark, inner = COL.pink;
+      const ring = t => {
+        // centre line: back along the skull, a rise then a drop to the tip; the flap folds over
+        const c = new THREE.Vector3(s * (0.004 + 0.016 * t), 0.002 + 0.007 * Math.sin(Math.PI * t * 0.8) - 0.022 * t * t, 0.066 * t);
+        const fold = -1.35 * t * s, w = 0.018 * (1 - 0.75 * t) + 0.002, th = 0.0035 * (1 - 0.5 * t);
+        const W_ = new THREE.Vector3(Math.sin(fold), Math.cos(fold), 0).multiplyScalar(w);      // across the flap
+        const T_ = new THREE.Vector3(Math.cos(fold) * s, -Math.sin(fold) * s, 0).multiplyScalar(th); // its thickness, outwards
+        return [c.clone().add(W_).add(T_), c.clone().add(W_).sub(T_), c.clone().sub(W_).sub(T_), c.clone().sub(W_).add(T_)];
+      };
+      const tri = (a, b, c, col) => { for (const v of [a, b, c]) { P.push(v.x, v.y, v.z); Cc.push(col.r, col.g, col.b); } };
+      const quad = (a, b, c, d, col) => { if (s > 0) { tri(a, b, c, col); tri(a, c, d, col); } else { tri(a, c, b, col); tri(a, d, c, col); } };
+      let prev = ring(0);
+      quad(prev[0], prev[1], prev[2], prev[3], outer);                                   // base cap
+      for (let i = 1; i <= N; i++) {
+        const cur = ring(i / N);
+        quad(prev[0], cur[0], cur[3], prev[3], outer);                                    // outside
+        quad(prev[2], cur[2], cur[1], prev[1], i <= 2 ? inner : mix(inner, outer, 0.5));  // inside: pink at the fold
+        quad(prev[1], cur[1], cur[0], prev[0], i <= 3 ? inner : outer);                  // top edge, turned over
+        quad(prev[3], cur[3], cur[2], prev[2], outer);                                    // lower edge
+        prev = cur;
+      }
+      quad(prev[3], prev[2], prev[1], prev[0], outer);                                   // tip
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(Cc, 3));
+      g.computeVertexNormals();
+      const ear = new THREE.Group(), m = new THREE.Mesh(g, earMat);
+      m.castShadow = true;
+      ear.add(m);
+      ear.position.copy(at([0.366, 0.67], 'head', s * 0.029));
       head.add(ear);
       ears.push({ g: ear, s });
     }
@@ -253,11 +370,13 @@
     const mid = [(J.neck1[0] + J.neck2[0]) / 2 + 0.005, (J.neck1[1] + J.neck2[1]) / 2 + 0.005];
     collar.position.copy(at(mid, 'neck1'));
     collar.rotation.x = Math.PI / 2 - ang(J.neck1, J.neck2) + 0.15;
+    collar.scale.set(1.12, 1.22, 1);       // round the thicker, arched neck (crest behind, throat in front)
+    collar.position.add(new THREE.Vector3(0, 0.003, 0.004));
     bones.neck1.add(collar);
     const tag = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.003, 12), new THREE.MeshStandardMaterial({ color: 0xd8b14a, roughness: 0.25, metalness: 0.8 }));
     tag.rotation.x = Math.PI / 2; tag.position.set(0, -0.055, -0.02);
     collar.add(tag);
-    for (const o of [nose, collar, tag]) o.castShadow = true;
+    for (const o of [collar, tag]) o.castShadow = true;
     return { ears };
   }
 
@@ -371,7 +490,7 @@
     }
     const geo = buildGeometry(boneIndex);
     // short glossy coat: a little sheen from the environment map when the game provides one
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.52, metalness: 0 });
+    const mat = withRim(new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.52, metalness: 0, flatShading: true }));
     if (R.envTexture) { mat.envMap = R.envTexture; mat.envMapIntensity = 0.5; mat.userData.env = true; }
     const mesh = new THREE.SkinnedMesh(geo, mat);
     mesh.castShadow = true; mesh.frustumCulled = false;
@@ -490,14 +609,16 @@
             const a = P.feet[L], b = sp.feet[L];
             a.u = a.u * (1 - w) + (b.u + (L[1] === 'F' ? 0.08 : -0.08)) * w; a.v = a.v * (1 - w) + 0.02 * w; a.fold = a.fold * (1 - w) + b.fold * 0.4 * w;
           }
-          P.dy -= 0.2 * w; P.pitch = P.pitch * (1 - w) + 0.04 * w; P.neck -= 0.35 * w; P.head += 0.2 * w; P.ears -= 1 * w; P.tail -= 0.2 * w;
+          P.dy -= 0.2 * w; P.pitch = P.pitch * (1 - w) + 0.04 * w; P.neck -= 0.35 * w; P.head += 0.2 * w; P.ears -= 1 * w;
+          P.tail = P.tail * (1 - w) + (-0.9) * w;          // the tail streams out behind, clear of the ground
         }
         // crash: nose into the ground, front legs fold, then it gets back up
         const cr = s.crash >= 0 ? s.crash : -1;
         crashW = cr >= 0 ? (cr < 0.12 ? cr / 0.12 : cr > 0.65 ? Math.max(0, 1 - (cr - 0.65) / 0.35) : 1) : R.damp(crashW, 0, 10, dt);
         if (crashW > 0.01) {
           const w = crashW;
-          P.dy = P.dy * (1 - w) - 0.17 * w; P.pitch = P.pitch * (1 - w) - 0.32 * w; P.neck = P.neck * (1 - w) - 0.85 * w; P.head = P.head * (1 - w) - 0.2 * w;
+          // (just touching the ground with the nose and the folded front legs, not through it)
+          P.dy = P.dy * (1 - w) - 0.11 * w; P.pitch = P.pitch * (1 - w) - 0.27 * w; P.neck = P.neck * (1 - w) - 0.7 * w; P.head = P.head * (1 - w) - 0.12 * w;
           P.ears = P.ears * (1 - w) - 1 * w; P.tail = P.tail * (1 - w) - 0.3 * w; P.flex = P.flex * (1 - w) + 0.1 * w;
           for (const L of LEGS) {
             const a = P.feet[L];

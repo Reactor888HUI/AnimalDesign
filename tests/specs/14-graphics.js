@@ -32,6 +32,22 @@ exports.run = async t => {
     const pct = n => +(100 * n / (160 * 96)).toFixed(2);
     return { aoTriangles: ao, dayWet: +dayWet.toFixed(2), nightWet: +nightWet.toFixed(2), litPct: pct(lit), whitePct: pct(white) };
   });
+  // the dog's own shadow on phones (quality 1): drawn from the sun, dog-shaped; the round blob hidden
+  const sh = await page.evaluate(() => {
+    const r = window.__runner, S = r.pShadow, p = r.player;
+    r.setLevel(1); r.setTheme('sunset');
+    const T = r.ctx.theme(); S.update(p, T);
+    const px = new Uint8Array(96 * 96 * 4); r.renderer.readRenderTargetPixels(S.rt, 0, 0, 96, 96, px);
+    let lit = 0, minX = 96, maxX = 0, minY = 96, maxY = 0;
+    for (let y = 0; y < 96; y++) for (let x = 0; x < 96; x++) if (px[(y * 96 + x) * 4] > 20) { lit++; minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+    const blob = r.scene.children.some(o => o.isMesh && o.material && o.material.map && o.visible && Math.hypot(o.position.x - p.x, o.position.z - p.z) < 0.5 && o !== S.decal);
+    const area = (maxX - minX + 1) * (maxY - minY + 1);
+    // the rim light program is compiled for the dog
+    let rim = false; p.root.traverse(o => { if (o.isSkinnedMesh && o.material.customProgramCacheKey && o.material.customProgramCacheKey() === 'whippet-rim') rim = true; });
+    return { decal: S.decal.visible, lit, fill: +(lit / area).toFixed(2), blob, rim };
+  });
+  t.ok(sh.decal && sh.lit > 40 && sh.fill < 0.7 && !sh.blob, "phones: the dog's shadow has its shape (not a round blob)", sh);
+  t.ok(sh.rim, 'rim light on the dog', sh.rim);
   t.ok(r.aoTriangles > 100, 'soft shadows under things in the detailed blocks', r.aoTriangles);
   t.ok(r.nightWet > 0.5 && r.dayWet < 0.2, 'wet streets at night, dry by day', [r.dayWet, r.nightWet]);
   t.ok(r.litPct > 1.5 && r.litPct < 30 && r.whitePct < 1, 'lamp reflections light up streaks on the wet street (not the whole street)', r);
