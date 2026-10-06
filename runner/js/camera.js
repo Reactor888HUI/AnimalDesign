@@ -3,8 +3,10 @@
 
   // A comfortable chase camera (the usual advice against motion sickness):
   //  - it never rolls, never shakes, never bobs and does not zoom with speed;
-  //  - it does not swing round after every turn of the dog: the player turns it (drag / Z, X),
-  //    and only while the dog keeps running one way does it slowly come round behind it;
+  //  - it comes round behind the running dog by itself, softly, with a lag and at most ~28 deg/s
+  //    (no snapping after every little turn), so the stick's "up" soon means "where the dog runs" again;
+  //  - the player can turn it too (drag / Z, X), as in most games: the finger or mouse to the right
+  //    looks right; after that it waits a moment before it comes round again;
   //  - it sits a little higher and further back, so the street is a steady reference
   //    and the dog stays in the middle of the picture.
   class CameraRig {
@@ -30,19 +32,22 @@
       this.cam.updateProjectionMatrix();
     }
     // turn by the player: radians now (a drag) and a held key (-1..1)
+    // (a right turn lowers the heading, like the dog's)
     turn(rad, hold, dt) {
-      this.heading += rad + hold * 1.6 * dt;
-      if (rad || hold) this.steady = -0.6;   // after a manual turn, wait before re-aligning
+      this.heading -= rad + hold * 1.6 * dt;
+      if (rad || hold) this.steady = -0.8;   // after a manual turn, wait before re-aligning
     }
     update(dt, p, time, input) {
       if (input) { this.turn(input.camDrag || 0, input.camTurn || 0, dt); input.camDrag = 0; }
       const sf = clamp(p.speed / C.MAX_SPEED, 0, 1);
-      // slow re-alignment behind the dog, only when it runs steadily one way
+      // coming round behind the running dog: a soft spring with a small dead zone, never faster than
+      // ~28 deg/s (the comfort limit: a faster swing made the player dizzy), slower while the dog is
+      // still in a turn, so the picture does not whip round after it
       const err = R.angDiff(this.heading, p.heading);
       const turning = Math.abs(p.yawRate || 0) > 0.6;
-      this.steady = turning || p.speed < 3 ? Math.min(this.steady, 0) : Math.min(1.5, this.steady + dt);
+      this.steady = p.speed < 2.5 ? Math.min(this.steady, 0) : Math.min(1.5, this.steady + dt);
       let want = 0;
-      if (this.autoAlign && this.steady > 0.6 && Math.abs(err) > 0.35) want = Math.sign(err) * Math.min(0.45, (Math.abs(err) - 0.35) * 0.8) * sf;
+      if (this.autoAlign && this.steady > 0.3 && Math.abs(err) > 0.1) want = Math.sign(err) * Math.min(0.49, (Math.abs(err) - 0.1) * 1.2) * (0.4 + 0.6 * sf) * (turning ? 0.2 : 1);
       this.yawRate = damp(this.yawRate, want, 2, dt);
       this.heading += this.yawRate * dt;
 

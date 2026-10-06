@@ -470,7 +470,9 @@
 
   // ---- where the stick points, in the world ------------------------------------------------
   // The stick is read relative to the camera. While it is held steadily one way, the reference
-  // is kept, so the dog does not curve when the camera slowly comes round behind it.
+  // is kept, so the dog does not curve when the camera comes round behind it by itself. A turn of
+  // the camera by hand takes the reference along: stick up + a drag to the right = the dog turns
+  // right with the camera, both thumbs steer the same way.
   let refYaw = 0, lockAng = null;
   function worldDir() {
     if (!(input.mag > 0)) { lockAng = null; input.dirMag = 0; return; }
