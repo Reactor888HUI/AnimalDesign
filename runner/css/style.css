@@ -440,3 +440,31 @@ body:not(.mode-runner) #bigmap .leg-cat { display: none; }
 @media (max-width: 500px) and (orientation: portrait) {
   #compass { left: auto; transform: none; right: calc(14px + env(safe-area-inset-right, 0px)); top: calc(66px + env(safe-area-inset-top, 0px)); margin-top: 0; }
 }
+
+/* ---- a clean screen (the runner): nothing but the road, the dog, the controls and the ⋮ button ---- */
+/* the numbers, the cat pointer, the trick chain and every message are in the ⋮ menu ("Забег") instead */
+body.mode-runner #hud, body.mode-runner #compass, body.mode-runner #banner, body.mode-runner #trick,
+body.mode-runner #hint, body.mode-runner #stickHint { display: none !important; }
+body.mode-runner:not(.ui-open) #toast { display: none !important; }
+body.ui-open #toast { z-index: 130; }
+#jumpBtn svg, .act svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+#boostBtn svg { fill: currentColor; stroke-width: 1.2; }
+body.mode-runner #jumpBtn, body.mode-runner .act { opacity: .42; transition: opacity .12s, transform .08s; }
+body.mode-runner #jumpBtn.on, body.mode-runner .act.on, body.mode-runner #boostBtn.on { opacity: .85; }
+body.mode-runner #moreBtn { opacity: .55; width: 40px; height: 40px; }
+body.mode-runner #moreBtn.new { opacity: .9; }
+#more .items { display: grid; }
+#more .run { padding: 6px 12px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+#more .run h3 { margin: 4px 0 6px; font: 700 11px/1 'Space Grotesk', system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+#more .run dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 13px; }
+#more .run dt { color: var(--ink-dim); }
+#more .run dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#more .run .log { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; color: var(--ink-dim); display: grid; gap: 3px; }
+#more .run .log:empty, #more .run .keys:empty { display: none; }
+#more .run .keys { margin: 8px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-dim); }
+#more .run .keys kbd { font: 600 10.5px/1 ui-monospace, monospace; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; }
+/* a phone on its side: the run on the left, the menu on the right */
+@media (max-height: 460px) {
+  #more { grid-template-columns: 250px 230px; align-items: start; max-height: calc(100vh - 24px); }
+  #more .run { border-bottom: 0; border-right: 1px solid var(--line); margin: 0 4px 0 0; }
+}

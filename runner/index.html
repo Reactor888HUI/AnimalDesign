@@ -165,25 +165,41 @@
   <svg viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.5" r="1.6"/></svg>
 </button>
 <div id="more" class="ui panel" role="menu" hidden>
+  <div class="run r-only" aria-label="Забег">
+    <h3>Забег</h3>
+    <dl>
+      <dt>Скорость</dt><dd data-k="speed"></dd>
+      <dt>Рывок</dt><dd data-k="boost"></dd>
+      <dt>Косточки</dt><dd data-k="bones"></dd>
+      <dt>Прыжок</dt><dd data-k="jump"></dd>
+      <dt>Поймано</dt><dd data-k="caught"></dd>
+      <dt>Кот</dt><dd data-k="cat"></dd>
+    </dl>
+    <ul class="log"></ul>
+    <p class="keys"></p>
+  </div>
+  <div class="items">
   <button type="button" role="menuitem" data-act="quests" class="r-only"><span class="ic">★</span><b>Задания и гардероб</b><i class="v stars"></i></button>
   <button type="button" role="menuitem" data-act="map"><span class="ic">◎</span><b>Карта района</b></button>
   <button type="button" role="menuitem" data-act="cam" class="r-only"><span class="ic">◉</span><b>Камера</b><i class="v cam"></i></button>
   <button type="button" role="menuitem" data-act="sound"><span class="ic">♪</span><b>Звук</b><i class="v sound"></i></button>
   <button type="button" role="menuitem" data-act="time" class="r-only"><span class="ic">☀</span><b>Время суток</b><i class="v time"></i></button>
+  <button type="button" role="menuitem" data-act="full" hidden><span class="ic">⛶</span><b>Весь экран</b><i class="v full"></i></button>
   <button type="button" role="menuitem" data-act="dogs"><span class="ic">↩</span><b>Выбрать собаку</b></button>
+  </div>
 </div>
 
 <div id="hint" class="ui panel r-only"><kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; держи <kbd>W</kbd> на галопе или <kbd>Q</kbd> — рывок &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания</div>
 
 <div id="touchUI" hidden>
   <div id="stickHint">куда бежать</div>
-  <div id="jumpBtn">прыжок</div>
+  <div id="jumpBtn" aria-label="Прыжок"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V5"/><path d="M6 11l6-6 6 6"/></svg></div>
   <div id="stickZone"></div>
   <div id="jumpZone"></div>
   <div id="stick"><div id="knob"></div></div>
   <button id="autoBtn" class="panel" type="button" aria-pressed="false">Автобег</button>
-  <button id="slideBtn" class="act r-only" type="button">Подкат</button>
-  <button id="boostBtn" class="act r-only" type="button">Рывок</button>
+  <button id="slideBtn" class="act r-only" type="button" aria-label="Подкат"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l6 9h10"/><path d="M16 12l4 4-4 4"/></svg></button>
+  <button id="boostBtn" class="act r-only" type="button" aria-label="Рывок"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L6 13h5l-1 8 7-10h-5z"/></svg></button>
   <button id="biteBtn" class="act g-only" type="button">Кусь</button>
   <button id="barkBtn" class="act g-only" type="button">Лай</button>
   <button id="scentBtn" class="act g-only" type="button">Чутьё</button>

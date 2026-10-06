@@ -328,7 +328,16 @@
     scene, camera, renderer, world, fx, traffic, rig, input, au, $, coarse, get life() { return life; }, get map() { return map; },
     theme: () => daytime.live || daytime.update(0),
     setTheme, daytime, lockTheme(name) { setTheme(name, true); themeLocked = true; },
+    // the runner's screen stays clean: while running, messages only go to the log in the ⋮ menu
+    // ("Забег"); with a panel open (the menu, the map, the wardrobe) they show as usual
+    log: [],
+    // a panel open (the menu, the map, the wardrobe): the game waits; the page knows it (body.ui-open)
+    _paused: false,
+    get paused() { return this._paused; },
+    set paused(v) { this._paused = !!v; document.body.classList.toggle('ui-open', !!v); },
     say(text, kind) {
+      ctx.log.unshift(text); if (ctx.log.length > 5) ctx.log.length = 5;
+      if (modeName === 'runner' && !ctx.paused) return;
       toast.textContent = text;
       toast.className = 'ui on' + (kind ? ' ' + kind : '');
       toastT = kind === 'long' ? 3.6 : kind === 'bad' ? 2.2 : 1.4;
@@ -380,7 +389,34 @@
   const more = $('more'), moreBtn = $('moreBtn');
   const TOD_SHORT = { auto: 'авто', day: 'день', sunset: 'закат', dawn: 'рассвет', night: 'ночь' };
   more.querySelector('[data-act="map"]').hidden = !map;
+  function fullOn() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  function goFull(on) {
+    const de = document.documentElement;
+    try {
+      if (on) {
+        const req = de.requestFullscreen || de.webkitRequestFullscreen;
+        const pr = req && req.call(de, { navigationUI: 'hide' });
+        // a phone: on its side (only possible in full screen; not on every phone)
+        if (pr && pr.then) pr.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }).catch(() => {});
+      } else if (fullOn()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } catch (e) {}
+  }
+  const canFull = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+  more.querySelector('[data-act="full"]').hidden = !(canFull && coarse);
+  const runDD = k => more.querySelector('.run [data-k="' + k + '"]');
   function moreLabels() {
+    if (modeName === 'runner') {
+      runDD('speed').textContent = $('speedNum').textContent + ' км/ч';
+      runDD('boost').textContent = Math.round((player.energy || 0) * 100) + ' %';
+      runDD('bones').textContent = $('bonesN').textContent;
+      runDD('jump').textContent = $('jumpLast').textContent + ' м · рекорд ' + $('jumpBest').textContent;
+      runDD('caught').textContent = $('score').textContent + ($('combo').textContent ? ' ' + $('combo').textContent : '') + ' · рекорд ' + $('best').textContent;
+      runDD('cat').textContent = $('cdist').textContent;
+      const log = more.querySelector('.run .log'); log.textContent = '';
+      for (const t of ctx.log) { const li = document.createElement('li'); li.textContent = t; log.appendChild(li); }
+      more.querySelector('.run .keys').innerHTML = coarse ? '' : $('hint').innerHTML;
+    }
+    more.querySelector('.v.full').textContent = fullOn() ? 'вкл' : 'выкл';
     const q = $('questBtn').querySelector('.stars');
     more.querySelector('.v.stars').textContent = q ? '★ ' + q.textContent : '';
     more.querySelector('.v.cam').textContent = camMode === 'lock' ? 'поводок' : 'свободная';
@@ -401,6 +437,7 @@
     const act = b.dataset.act;
     if (act === 'sound') { $('muteBtn').click(); moreLabels(); return; }
     if (act === 'time') { toggleTheme(); moreLabels(); return; }
+    if (act === 'full') { goFull(!fullOn()); setTimeout(moreLabels, 300); return; }
     if (act === 'cam') { setCam(camMode === 'lock' ? 'free' : 'lock'); moreLabels(); ctx.say(camMode === 'lock' ? 'Камера на поводке: в метре за собакой' : 'Свободная камера: веди пальцем справа, чтобы повернуть'); return; }
     showMore(false);
     if (act === 'map') $('minimap').click();
@@ -511,6 +548,8 @@
     au.start();
     if (started) return;
     started = true;
+    // a phone: the whole screen for the game (no browser bars), from the first touch
+    if (coarse && modeName === 'runner') goFull(true);
     $('hint').classList.add('hide');
     // the guard's and sniffer's key lists stay a little longer: there are more keys to learn
     setTimeout(() => { for (const id of ['ghint', 'shint']) $(id).classList.add('hide'); }, 25000);
