@@ -238,7 +238,7 @@
   jumpZone.addEventListener('pointerup', jumpUp);
   jumpZone.addEventListener('pointercancel', jumpUp);
 
-  for (const [id, key] of [['barkBtn', '_barkEdge'], ['scentBtn', '_scentEdge'], ['biteBtn', '_biteEdge'], ['noseBtn', '_scentEdge'], ['digBtn', '_biteEdge'], ['slideBtn', '_slideEdge'], ['boostBtn', '_boostEdge']]) {
+  for (const [id, key] of [['barkBtn', '_barkEdge'], ['scentBtn', '_scentEdge'], ['biteBtn', '_biteEdge'], ['noseBtn', '_scentEdge'], ['digBtn', '_biteEdge'], ['slideBtn', '_slideEdge'], ['boostBtn', '_boostEdge'], ['sniffBtn', '_scentEdge']]) {
     const btn = document.getElementById(id);
     if (!btn) continue;
     btn.addEventListener('pointerdown', e => { input[key] = true; btn.classList.add('on'); e.preventDefault(); e.stopPropagation(); });

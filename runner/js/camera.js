@@ -82,7 +82,8 @@
         const v = B.head.getWorldPosition(this.look);
         const f = clamp(-(v.x - p.x) * bx - (v.z - p.z) * bz, 0.3, 0.8), y = clamp(v.y - p.y, 0.4, 1.05);
         this.hS.f = damp(this.hS.f, f, 2, dt);
-        this.hS.y = y > this.hS.y ? damp(this.hS.y, y, 14, dt) : Math.max(y, this.hS.y - 0.06 * dt);
+        // (the nose to the ground: it goes down with the head, quicker)
+        this.hS.y = y > this.hS.y ? damp(this.hS.y, y, 14, dt) : Math.max(y, this.hS.y - (p.sniff ? 0.5 : 0.06) * dt);
       }
       // ...and the little saw of that (up with each stride, down slowly) is smoothed away
       this.hO = this.hO === undefined || !dt ? this.hS.y : damp(this.hO, this.hS.y, 2.5, dt);
@@ -93,7 +94,9 @@
       this.world.pushOut(this.pos, 0.2);
       const cam = this.cam;
       cam.position.copy(this.pos);
-      this.look.set(this.pos.x - bx * 10, this.pos.y - 2.4, this.pos.z - bz * 10);
+      // sniffing: it looks a little further down, at the threads by the nose
+      this.sniffK = damp(this.sniffK || 0, p.sniff ? 1 : 0, 2, dt);
+      this.look.set(this.pos.x - bx * 10, this.pos.y - 2.4 - 1.4 * this.sniffK, this.pos.z - bz * 10);
       cam.lookAt(this.look);
       this.lookS = null; this.yG = p.ground || 0;
       // wide, like an action camera (upright the picture is tall already: a little narrower, less muzzle)

@@ -527,3 +527,13 @@ body.gears #steerUI {
 }
 body.gears #steerUI.on { opacity: .5; }
 #steerUI i { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--speed); }
+/* the nose to the ground ("search"): next to the slide; a rainbow ring while sniffing */
+#sniffBtn { display: none; }
+body.gears #sniffBtn {
+  display: grid; place-items: center; left: calc(162px + env(safe-area-inset-left, 0px)); bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  width: 58px; height: 58px; border-color: #a77bff;
+}
+body.gears #sniffBtn[aria-pressed="true"] {
+  opacity: .9; color: #fff; border-color: transparent;
+  background: radial-gradient(circle, rgba(20, 16, 30, .55) 58%, transparent 60%), conic-gradient(#ff4040, #ff9a2a, #ffe43a, #4be36e, #3fd8ff, #4a6dff, #bb55ff, #ff4040);
+}

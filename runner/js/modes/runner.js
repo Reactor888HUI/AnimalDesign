@@ -111,7 +111,7 @@
   }
 
   // ---- quests: what happens is reported to the day's quests (main.js makes them) ----------------
-  let ctxQ = null, lastBones = 0, gallopM = 0, placeT = 0;
+  let ctxQ = null, lastBones = 0, gallopM = 0, placeT = 0, search = null, quietM = 0, quietT = 0;
   const quest = (ev, v, x) => { if (ctxQ) ctxQ.on(ev, v, x); };
 
   // ---- rings in the air: fly through for bones; several in one flight multiply ---------------
@@ -300,7 +300,12 @@
         best: $('best'), arrow: $('arrow'), cdist: $('cdist'),
       };
       // scattering a flock of pigeons counts as a (small) trick
-      if (ctx.life) ctx.life.onScare = () => player.tricks.push('pigeons');
+      // (and it ends a quiet walk)
+      if (ctx.life) ctx.life.onScare = () => { player.tricks.push('pigeons'); quietM = 0; };
+      // "search": the nose to the ground, rainbow scent threads, clews by the bins (js/search.js)
+      search = new R.Search(scene, world, au, ctx.fx);
+      search.quest = quest; search.say = t => ctx.say(t);
+      search.seenColor = () => (ctxQ && ctxQ.colors) || [];
       try { best = +localStorage.getItem('runner-best') || 0; } catch (e) {}
       el.best.textContent = best; el.jumpBest.textContent = jumpBest.toFixed(1); el.jumpLast.textContent = "0";
       return player;
@@ -364,6 +369,13 @@
         }
       }
       lastBones = bonesN;
+      search.update(dt, player, cat, input, T.lampK);
+      ctx.$('sniffBtn').setAttribute('aria-pressed', String(search.on));
+      // a quiet walk: at a walk or a trot, without scaring the pigeons (a faster run starts it again)
+      if (player.vel > 6.6) quietM = 0;
+      else if (player.vel > 0.4 && !player.air) quietM += player.vel * dt;
+      quietT -= dt;
+      if (quietT <= 0) { quietT = 1; if (quietM >= 1) quest('quiet', Math.floor(quietM)); }
       if (ctxQ && player.vel > 1) ctxQ.stat('topSpeed', player.vel, true);
       updateBones(dt, ctx);
       updateRings(dt, ctx);
@@ -400,6 +412,6 @@
     mapMarkers() { return cat ? [{ x: cat.x, z: cat.z, color: '#ff4d6d', label: 'кот' }] : []; },
     // how tense the game is now (0..1), for the music: the cat close, a long chain going
     tension() { return R.clamp((cat.dist < 32 ? 0.35 + 0.6 * (1 - cat.dist / 32) : 0.1) + (chain ? 0.12 : 0) + 0.45 * (player.superK || 0), 0, 1); },
-    debug() { return { setBones: n => { bonesN = n; lastBones = n; }, player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }), chain: () => chain }; },
+    debug() { return { search: () => search, setBones: n => { bonesN = n; lastBones = n; }, player, cat, flock, bones: () => ({ clusters, bonesN }), rings: () => ringObjs, jump: () => ({ best: jumpBest }), chain: () => chain }; },
   };
 })(window.R = window.R || {});

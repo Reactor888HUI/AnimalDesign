@@ -390,7 +390,7 @@
           if (inGap(side, t)) continue;
           const [x, z] = pt(side, t, HB + 0.8);
           const r = rnd();
-          if (r < 0.2) solid(place('trash_can', x, z, 0, 1), 'prop');
+          if (r < 0.2) solid(place('trash_can', x, z, 0, 1), 'trash_can');
           else if (r < 0.35) solid(place('mailbox', x, z, side.yaw, 1), 'prop');
           else if (r < 0.5) solid(place('power_box', x, z, side.yaw, 1), 'prop');
           else if (r < 0.62) solid(place('planter_bushes', x, z, side.yaw, 1), 'prop');

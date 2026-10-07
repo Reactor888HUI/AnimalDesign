@@ -521,7 +521,7 @@
     const root = new THREE.Group(); root.add(scaled);
 
     // state
-    let phi = 0, t = 0, airW = 0, wasAir = false, landT = 0, atkT = 0, eatT = 0, roll = 0, look = 0, crashW = 0, slideW = 0, arrowW = 0;
+    let sniffW = 0, phi = 0, t = 0, airW = 0, wasAir = false, landT = 0, atkT = 0, eatT = 0, roll = 0, look = 0, crashW = 0, slideW = 0, arrowW = 0;
     const wS = { stand: 1, walk: 0, trot: 0, gallop: 0 };
     const P = emptyPose();
 
@@ -693,7 +693,10 @@
         const extra = {};
         if (atkT > 0) { atkT -= dt; const k = bump(1 - atkT / 0.45); P.neck -= 0.35 * k; P.head += 0.25 * k; extra.fu = 0.06 * k; extra.fv = 0.05 * k; P.ears -= 0.8 * k; }
         if (eatT > 0) { eatT -= dt; const k = bump(1 - eatT / 0.6); P.neck -= 0.7 * k; P.head -= 0.3 * k; }
-        if (s.sniff && v < 3) { P.neck -= 0.8; P.head -= 0.15; }
+        // the nose to the ground (sniffing): eased down and up, a little less deep at a trot, none at a
+        // gallop; quick little dips of the nose while it sniffs
+        sniffW = R.damp(sniffW, s.sniff ? 1 - sstep(4.5, 6.5, v) : 0, 4, dt);
+        if (sniffW > 0.001) { P.neck -= (0.8 - 0.25 * sstep(1.6, 4, v)) * sniffW; P.head -= (0.15 - 0.06 * Math.sin(t * 15) * Math.max(0, Math.sin(t * 2.6))) * sniffW; P.ears -= 0.2 * sniffW; }
 
         // lean into turns like a motorbike; look where we are going
         const turn = s.turn || 0;
