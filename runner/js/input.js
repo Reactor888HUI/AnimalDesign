@@ -15,7 +15,7 @@
     camDrag: 0,
     // the camera locked to the dog (on the leash or on its head, the runner): the left thumb's circle
     // sets the gait (0 stop, 1 walk, 2 trot, 3 run, 4 gallop, 5 super speed) and steers; held forward
-    // at the edge the dog speeds up a gait at a time, held back it slows down; let go, it keeps the gait
+    // at the edge the dog speeds up a gait at a time, held back it slows down; let go, it stops softly
     camLock: false, gear: 0,
     _superOffEdge: false,
     _k: {},
@@ -216,7 +216,7 @@
 
   // ---- per-frame read ---------------------------------------------------------------------
   // the circle as a gas pedal (the locked camera): how long it has been held at the edge / back
-  const G = { up: false, upT: 0, back: false, backT: 0 };
+  const G = { up: false, upT: 0, back: false, backT: 0, held: false };
   const UP_STEP = 0.7, SUPER_HOLD = 1.0, DOWN_STEP = 0.45;
   input.poll = input._poll = function (dt) {   // (_poll: the real one, for tests that stub poll)
     dt = dt || 1 / 30;
@@ -248,9 +248,14 @@
       // the circle: sideways steers (a soft curve, fine near the middle, a full turn at the edge);
       // a light push forward walks; held at the edge the dog speeds up a gait every 0.7 s (and from a
       // gallop, held a second more, super speed); held back it slows down a gait every 0.45 s to a stop.
-      // Let go and it keeps its gait. W / S work the same way.
+      // Let go and it slows down and stops. W / S work the same way.
       this.dirMode = false;
       let fwd = !!(k.KeyW || k.ArrowUp), back = !!(k.KeyS || k.ArrowDown);
+      // let go of the circle (or W / S): the dog slows down for a moment and stops (the player asked:
+      // running on by itself made it hard to back off for a run-up). 1-5 on the keyboard still keep a gait.
+      const held = T.id !== null || fwd || back;
+      if (G.held && !held) this.setGear(0, true);
+      G.held = held;
       if (T.id !== null) {
         if (T.y < -0.72) fwd = true;
         else if (T.y < -0.25 && this.gear === 0) this.setGear(1);
@@ -269,7 +274,7 @@
         else if ((G.backT += dt) >= DOWN_STEP) { G.backT = 0; this.setGear(this.gear - 1); }
       } else G.back = false;
       this.steer = clamp(ks + ts, -1, 1);
-      this.throttle = this.gear ? GEAR_THR[this.gear] : -0.6;
+      this.throttle = this.gear ? GEAR_THR[this.gear] : -0.45;   // (gear 0: a soft stop, ~1 s from a gallop)
       return;
     } else if (input.autoRun && !k.KeyS && !k.ArrowDown && !(T.id !== null && T.y > 0.45) && kt === 0 && tt === 0) tt = 1;
     this.steer = clamp(ks + ts, -1, 1);

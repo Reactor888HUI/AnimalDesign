@@ -1,7 +1,7 @@
 // The runner's default: the camera "on the leash" (fixed ~1 m behind the collar). The left thumb's circle is
 // the gas pedal and the wheel: a light push walks, held forward at the edge the dog speeds up a gait at a time
 // (walk, trot, run, gallop, super speed), held back it slows down to a stop, sideways it turns; let go and it
-// keeps its gait. The right hand does the tricks: jump, slide, the nose; a double tap jumps.
+// slows down softly and stops. The right hand does the tricks: jump, slide, the nose; a double tap jumps.
 // The camera stays fixed behind the dog and turns with it (no lag, no jumps); a bot steering this way
 // catches cats; and the one menu button in the corner holds the map, quests, camera, sound and time.
 exports.run = async t => {
@@ -59,7 +59,7 @@ exports.run = async t => {
   await m.move(S.x, S.y);
   const after = await step(30);
   await m.up();
-  const h0 = after.heading, cruise = await step(30);
+  const h0 = after.heading, letGo = await step(40);
   // the right hand: a double tap jumps, so does the jump button
   await m.move(pt.pad.x, pt.pad.y); await m.down(); await m.up(); await m.down();
   const jump = await step(8);
@@ -71,9 +71,9 @@ exports.run = async t => {
   const keys = await page.evaluate(() => {
     const inp = window.__runner.input, key = (type, code) => dispatchEvent(new KeyboardEvent(type, { code })), out = [];
     inp.setGear(0, true);
-    key('keydown', 'KeyW'); window.__step(1); out.push(inp.gear); window.__step(22); out.push(inp.gear); key('keyup', 'KeyW'); window.__step(1);
-    key('keydown', 'KeyS'); window.__step(1); out.push(inp.gear); key('keyup', 'KeyS');
-    key('keydown', 'Digit4'); key('keyup', 'Digit4'); out.push(inp.gear);
+    key('keydown', 'KeyW'); window.__step(1); out.push(inp.gear); window.__step(22); out.push(inp.gear); key('keyup', 'KeyW'); window.__step(1); out.push(inp.gear);
+    key('keydown', 'Digit4'); key('keyup', 'Digit4'); window.__step(2); out.push(inp.gear);
+    key('keydown', 'KeyS'); window.__step(1); out.push(inp.gear); key('keyup', 'KeyS'); window.__step(1); out.push(inp.gear);
     key('keydown', 'Digit0'); key('keyup', 'Digit0'); out.push(inp.gear);
     return out;
   });
@@ -86,12 +86,12 @@ exports.run = async t => {
   t.ok(back1.gear === 4 && !back1.superOn && stop.gear === 0 && stop.speed < 0.5, 'held back: super speed off, slower and slower, a stop', { back1, stop });
   t.ok(g4.gear === 4 && g4.speed > 14 && !g4.superOn && Math.abs(g4.heading) < 0.05, 'a straight gallop', g4);
   t.ok(turn.heading < -0.6 && turn.gear === 4, 'the circle to the right: it turns right, the gait stays', turn);
-  t.ok(Math.abs(cruise.heading - h0) < 0.05 && cruise.speed > 14 && cruise.gear === 4, 'thumb off: it runs straight on in its gait', { h0, cruise });
+  t.ok(Math.abs(letGo.heading - h0) < 0.05 && letGo.gear === 0 && letGo.speed < 0.3 && letGo.maxSpeed > 13, 'thumb off: it slows down softly and stops (about a second from a gallop)', { h0, letGo });
   t.ok(turn.maxGap < 0.12 && after.gap < 0.02, 'on the leash: the camera turns with the dog at once (no lag)', { turn, after });
   t.ok(g4.minD > 0.4 && g4.maxD < 0.8 && g4.camUp > 1.2 && g4.camUp < 1.7, 'about a metre behind the collar, a little above the head', g4);
   t.ok(Math.max(g4.maxJump, turn.maxJump, after.maxJump) < 0.15, 'the picture never jumps', { run: g4.maxJump, turn: turn.maxJump, after: after.maxJump });
   t.ok(jump.air && jumpR.air, 'a double tap jumps, so does the jump button on the right', { jump, jumpR });
-  t.ok(keys.join() === '1,2,1,4,0', 'keys: W held speeds up, S slows down, digits pick a gait', keys);
+  t.ok(keys.join() === '1,2,0,4,3,0,0', 'keys: W held speeds up (let go: a stop), S slows down, digits pick a gait (it stays)', keys);
 
   // a bot steering like a handlebar towards the cat catches cats
   const chase = await page.evaluate(() => {
