@@ -118,6 +118,8 @@
         if (!this.superOn && this.energy > 0.2 && this.limp === 0 && this.crash < 0 && (this.fullT > 0.9 || (asked && this.speed > this.maxSpeed * 0.6))) { this.superOn = true; this.fullT = 1; this.emit('super', 1); }
         else if (asked && this.superOn) { this.superOn = false; this.emit('super', 0); }
         else if (asked && this.energy <= 0.2) this.emit('noboost', 1);
+        // the gears: leaving the top one switches super speed off
+        if (input.consumeSuperOff && input.consumeSuperOff() && this.superOn) { this.superOn = false; this.fullT = 0; this.emit('super', 0); }
         if (this.superOn && (!full && !this.air || this.energy <= 0 || this.limp > 0 || this.crash >= 0)) { this.superOn = false; this.emit('super', 0); }
         this.energy = clamp(this.energy + (this.superOn ? -dt / 7 : dt / 10), 0, 1);
       }

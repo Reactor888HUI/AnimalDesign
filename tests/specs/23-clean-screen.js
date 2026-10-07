@@ -10,8 +10,8 @@ exports.run = async t => {
     ctx.say('Кольцо! +5'); $('trick').hidden = false;
     // everything with text that is visible over the game
     out.visibleText = [...document.querySelectorAll('body *')].filter(e => shown(e) && !e.closest('#more, #menu, #loading, #quests, #bigmap') && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())).map(e => e.id || e.className || e.tagName);
-    out.controls = ['jumpBtn', 'slideBtn', 'boostBtn', 'moreBtn'].filter(id => shown($(id)));
-    out.translucent = ['jumpBtn', 'slideBtn'].every(id => +getComputedStyle($(id)).opacity < 0.6);
+    out.controls = ['jumpBtn', 'slideBtn', 'gearBox', 'camBtn', 'moreBtn'].filter(id => shown($(id)));
+    out.translucent = ['jumpBtn', 'slideBtn', 'gearBox'].every(id => +getComputedStyle($(id)).opacity < 0.6);
     $('moreBtn').click();
     out.run = [...document.querySelectorAll('#more .run dd')].map(d => d.textContent);
     out.log = [...document.querySelectorAll('#more .run .log li')].map(l => l.textContent);
@@ -21,7 +21,7 @@ exports.run = async t => {
     return out;
   });
   t.ok(r.visibleText.length === 0, 'while running there is no text on the screen', r.visibleText);
-  t.ok(r.controls.length === 4 && r.translucent, 'only the controls (icons, see-through) and the ⋮ button', r);
+  t.ok(r.controls.length === 5 && r.translucent, 'only the controls (icons, see-through: gears, jump, slide), the camera and the ⋮ button', r);
   t.ok(r.run.length === 6 && r.run.every(v => v.trim()) && r.log.includes('Кольцо! +5'), 'the numbers and the last messages are in the ⋮ menu', r);
   t.ok(r.toastWhenOpen, 'with a panel open, messages show', r);
 };

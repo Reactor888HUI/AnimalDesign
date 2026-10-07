@@ -204,6 +204,16 @@
   <button id="autoBtn" class="panel" type="button" aria-pressed="false">Автобег</button>
   <button id="slideBtn" class="act r-only" type="button" aria-label="Подкат"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l6 9h10"/><path d="M16 12l4 4-4 4"/></svg></button>
   <button id="boostBtn" class="act r-only" type="button" aria-label="Рывок"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L6 13h5l-1 8 7-10h-5z"/></svg></button>
+  <!-- the runner's gears (the camera on the leash or on the head): stop, walk, trot, run, gallop, super speed -->
+  <div id="gearBox" class="r-only" role="radiogroup" aria-label="Скорость" data-gear="0">
+    <button type="button" data-g="5" role="radio" aria-checked="false" aria-label="Суперскорость"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L6 13h5l-1 8 7-10h-5z"/></svg></button>
+    <button type="button" data-g="4" role="radio" aria-checked="false" aria-label="Галоп"><i></i></button>
+    <button type="button" data-g="3" role="radio" aria-checked="false" aria-label="Бег"><i></i></button>
+    <button type="button" data-g="2" role="radio" aria-checked="false" aria-label="Рысь"><i></i></button>
+    <button type="button" data-g="1" role="radio" aria-checked="false" aria-label="Шаг"><i></i></button>
+    <button type="button" data-g="0" role="radio" aria-checked="true" aria-label="Стоп"><i></i></button>
+  </div>
+  <div id="steerUI"><i></i></div>
   <button id="biteBtn" class="act g-only" type="button">Кусь</button>
   <button id="barkBtn" class="act g-only" type="button">Лай</button>
   <button id="scentBtn" class="act g-only" type="button">Чутьё</button>

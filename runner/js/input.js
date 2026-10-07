@@ -13,9 +13,10 @@
     dirMode: false, mx: 0, my: 0, mag: 0,
     camTurn: 0,      // camera turned by the player: Z/X keys (-1..1) and drags (radians, applied once)
     camDrag: 0,
-    // the camera locked behind the dog (the runner's default): the stick steers like a handlebar
-    // (sideways = turn, up = how fast, back = stop) and the pace is kept when the thumb lets go
-    camLock: false, cruise: 0,
+    // the camera locked to the dog (on the leash or on its head, the runner): gears set the pace
+    // (0 stop, 1 walk, 2 trot, 3 run, 4 gallop, 5 super speed) and the right thumb steers
+    camLock: false, gear: 0,
+    _superOffEdge: false,
     _k: {},
     consumeJump() { const j = this._jumpEdge; this._jumpEdge = false; return j; },
     consumeBark() { const j = this._barkEdge; this._barkEdge = false; return j; },
@@ -23,13 +24,43 @@
     consumeBite() { const j = this._biteEdge; this._biteEdge = false; return j; },
     consumeSlide() { const j = this._slideEdge; this._slideEdge = false; return j; },
     consumeBoost() { const j = this._boostEdge; this._boostEdge = false; return j; },
+    consumeSuperOff() { const j = this._superOffEdge; this._superOffEdge = false; return j; },
+    // change gear; the top one asks for super speed at once, leaving it switches super speed off
+    setGear(g, quiet) {
+      g = clamp(Math.round(g), 0, 5);
+      if (g === this.gear) return;
+      if (g === 5) this._boostEdge = true;
+      else if (this.gear === 5) this._superOffEdge = true;
+      this.gear = g;
+      if (gearBox) {
+        gearBox.dataset.gear = g; gearBox.style.setProperty('--g', g);
+        for (const b of gearBox.children) b.setAttribute('aria-checked', String(+b.dataset.g === g));
+      }
+      if (!quiet && navigator.vibrate) try { navigator.vibrate(g === 5 ? 18 : 8); } catch (e) {}
+    },
   };
+  // how fast each gear runs (of the top speed): a walk, a trot, a run, a gallop just under full
+  // (full stick for a moment would switch super speed on by itself), super speed
+  const GEAR_THR = [0, 0.085, 0.22, 0.52, 0.9, 1];
 
   // ---- keyboard ---------------------------------------------------------------------------
   const k = input._k;
+  const gearBox = document.getElementById('gearBox');
+  let gearKeyT = 0;
   const GAME_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
   addEventListener('keydown', e => {
     if (GAME_KEYS.includes(e.code)) e.preventDefault();
+    // locked camera: W / up and S / down shift gears (held: one more every 0.2 s, up to a gallop;
+    // super speed is one more press), 1-5 pick a gear, 0 stops
+    if (input.camLock) {
+      const up = e.code === 'KeyW' || e.code === 'ArrowUp', dn = e.code === 'KeyS' || e.code === 'ArrowDown';
+      const now = performance.now();
+      if ((up || dn) && (!e.repeat || now - gearKeyT > 200)) {
+        if (!(e.repeat && up && input.gear >= 4)) { input.setGear(input.gear + (up ? 1 : -1)); gearKeyT = now; }
+      }
+      const dg = /^Digit([0-5])$/.exec(e.code);
+      if (dg && !e.repeat) input.setGear(+dg[1]);
+    }
     if (e.repeat) return;
     k[e.code] = true;
     if (e.code === 'Space') { input._jumpEdge = true; input.jumpHeld = true; }
@@ -49,7 +80,7 @@
     for (const c in k) k[c] = false;
     input.jumpHeld = false;
     T.id = null; T.x = 0; T.y = 0;      // declared below; this only runs on later events
-    jumpId = null; dblId = null; input.cruise = 0;   // the app put away: the dog does not run on by itself
+    jumpId = null; dblId = null; S.id = null; input.setGear(0, true);   // the app put away: the dog does not run on by itself
     document.querySelectorAll('#stick.on, #jumpBtn.on').forEach(e => e.classList.remove('on'));
   };
   addEventListener('blur', () => releaseAll());
@@ -125,8 +156,55 @@
   stickZone.addEventListener('pointerup', stickUp);
   stickZone.addEventListener('pointercancel', stickUp);
 
+  // ---- the locked camera: the right thumb steers, the left hand has the gears, jump and slide -----
+  // Right half: put a thumb down anywhere and slide it left or right — the further from where it
+  // went down, the sharper the turn; let go and the dog runs straight. A quick flick up or down
+  // shifts a gear. A double tap still jumps.
+  const steerUI = document.getElementById('steerUI'), steerDot = steerUI && steerUI.firstElementChild;
+  const S = { id: null, ox: 0, oy: 0, x: 0, dx: 0, dy: 0, t0: 0 }, STEER_R = 80;
+  function steerDown(e) {
+    if (S.id !== null) return;
+    S.id = e.pointerId; S.ox = e.clientX; S.oy = e.clientY; S.x = 0; S.dx = 0; S.dy = 0; S.t0 = performance.now();
+    if (steerUI) { steerUI.style.left = clamp(e.clientX, 102, innerWidth - 102) + 'px'; steerUI.style.top = e.clientY + 'px'; steerUI.classList.add('on'); steerDot.style.transform = ''; }
+  }
+  function steerMove(e) {
+    if (e.pointerId !== S.id) return;
+    S.dx = e.clientX - S.ox; S.dy = e.clientY - S.oy;
+    S.x = clamp(S.dx / STEER_R, -1, 1);
+    if (steerDot) steerDot.style.transform = 'translateX(' + (S.x * STEER_R) + 'px)';
+  }
+  function steerUp(e) {
+    if (e.pointerId !== S.id) return;
+    S.dx = e.clientX - S.ox; S.dy = e.clientY - S.oy;
+    if (performance.now() - S.t0 < 400 && Math.abs(S.dy) > 45 && Math.abs(S.dy) > 1.5 * Math.abs(S.dx)) input.setGear(input.gear + (S.dy < 0 ? 1 : -1));
+    S.id = null; S.x = 0;
+    if (steerUI) steerUI.classList.remove('on');
+  }
+  // the gear lever: tap a step or slide along it
+  if (gearBox) {
+    let gid = null;
+    const pick = e => {
+      const r = gearBox.getBoundingClientRect();
+      input.setGear(Math.floor((r.bottom - e.clientY) / r.height * 6));
+    };
+    gearBox.addEventListener('pointerdown', e => { if (input.onFirst) input.onFirst(); gid = e.pointerId; gearBox.setPointerCapture(e.pointerId); pick(e); e.preventDefault(); e.stopPropagation(); });
+    gearBox.addEventListener('pointermove', e => { if (e.pointerId === gid) pick(e); });
+    const gUp = e => { if (e.pointerId === gid) gid = null; };
+    gearBox.addEventListener('pointerup', gUp); gearBox.addEventListener('pointercancel', gUp);
+    gearBox.addEventListener('click', e => e.preventDefault());
+  }
+  // the jump button on the left (with the locked camera it has its own place, out of the steering)
+  jumpBtn.addEventListener('pointerdown', e => {
+    if (!input.camLock) return;
+    if (input.onFirst) input.onFirst();
+    input._jumpEdge = true; input.jumpHeld = true; jumpBtn.classList.add('on');
+    jumpBtn.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation();
+  });
+  const jumpOff = () => { if (input.camLock) { input.jumpHeld = false; jumpBtn.classList.remove('on'); } };
+  jumpBtn.addEventListener('pointerup', jumpOff); jumpBtn.addEventListener('pointercancel', jumpOff);
+
   let jumpId = null;
-  // Right half: a touch on (or near) the jump button jumps; a touch anywhere else there turns the
+  // Right half (the free camera): a touch on (or near) the jump button jumps; a touch anywhere else there turns the
   // camera when it slides left or right — so the right thumb can look round while the left one runs.
   let camTouch = null, camTX = 0;
   jumpZone.addEventListener('pointerdown', e => {
@@ -135,6 +213,7 @@
     const r = jumpBtn.getBoundingClientRect(), pad = 34;
     const onJump = e.clientX > r.left - pad && e.clientX < r.right + pad && e.clientY > r.top - pad && e.clientY < r.bottom + pad;
     jumpZone.setPointerCapture(e.pointerId);
+    if (input.camLock) { tapDown(e); steerDown(e); return; }
     if (onJump && jumpId === null) {
       jumpId = e.pointerId;
       input._jumpEdge = true; input.jumpHeld = true;
@@ -145,10 +224,11 @@
     }
   });
   jumpZone.addEventListener('pointermove', e => {
+    steerMove(e);
     if (e.pointerId !== camTouch || input.camLock) return;
     input.camDrag += (e.clientX - camTX) * 0.007; camTX = e.clientX;
   });
-  const camTouchUp = e => { if (e.pointerId !== jumpId) tapUp(e); if (e.pointerId === camTouch) camTouch = null; };
+  const camTouchUp = e => { if (e.pointerId === S.id) steerUp(e); if (e.pointerId !== jumpId) tapUp(e); if (e.pointerId === camTouch) camTouch = null; };
   jumpZone.addEventListener('pointerup', camTouchUp);
   jumpZone.addEventListener('pointercancel', camTouchUp);
   const jumpUp = e => {
@@ -212,14 +292,14 @@
       tt = T.y < -0.25 ? Math.min(1, (-T.y - 0.25) / 0.6) : (T.y > 0.45 ? -(T.y - 0.3) : 0);
     }
     if (this.camLock) {
-      // the handlebar: up sets the pace (kept when the thumb lets go), back brakes and stops
+      // gears set the pace (they stay set); the right thumb steers: a soft curve, fine near the
+      // middle, a full turn at the edge; at a standstill the gear 0 brakes
       this.dirMode = false;
-      if (T.id !== null) {
-        if (T.y < -0.2) this.cruise = Math.min(1, (-T.y - 0.2) / 0.6);
-        else if (T.y > 0.4) this.cruise = 0;
-        tt = T.y > 0.4 ? -Math.min(1, (T.y - 0.3) / 0.5) : this.cruise;
-      } else tt = this.cruise;
-      if (kt) { tt = 0; this.cruise = 0; }    // keys: run while W is held (kt is added below)
+      ts = 0;
+      if (S.id !== null) { const ax = Math.abs(S.x); ts = ax < 0.06 ? 0 : Math.sign(S.x) * Math.pow((ax - 0.06) / 0.94, 1.3); }
+      this.steer = clamp(ks + ts, -1, 1);
+      this.throttle = this.gear ? GEAR_THR[this.gear] : -0.6;
+      return;
     } else if (input.autoRun && !k.KeyS && !k.ArrowDown && !(T.id !== null && T.y > 0.45) && kt === 0 && tt === 0) tt = 1;
     this.steer = clamp(ks + ts, -1, 1);
     this.throttle = clamp(kt + tt, -1, 1);

@@ -379,9 +379,10 @@
     rig.locked = input.camLock = modeName === 'runner' && camMode !== 'free';
     rig.gopro = rig.locked && camMode === 'gopro';
     if (rig.locked) rig.snap(player);
-    input.cruise = 0;
+    input.setGear(0, true);
+    document.body.classList.toggle('gears', rig.locked);
     $('hint').innerHTML = rig.locked
-      ? '<kbd>W</kbd> бежать &nbsp;·&nbsp; <kbd>A</kbd> <kbd>D</kbd> / стрелки — поворот &nbsp;·&nbsp; <kbd>S</kbd> стоп &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; <kbd>Q</kbd> рывок &nbsp;·&nbsp; <kbd>V</kbd> камера &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания &nbsp;·&nbsp; <kbd>N</kbd> время суток'
+      ? '<kbd>W</kbd> / <kbd>S</kbd> — передача выше / ниже (шаг, рысь, бег, галоп, суперскорость), <kbd>1</kbd>–<kbd>5</kbd> — сразу передача, <kbd>0</kbd> стоп &nbsp;·&nbsp; <kbd>A</kbd> <kbd>D</kbd> / стрелки — поворот &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; <kbd>Q</kbd> рывок &nbsp;·&nbsp; <kbd>V</kbd> камера &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания &nbsp;·&nbsp; <kbd>N</kbd> время суток'
       : '<kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; держи <kbd>W</kbd> на галопе или <kbd>Q</kbd> — рывок &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>V</kbd> камера &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания';
     if (modeName === 'runner') $('stickHint').textContent = rig.locked ? 'бег и поворот' : 'куда бежать';
     const cb = $('camBtn'); if (cb) { cb.dataset.view = camMode; cb.setAttribute('aria-label', 'Камера: ' + CAM_NAME[camMode]); }
@@ -574,7 +575,7 @@
     setTimeout(() => { for (const id of ['ghint', 'shint']) $(id).classList.add('hide'); }, 25000);
   };
   $('loading').classList.add('hide');
-  if (coarse) setTimeout(() => ctx.say(rig.locked ? 'Стик: вверх — бежать, в стороны — поворот, назад — стоп. Двойной тап — прыжок' : 'Стик — куда бежать. Веди пальцем справа — повернуть камеру. Двойной тап — прыжок', 'long'), 2500);
+  if (coarse) setTimeout(() => ctx.say(rig.locked ? 'Слева — передачи (шаг, рысь, бег, галоп, суперскорость), прыжок и подкат. Справа веди пальцем влево-вправо — поворот, смахни вверх или вниз — передача. Двойной тап — прыжок' : 'Стик — куда бежать. Веди пальцем справа — повернуть камеру. Двойной тап — прыжок', 'long'), 2500);
 
   // ---- where the stick points, in the world ------------------------------------------------
   // The stick is read relative to the camera. While it is held steadily one way, the reference

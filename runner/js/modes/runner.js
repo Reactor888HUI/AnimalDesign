@@ -2,7 +2,7 @@
   const C = R.C;
   let dogEnt, catEnt, chickenTpl;
   let player, cat, flock, el;
-  let score = 0, best = 0, combo = 0, comboT = 0, flashT = 0, bannerA = 0, cluckCd = 0, barkCd = 0, wasNear = false;
+  let score = 0, best = 0, combo = 0, comboT = 0, flashT = 0, bannerA = 0, cluckCd = 0, barkCd = 0, wasNear = false, wasSuper = false;
 
   // ---- bones to collect: lines along the street, arcs to jump through, on roofs of cars and containers ----
   const MAXB = 48;
@@ -295,7 +295,7 @@
       try { jumpBest = +localStorage.getItem('runner-jump-best') || 0; } catch (e) {}
       el = {
         bonesN: $('bonesN'), jumpLast: $('jumpLast'), jumpBest: $('jumpBest'), trick: $('trick'), trickNames: $('trickNames'), trickMult: $('trickMult'), trickTime: $('trickTime'),
-        speedFill: $('speedFill'), speedNum: $('speedNum'), chaseFill: $('chaseFill'), boostFill: $('boostFill'), boostRow: $('boostRow'), boostBtn: $('boostBtn'),
+        speedFill: $('speedFill'), speedNum: $('speedNum'), chaseFill: $('chaseFill'), boostFill: $('boostFill'), boostRow: $('boostRow'), boostBtn: $('boostBtn'), gearBox: $('gearBox'),
         score: $('score'), combo: $('combo'), banner: $('banner'), flash: $('flash'),
         best: $('best'), arrow: $('arrow'), cdist: $('cdist'),
       };
@@ -378,6 +378,13 @@
       el.boostFill.style.transform = 'scaleX(' + player.energy.toFixed(3) + ')';
       el.boostRow.classList.toggle('on', player.superOn);
       if (el.boostBtn) { el.boostBtn.style.setProperty('--en', player.energy.toFixed(2)); el.boostBtn.classList.toggle('on', player.superOn); }
+      if (el.gearBox) {
+        el.gearBox.style.setProperty('--en', player.energy.toFixed(2)); el.gearBox.classList.toggle('super', player.superOn);
+        // super speed ran out (or a crash): the lever drops back to a gallop
+        const inp = ctx.input;
+        if (inp.camLock && inp.gear === 5 && wasSuper && !player.superOn) inp.setGear(4, true);
+        wasSuper = player.superOn;
+      }
       el.speedNum.textContent = Math.round(v * 2.4);
       el.chaseFill.style.transform = 'scaleX(' + R.clamp(1 - cat.dist / C.CAT_RANGE, 0, 1).toFixed(3) + ')';
       bannerA = R.clamp(bannerA + (cat.dist < 14 ? 1 : -1) * dt * 3, 0, 1);
