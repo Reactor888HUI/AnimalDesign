@@ -514,6 +514,7 @@
     mesh.updateMatrixWorld(true);
     mesh.bind(new THREE.Skeleton(list));
     const { ears, earMat, collar, tag, crown, face } = details(bones);
+    const HEAD0 = bones.head.position.clone();
 
     const bank = new THREE.Group(); bank.add(mesh);
     const scaled = new THREE.Group(); scaled.scale.setScalar(SCALE); scaled.add(bank);
@@ -532,7 +533,7 @@
       bones.pelvis.position.y = J.pelvis[1] + p.dy;
       bones.pelvis.rotation.x = aP; bones.lumbar.rotation.x = aL - aP; bones.chest.rotation.x = aC - aL;
       bones.neck1.rotation.x = p.neck * 0.6; bones.neck2.rotation.x = p.neck * 0.4; bones.head.rotation.x = p.head;
-      bones.head.rotation.y = look;
+      bones.head.rotation.y = look; bones.head.rotation.z = 0; bones.head.position.copy(HEAD0); bones.head.scale.set(1, 1, 1);   // (the GoPro view moves it: back)
       const td = [p.tail * 0.5, p.tail * 0.3 + 0.05 * Math.sin(t * 3), p.tail * 0.15, p.tail * 0.1];
       for (let i = 0; i < 4; i++) { bones['tail' + (i + 1)].rotation.x = td[i]; bones['tail' + (i + 1)].rotation.y = -roll * 0.5 * (i + 1) / 2; }
       for (const e of ears) { e.g.rotation.x = -0.25 + p.ears * 0.5; e.g.rotation.z = e.s * (0.3 + p.ears * 0.25); }

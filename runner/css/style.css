@@ -453,6 +453,17 @@ body.mode-runner #jumpBtn, body.mode-runner .act { opacity: .42; transition: opa
 body.mode-runner #jumpBtn.on, body.mode-runner .act.on, body.mode-runner #boostBtn.on { opacity: .85; }
 body.mode-runner #moreBtn { opacity: .55; width: 40px; height: 40px; }
 body.mode-runner #moreBtn.new { opacity: .9; }
+#camBtn {
+  pointer-events: auto; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; opacity: .55;
+  top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(62px + env(safe-area-inset-right, 0px));
+  display: grid; place-items: center; color: var(--ink);
+}
+#camBtn[hidden] { display: none; }
+#camBtn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linejoin: round; }
+#camBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+#camBtn::after { content: ''; position: absolute; bottom: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .0; }
+#camBtn[data-view="gopro"]::after { opacity: .9; background: var(--gold); }
+#camBtn[data-view="free"]::after { opacity: .9; background: #7fd1ff; }
 #more .items { display: grid; }
 #more .run { padding: 6px 12px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 #more .run h3 { margin: 4px 0 6px; font: 700 11px/1 'Space Grotesk', system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }

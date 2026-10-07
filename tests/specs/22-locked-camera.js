@@ -85,8 +85,9 @@ exports.run = async t => {
     out.open = !more.hidden && R_.ctx.paused;
     out.items = [...more.querySelectorAll('button')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.dataset.act);
     const cam = more.querySelector('[data-act="cam"]');
+    cam.click(); out.gopro = R_.rig.locked && R_.rig.gopro && /на морде/.test(cam.textContent);
     cam.click(); out.free = !R_.rig.locked && /свободная/.test(cam.textContent);
-    cam.click(); out.lockedAgain = R_.rig.locked;
+    cam.click(); out.lockedAgain = R_.rig.locked && !R_.rig.gopro;
     const s0 = $('muteBtn').getAttribute('aria-pressed') + R_.ctx.au.muted; more.querySelector('[data-act="sound"]').click();
     out.sound = more.querySelector('.v.sound').textContent; out.soundChanged = s0 !== $('muteBtn').getAttribute('aria-pressed') + R_.ctx.au.muted || out.sound === 'без музыки';
     dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
@@ -99,7 +100,7 @@ exports.run = async t => {
   });
   t.ok(menu.oldHidden, 'the top buttons and the minimap are tucked away', menu);
   t.ok(menu.open && ['quests', 'map', 'cam', 'sound', 'time', 'dogs'].every(a => menu.items.includes(a)), 'one button opens the menu with everything (the game waits)', menu.items);
-  t.ok(menu.free && menu.lockedAgain, 'the camera can be switched to free and back', menu);
+  t.ok(menu.gopro && menu.free && menu.lockedAgain, 'the camera goes round: leash → on the head → free → leash', menu);
   t.ok(menu.soundChanged && menu.closed, 'sound from the menu; Escape closes it', menu);
   t.ok(menu.map && menu.quests, 'the map and the quests open from the menu', menu);
 };

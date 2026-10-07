@@ -370,20 +370,39 @@
   }
   const map = mode.mapMarkers ? new R.DistrictMap(ctx, { markers: () => mode.mapMarkers(), travel: modeName === 'runner' }) : null;
 
-  // ---- the camera: on the leash behind the dog (the runner's default) or free, turned by hand -------
+  // ---- the camera: on the leash behind the dog (the runner's default), on its head ("GoPro") or free ---
+  const CAMS = ['lock', 'gopro', 'free'], CAM_NAME = { lock: 'поводок', gopro: 'на морде', free: 'свободная' };
   let camMode = 'lock';
-  try { if (localStorage.getItem('runner-cam') === 'free') camMode = 'free'; } catch (e) {}
+  try { const c = localStorage.getItem('runner-cam'); if (CAMS.includes(c)) camMode = c; } catch (e) {}
   function setCam(m, keep) {
-    camMode = m === 'free' ? 'free' : 'lock';
-    rig.locked = input.camLock = modeName === 'runner' && camMode === 'lock';
+    camMode = CAMS.includes(m) ? m : 'lock';
+    rig.locked = input.camLock = modeName === 'runner' && camMode !== 'free';
+    rig.gopro = rig.locked && camMode === 'gopro';
+    if (rig.locked) rig.snap(player);
     input.cruise = 0;
     $('hint').innerHTML = rig.locked
-      ? '<kbd>W</kbd> бежать &nbsp;·&nbsp; <kbd>A</kbd> <kbd>D</kbd> / стрелки — поворот &nbsp;·&nbsp; <kbd>S</kbd> стоп &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; <kbd>Q</kbd> рывок &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания &nbsp;·&nbsp; <kbd>N</kbd> время суток'
-      : '<kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; держи <kbd>W</kbd> на галопе или <kbd>Q</kbd> — рывок &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания';
+      ? '<kbd>W</kbd> бежать &nbsp;·&nbsp; <kbd>A</kbd> <kbd>D</kbd> / стрелки — поворот &nbsp;·&nbsp; <kbd>S</kbd> стоп &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; <kbd>Q</kbd> рывок &nbsp;·&nbsp; <kbd>V</kbd> камера &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания &nbsp;·&nbsp; <kbd>N</kbd> время суток'
+      : '<kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; держи <kbd>W</kbd> на галопе или <kbd>Q</kbd> — рывок &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>V</kbd> камера &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания';
     if (modeName === 'runner') $('stickHint').textContent = rig.locked ? 'бег и поворот' : 'куда бежать';
+    const cb = $('camBtn'); if (cb) { cb.dataset.view = camMode; cb.setAttribute('aria-label', 'Камера: ' + CAM_NAME[camMode]); }
     if (!keep) try { localStorage.setItem('runner-cam', camMode); } catch (e) {}
   }
+  const nextCam = () => { setCam(CAMS[(CAMS.indexOf(camMode) + 1) % CAMS.length]); ctx.say('Камера: ' + CAM_NAME[camMode]); };
+  if (modeName === 'runner') {
+    $('camBtn').hidden = false;
+    $('camBtn').addEventListener('click', e => { e.stopPropagation(); nextCam(); });
+    addEventListener('keydown', e => { if (e.code === 'KeyV' && !e.repeat && !ctx.paused) nextCam(); });
+  }
   setCam(camMode, true);
+
+  // the GoPro view: a hat or glasses would sit on the lens; the dog is hidden in a flip or a crash
+  // (its head would sweep through the picture). The wardrobe's own camera shows everything.
+  function camDress() {
+    if (!player.ent || !player.ent.anchors) return;
+    const onHead = rig.locked && rig.gopro && !(questPanel && questPanel.open && questPanel.tab === 'wardrobe');
+    const A = player.ent.anchors; A.crown.visible = A.face.visible = !onHead;
+    player.ent.mesh.visible = !(onHead && rig.hideDog);
+  }
 
   // ---- one menu button in the corner: everything that is not running is behind it ----------------
   const more = $('more'), moreBtn = $('moreBtn');
@@ -419,7 +438,7 @@
     more.querySelector('.v.full').textContent = fullOn() ? 'вкл' : 'выкл';
     const q = $('questBtn').querySelector('.stars');
     more.querySelector('.v.stars').textContent = q ? '★ ' + q.textContent : '';
-    more.querySelector('.v.cam').textContent = camMode === 'lock' ? 'поводок' : 'свободная';
+    more.querySelector('.v.cam').textContent = CAM_NAME[camMode];
     more.querySelector('.v.sound').textContent = au.muted ? 'выключен' : music.on ? 'звук и музыка' : 'без музыки';
     more.querySelector('.v.time').textContent = TOD_SHORT[daytime.mode] || daytime.mode;
   }
@@ -438,7 +457,7 @@
     if (act === 'sound') { $('muteBtn').click(); moreLabels(); return; }
     if (act === 'time') { toggleTheme(); moreLabels(); return; }
     if (act === 'full') { goFull(!fullOn()); setTimeout(moreLabels, 300); return; }
-    if (act === 'cam') { setCam(camMode === 'lock' ? 'free' : 'lock'); moreLabels(); ctx.say(camMode === 'lock' ? 'Камера на поводке: в метре за собакой' : 'Свободная камера: веди пальцем справа, чтобы повернуть'); return; }
+    if (act === 'cam') { nextCam(); moreLabels(); return; }
     showMore(false);
     if (act === 'map') $('minimap').click();
     else if (act === 'quests') $('questBtn').click();
@@ -607,6 +626,7 @@
       const side = wide ? 0.9 : 0, rx = Math.cos(a) * side, rz = -Math.sin(a) * side;
       camera.lookAt(player.x - rx, (player.y || 0) + (wide ? 0.75 : 0.35), player.z - rz);
     }
+    camDress();
     camera.updateMatrixWorld();
     { const o = T.sunOffset, D = R.dogLight; if (D) { D.uRimDir.value.set(o[0], o[1], o[2]).normalize().transformDirection(camera.matrixWorldInverse); D.uRimCol.value.setHex(T.sunColor); D.uRimK.value = T.rimK; } }
     pShadow.update(player, T);
@@ -721,5 +741,5 @@
     rig.resize(innerWidth / innerHeight);
   });
 
-  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setCam, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life, map, speedTrail, get quests() { return quests; }, get wardrobe() { return wardrobe; } }, mode.debug ? mode.debug() : {});
+  window.__runner = Object.assign({ mode: modeName, player, world, traffic, renderer, scene, camera, rig, setCam, camDress, setTheme, setLevel, input, ctx, worldDir, ahead, daytime, pShadow, life, map, speedTrail, get quests() { return quests; }, get wardrobe() { return wardrobe; } }, mode.debug ? mode.debug() : {});
 })(window.R);
