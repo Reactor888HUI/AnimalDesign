@@ -1,7 +1,7 @@
-// The runner's default: the camera "on the leash" (fixed ~1 m behind the collar) and the gear controls.
-// The left hand has a gear lever (stop, walk, trot, run, gallop, super speed — it stays where it is set),
-// a jump and a slide button; the right thumb steers anywhere on the right half (further from where it went
-// down = a sharper turn; let go = straight) and a quick flick up or down shifts a gear; a double tap jumps.
+// The runner's default: the camera "on the leash" (fixed ~1 m behind the collar). The left thumb's circle is
+// the gas pedal and the wheel: a light push walks, held forward at the edge the dog speeds up a gait at a time
+// (walk, trot, run, gallop, super speed), held back it slows down to a stop, sideways it turns; let go and it
+// keeps its gait. The right hand does the tricks: jump, slide, the nose; a double tap jumps.
 // The camera stays fixed behind the dog and turns with it (no lag, no jumps); a bot steering this way
 // catches cats; and the one menu button in the corner holds the map, quests, camera, sound and time.
 exports.run = async t => {
@@ -29,74 +29,77 @@ exports.run = async t => {
         gear: inp.gear, superOn: p.superOn };
     };
     const c = el => { const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, shown: b.width > 0 }; };
-    const g = {}; for (const b of document.querySelectorAll('#gearBox button')) g[b.dataset.g] = c(b);
-    const z = document.getElementById('jumpZone').getBoundingClientRect();
-    return { gear: g, pad: { x: z.left + z.width * 0.5, y: z.top + z.height * 0.55 }, jump: c(document.getElementById('jumpBtn')), slide: c(document.getElementById('slideBtn')),
-      stickHidden: getComputedStyle(document.getElementById('stickZone')).display === 'none', locked: R_.rig.locked && R_.input.camLock && document.body.classList.contains('gears') };
+    const sz = document.getElementById('stickZone').getBoundingClientRect(), z = document.getElementById('jumpZone').getBoundingClientRect();
+    return { stick: { x: sz.left + sz.width * 0.4, y: sz.top + sz.height * 0.6 }, pad: { x: z.left + z.width * 0.3, y: z.top + z.height * 0.4 }, mid: innerWidth / 2,
+      jump: c(document.getElementById('jumpBtn')), slide: c(document.getElementById('slideBtn')), nose: c(document.getElementById('sniffBtn')), dots: c(document.getElementById('gearBox')),
+      dotsTouch: getComputedStyle(document.getElementById('gearBox')).pointerEvents,
+      locked: R_.rig.locked && R_.input.camLock && document.body.classList.contains('gears') };
   });
   const step = n => page.evaluate(n => window.__step(n), n);
-  const m = page.mouse, tap = async q => { await m.move(q.x, q.y); await m.down(); await m.up(); };
-  const flick = async dy => { await m.move(pt.pad.x, pt.pad.y); await m.down(); await m.move(pt.pad.x, pt.pad.y + dy / 2); await m.move(pt.pad.x, pt.pad.y + dy); await m.up(); };
-  // each gear: its own pace and gait
-  const gears = [];
-  for (const g of ['1', '2', '3', '4']) { await tap(pt.gear[g]); gears.push(await step(g === '4' ? 90 : 70)); }
-  // the right thumb: down in the middle of the right half, slide right: the dog turns right
-  await m.move(pt.pad.x, pt.pad.y); await m.down(); await m.move(pt.pad.x + 30, pt.pad.y); await m.move(pt.pad.x + 60, pt.pad.y);
+  const m = page.mouse, S = pt.stick, R = 56;
+  // a light push forward: a walk, and it stays a walk
+  await m.move(S.x, S.y); await m.down(); await m.move(S.x, S.y - 25);
+  const walk = await step(60), walk2 = await step(30);
+  // held at the edge: a gait up every 0.7 s, from a gallop (held a second more) super speed
+  await m.move(S.x, S.y - R);
+  const seq = [];
+  for (const n of [3, 21, 21, 21, 32]) seq.push((await step(n)).gear);
+  const sup = await step(60);
+  // held back: a gait down every 0.45 s, super speed off, to a stop
+  await m.move(S.x, S.y + 40);
+  const back1 = await step(1), stop = await step(90);
+  await m.up();
+  // up to a gallop again; sideways: it turns, the gait stays; let go: it keeps running, straight
+  // (at the gallop the thumb eases off the edge: it stays a gallop)
+  await m.move(S.x, S.y); await m.down(); await m.move(S.x, S.y - R);
+  await step(66); await m.move(S.x, S.y - 28);
+  const g4 = await step(40);
+  await m.move(S.x + R, S.y);
   const turn = await step(40);
-  await m.move(pt.pad.x, pt.pad.y);
+  await m.move(S.x, S.y);
   const after = await step(30);
-  // let go: it keeps the gear and runs straight
   await m.up();
   const h0 = after.heading, cruise = await step(30);
-  // a double tap: it jumps
+  // the right hand: a double tap jumps, so does the jump button
   await m.move(pt.pad.x, pt.pad.y); await m.down(); await m.up(); await m.down();
   const jump = await step(8);
-  await m.up();
-  await step(40);
-  // the jump button on the left
-  await m.move(pt.jump.x, pt.jump.y); await m.down();
-  const jumpL = await step(8);
   await m.up(); await step(40);
-  // a flick up: super speed; a flick down: back to a gallop, super speed off
-  await flick(-90); const sup = await step(75);
-  await flick(90); const down = await step(10);
-  // flick down to a stop
-  for (let i = 0; i < 4; i++) await flick(90);
-  const stop = await step(90);
-  // keys (with the locked camera): W shifts up, S down
+  await m.move(pt.jump.x, pt.jump.y); await m.down();
+  const jumpR = await step(8);
+  await m.up(); await step(40);
+  // keys: W held speeds up like the circle, S slows down, digits pick a gait
   const keys = await page.evaluate(() => {
-    const inp = window.__runner.input, key = (type, code) => dispatchEvent(new KeyboardEvent(type, { code }));
-    const out = [];
-    key('keydown', 'KeyW'); key('keyup', 'KeyW'); out.push(inp.gear);
-    key('keydown', 'KeyW'); key('keyup', 'KeyW'); out.push(inp.gear);
-    key('keydown', 'KeyS'); key('keyup', 'KeyS'); out.push(inp.gear);
+    const inp = window.__runner.input, key = (type, code) => dispatchEvent(new KeyboardEvent(type, { code })), out = [];
+    inp.setGear(0, true);
+    key('keydown', 'KeyW'); window.__step(1); out.push(inp.gear); window.__step(22); out.push(inp.gear); key('keyup', 'KeyW'); window.__step(1);
+    key('keydown', 'KeyS'); window.__step(1); out.push(inp.gear); key('keyup', 'KeyS');
     key('keydown', 'Digit4'); key('keyup', 'Digit4'); out.push(inp.gear);
     key('keydown', 'Digit0'); key('keyup', 'Digit0'); out.push(inp.gear);
     return out;
   });
-  t.ok(pt.locked && pt.stickHidden, 'the runner starts with the camera on the leash and the gears (no stick)', pt);
-  t.ok(pt.gear['5'].shown && pt.jump.shown && pt.slide.shown && pt.jump.x < pt.pad.x && pt.slide.x < pt.pad.x, 'the gear lever, jump and slide are on the left', pt);
-  const [g1, g2, g3, g4] = gears;
-  t.ok(g1.speed > 0.6 && g1.speed < 1.8, 'gear 1: a walk', g1.speed);
-  t.ok(g2.speed > 2.6 && g2.speed < 5, 'gear 2: a trot', g2.speed);
-  t.ok(g3.speed > 7 && g3.speed < 11, 'gear 3: a run', g3.speed);
-  t.ok(g4.speed > 14 && g4.maxSpeed < 16.5 && !g4.superOn && Math.abs(g4.heading) < 0.05, 'gear 4: a straight gallop, no super speed by itself', g4);
-  t.ok(turn.heading < -0.6, 'the right thumb slides right: the dog turns right', turn);
-  t.ok(Math.abs(cruise.heading - h0) < 0.05 && cruise.speed > 14, 'thumb off: it runs straight on in its gear', { h0, cruise });
+  t.ok(pt.locked, 'the runner starts with the camera on the leash', pt);
+  t.ok(pt.jump.shown && pt.slide.shown && pt.nose.shown && [pt.jump, pt.slide, pt.nose].every(b => b.x > pt.mid), 'the right hand: jump, slide and the nose are on the right', pt);
+  t.ok(pt.dots.shown && pt.dotsTouch === 'none' && pt.dots.x < pt.mid, 'the gait shows as dots on the left (not a control)', pt.dots);
+  t.ok(walk.gear === 1 && walk2.gear === 1 && walk2.speed > 0.6 && walk2.speed < 1.8, 'a light push forward: a walk, and it stays a walk', { walk, walk2 });
+  t.ok(seq.join() === '2,3,4,4,5', 'held at the edge: it speeds up a gait at a time (trot, run, gallop), then super speed', seq);
+  t.ok(sup.superOn && sup.maxSpeed > 17.5, 'super speed', sup);
+  t.ok(back1.gear === 4 && !back1.superOn && stop.gear === 0 && stop.speed < 0.5, 'held back: super speed off, slower and slower, a stop', { back1, stop });
+  t.ok(g4.gear === 4 && g4.speed > 14 && !g4.superOn && Math.abs(g4.heading) < 0.05, 'a straight gallop', g4);
+  t.ok(turn.heading < -0.6 && turn.gear === 4, 'the circle to the right: it turns right, the gait stays', turn);
+  t.ok(Math.abs(cruise.heading - h0) < 0.05 && cruise.speed > 14 && cruise.gear === 4, 'thumb off: it runs straight on in its gait', { h0, cruise });
   t.ok(turn.maxGap < 0.12 && after.gap < 0.02, 'on the leash: the camera turns with the dog at once (no lag)', { turn, after });
   t.ok(g4.minD > 0.4 && g4.maxD < 0.8 && g4.camUp > 1.2 && g4.camUp < 1.7, 'about a metre behind the collar, a little above the head', g4);
   t.ok(Math.max(g4.maxJump, turn.maxJump, after.maxJump) < 0.15, 'the picture never jumps', { run: g4.maxJump, turn: turn.maxJump, after: after.maxJump });
-  t.ok(jump.air && jumpL.air, 'a double tap jumps, so does the jump button on the left', { jump, jumpL });
-  t.ok(sup.gear === 5 && sup.superOn && sup.maxSpeed > 17.5, 'a flick up from a gallop: super speed', sup);
-  t.ok(down.gear === 4 && !down.superOn, 'a flick down: a gallop again, super speed off', down);
-  t.ok(stop.gear === 0 && stop.speed < 0.5, 'flicked down to the bottom: it stops', stop);
-  t.ok(keys.join() === '1,2,1,4,0', 'keys: W / S shift gears, digits pick one', keys);
+  t.ok(jump.air && jumpR.air, 'a double tap jumps, so does the jump button on the right', { jump, jumpR });
+  t.ok(keys.join() === '1,2,1,4,0', 'keys: W held speeds up, S slows down, digits pick a gait', keys);
 
   // a bot steering like a handlebar towards the cat catches cats
   const chase = await page.evaluate(() => {
     const r = window.__runner, M = window.R.modes.runner, ctx = r.ctx, p = r.player, c = r.cat, w = r.world, inp = r.input, A = window.R.angDiff;
     inp.poll = function () { this.dirMode = false; const want = Math.atan2(-(c.x - p.x), -(c.z - p.z)); this.steer = Math.max(-1, Math.min(1, -A(p.heading, want) * 2)); this.throttle = 1; };
-    let gapMax = 0;
+    // (from the open street where the test began: the steps above may leave the dog by a wall)
+    Object.assign(p, { x: 37.5, z: 60, y: 0, vy: 0, heading: 0, vx: 0, vz: 0, speed: 0, yawRate: 0, steerS: 0, limp: 0, crash: -1 }); w.update(p.x, p.z, 99); c.respawn(p, w, 30); r.rig.snap(p);
+    let gapMax = 0; window.__botStart = { x: p.x.toFixed(0), z: p.z.toFixed(0), sp: p.speed.toFixed(1), limp: p.limp, cat: c.dist.toFixed(0), y: p.y.toFixed(2) };
     const s0 = +document.getElementById('score').textContent, dt = 1 / 30;
     for (let i = 0; i < 1800; i++) {
       inp.poll();
@@ -106,7 +109,7 @@ exports.run = async t => {
       if (ob && !p.air) { inp._jumpEdge = true; inp.jumpHeld = true; } else if (p.y > 0.9) inp.jumpHeld = false;
       gapMax = Math.max(gapMax, Math.abs(A(r.rig.heading, p.heading)));
     }
-    return { catches: +document.getElementById('score').textContent - s0, gapMaxDeg: Math.round(gapMax * 57.3) };
+    return { catches: +document.getElementById("score").textContent - s0, gapMaxDeg: Math.round(gapMax * 57.3), start: window.__botStart, end: { x: p.x.toFixed(0), z: p.z.toFixed(0), sp: p.speed.toFixed(1), limp: p.limp.toFixed(2), cat: c.dist.toFixed(0) } };
   });
   t.ok(chase.catches >= 1, 'steering like a handlebar catches cats', chase);
 

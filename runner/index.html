@@ -204,16 +204,15 @@
   <button id="autoBtn" class="panel" type="button" aria-pressed="false">Автобег</button>
   <button id="slideBtn" class="act r-only" type="button" aria-label="Подкат"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l6 9h10"/><path d="M16 12l4 4-4 4"/></svg></button>
   <button id="boostBtn" class="act r-only" type="button" aria-label="Рывок"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L6 13h5l-1 8 7-10h-5z"/></svg></button>
-  <!-- the runner's gears (the camera on the leash or on the head): stop, walk, trot, run, gallop, super speed -->
-  <div id="gearBox" class="r-only" role="radiogroup" aria-label="Скорость" data-gear="0">
-    <button type="button" data-g="5" role="radio" aria-checked="false" aria-label="Суперскорость"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L6 13h5l-1 8 7-10h-5z"/></svg></button>
-    <button type="button" data-g="4" role="radio" aria-checked="false" aria-label="Галоп"><i></i></button>
-    <button type="button" data-g="3" role="radio" aria-checked="false" aria-label="Бег"><i></i></button>
-    <button type="button" data-g="2" role="radio" aria-checked="false" aria-label="Рысь"><i></i></button>
-    <button type="button" data-g="1" role="radio" aria-checked="false" aria-label="Шаг"><i></i></button>
-    <button type="button" data-g="0" role="radio" aria-checked="true" aria-label="Стоп"><i></i></button>
+  <!-- the runner's gait (the camera on the leash or on the head), shown only: stop, walk, trot, run, gallop, super speed -->
+  <div id="gearBox" class="r-only" role="radiogroup" aria-label="Аллюр" aria-readonly="true" data-gear="0">
+    <button type="button" tabindex="-1" data-g="5" role="radio" aria-checked="false" aria-label="Суперскорость"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L6 13h5l-1 8 7-10h-5z"/></svg></button>
+    <button type="button" tabindex="-1" data-g="4" role="radio" aria-checked="false" aria-label="Галоп"><i></i></button>
+    <button type="button" tabindex="-1" data-g="3" role="radio" aria-checked="false" aria-label="Бег"><i></i></button>
+    <button type="button" tabindex="-1" data-g="2" role="radio" aria-checked="false" aria-label="Рысь"><i></i></button>
+    <button type="button" tabindex="-1" data-g="1" role="radio" aria-checked="false" aria-label="Шаг"><i></i></button>
+    <button type="button" tabindex="-1" data-g="0" role="radio" aria-checked="true" aria-label="Стоп"><i></i></button>
   </div>
-  <div id="steerUI"><i></i></div>
   <!-- "search": the nose to the ground (only at a walk or a trot) -->
   <button id="sniffBtn" class="act r-only" type="button" aria-label="Поиск: нос к земле" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15c3-1 4-5 8-6s6 1 8 3"/><circle cx="18.5" cy="13.5" r="1.6"/><path d="M5 19c2 .5 4-.5 5.5-2M12 20c2 0 3.5-1 4.5-2.5"/></svg></button>
   <button id="biteBtn" class="act g-only" type="button">Кусь</button>

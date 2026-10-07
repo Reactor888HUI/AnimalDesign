@@ -382,12 +382,14 @@
     input.setGear(0, true);
     document.body.classList.toggle('gears', rig.locked);
     $('hint').innerHTML = rig.locked
-      ? '<kbd>W</kbd> / <kbd>S</kbd> — передача выше / ниже (шаг, рысь, бег, галоп, суперскорость), <kbd>1</kbd>–<kbd>5</kbd> — сразу передача, <kbd>0</kbd> стоп &nbsp;·&nbsp; <kbd>A</kbd> <kbd>D</kbd> / стрелки — поворот &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; <kbd>Q</kbd> рывок &nbsp;·&nbsp; <kbd>V</kbd> камера &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания &nbsp;·&nbsp; <kbd>N</kbd> время суток'
+      ? 'держи <kbd>W</kbd> — разгон (шаг, рысь, бег, галоп, суперскорость), <kbd>S</kbd> — тормоз, <kbd>1</kbd>–<kbd>5</kbd> — сразу аллюр, <kbd>0</kbd> стоп &nbsp;·&nbsp; <kbd>E</kbd> нос (поиск) &nbsp;·&nbsp; <kbd>A</kbd> <kbd>D</kbd> / стрелки — поворот &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; <kbd>Q</kbd> рывок &nbsp;·&nbsp; <kbd>V</kbd> камера &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания &nbsp;·&nbsp; <kbd>N</kbd> время суток'
       : '<kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; держи <kbd>W</kbd> на галопе или <kbd>Q</kbd> — рывок &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>V</kbd> камера &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания';
     if (modeName === 'runner') $('stickHint').textContent = rig.locked ? 'бег и поворот' : 'куда бежать';
     const cb = $('camBtn'); if (cb) { cb.dataset.view = camMode; cb.setAttribute('aria-label', 'Камера: ' + CAM_NAME[camMode]); }
     if (!keep) try { localStorage.setItem('runner-cam', camMode); } catch (e) {}
   }
+  // each new gait: a short soft tick (with the phone's buzz), so the speed-up is felt without looking
+  input.onGear = g => { if (au.pick) au.pick(g * 2); };
   const nextCam = () => { setCam(CAMS[(CAMS.indexOf(camMode) + 1) % CAMS.length]); ctx.say('Камера: ' + CAM_NAME[camMode]); };
   if (modeName === 'runner') {
     $('camBtn').hidden = false;
@@ -575,7 +577,7 @@
     setTimeout(() => { for (const id of ['ghint', 'shint']) $(id).classList.add('hide'); }, 25000);
   };
   $('loading').classList.add('hide');
-  if (coarse) setTimeout(() => ctx.say(rig.locked ? 'Слева — передачи (шаг, рысь, бег, галоп, суперскорость), прыжок и подкат. Справа веди пальцем влево-вправо — поворот, смахни вверх или вниз — передача. Двойной тап — прыжок' : 'Стик — куда бежать. Веди пальцем справа — повернуть камеру. Двойной тап — прыжок', 'long'), 2500);
+  if (coarse) setTimeout(() => ctx.say(rig.locked ? 'Левая рука — круг: чуть вперёд — шаг, держи вперёд — разгон до галопа и суперскорости, в стороны — поворот, назад — тормоз. Отпустил — бежит дальше. Правая — прыжок, подкат, нос. Двойной тап — прыжок' : 'Стик — куда бежать. Веди пальцем справа — повернуть камеру. Двойной тап — прыжок', 'long'), 2500);
 
   // ---- where the stick points, in the world ------------------------------------------------
   // The stick is read relative to the camera. While it is held steadily one way, the reference
@@ -607,7 +609,7 @@
 
     // the big map open: the game stands still (the picture behind it keeps drawing)
     if (!ctx.paused) {
-      input.poll();
+      input.poll(dt);
       worldDir();
       traffic.update(dt, player);
       life.update(dt, player, T);

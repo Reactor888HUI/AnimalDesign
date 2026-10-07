@@ -480,60 +480,45 @@ body.mode-runner #moreBtn.new { opacity: .9; }
   #more .run { border-bottom: 0; border-right: 1px solid var(--line); margin: 0 4px 0 0; }
 }
 
-/* ---- the runner's gears (camera on the leash or on the head): the left hand shifts gears, jumps and
-   slides, the right thumb steers anywhere on the right half. Icons only, see-through. ---- */
-#gearBox, #steerUI { display: none; }
-body.gears #stickZone, body.gears #boostBtn { display: none !important; }
-body.gears #jumpZone { height: 82%; }
+/* ---- the runner with the locked camera: the left thumb's circle is the gas pedal and the wheel (the
+   gait shows as a little column of dots in the corner, not to be touched), the right hand does the tricks:
+   jump, slide, the nose. Icons only, see-through. ---- */
+#gearBox { display: none; }
+body.gears #boostBtn { display: none !important; }
 body.gears #gearBox {
-  position: absolute; display: flex; flex-direction: column; pointer-events: auto; touch-action: none; overflow: hidden;
-  left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px));
-  width: 56px; height: 234px; border-radius: 28px; border: 2px solid var(--line); background: var(--panel);
-  opacity: .55; transition: opacity .12s;
+  position: absolute; display: flex; flex-direction: column; pointer-events: none; overflow: hidden;
+  left: calc(10px + env(safe-area-inset-left, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  width: 22px; height: 112px; border-radius: 11px; background: var(--panel); opacity: .5;
 }
-body.gears #gearBox:active { opacity: .85; }
-/* the fill: from the top of the "stop" step up to the gear */
 #gearBox::before {
   content: ''; position: absolute; left: 0; right: 0; bottom: calc(100% / 6); height: calc(var(--g, 0) * 100% / 6);
-  background: var(--speed); opacity: .55; transition: height .15s; pointer-events: none;
+  background: var(--speed); opacity: .6; transition: height .15s; pointer-events: none;
 }
 #gearBox[data-gear="5"]::before { background: #ff8a2a; }
-#gearBox button {
-  position: relative; flex: 1; display: grid; place-items: center; padding: 0; border: 0; background: transparent;
-  color: var(--ink); cursor: pointer; touch-action: none;
-}
+#gearBox button { position: relative; flex: 1; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: var(--ink); pointer-events: none; }
 #gearBox button i { display: block; border-radius: 50%; background: currentColor; opacity: .8; }
-#gearBox [data-g="1"] i { width: 6px; height: 6px; }
-#gearBox [data-g="2"] i { width: 9px; height: 9px; }
-#gearBox [data-g="3"] i { width: 12px; height: 12px; }
-#gearBox [data-g="4"] i { width: 16px; height: 16px; }
-#gearBox [data-g="0"] i { width: 11px; height: 11px; border-radius: 2px; }
-#gearBox button[aria-checked="true"] i { box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px currentColor; opacity: 1; }
-#gearBox [data-g="5"] svg { width: 22px; height: 22px; fill: #ff8a2a; stroke: none; opacity: calc(.3 + var(--en, 1) * .7); }
+#gearBox [data-g="1"] i { width: 3px; height: 3px; }
+#gearBox [data-g="2"] i { width: 5px; height: 5px; }
+#gearBox [data-g="3"] i { width: 7px; height: 7px; }
+#gearBox [data-g="4"] i { width: 9px; height: 9px; }
+#gearBox [data-g="0"] i { width: 6px; height: 6px; border-radius: 1px; }
+#gearBox button[aria-checked="true"] i { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px currentColor; opacity: 1; }
+#gearBox [data-g="5"] svg { width: 13px; height: 13px; fill: #ff8a2a; stroke: none; opacity: calc(.3 + var(--en, 1) * .7); }
 #gearBox [data-g="5"][aria-checked="true"] svg { fill: #fff; }
-#gearBox.super { box-shadow: 0 0 0 3px rgba(255, 138, 42, .5), 0 0 20px rgba(255, 179, 71, .6); opacity: .8; }
-body.gears #jumpBtn {
-  right: auto; left: calc(88px + env(safe-area-inset-left, 0px)); bottom: calc(150px + env(safe-area-inset-bottom, 0px));
-  width: 66px; height: 66px; pointer-events: auto; touch-action: none; z-index: 2;
-}
-body.gears #slideBtn {
-  right: auto; left: calc(90px + env(safe-area-inset-left, 0px)); bottom: calc(68px + env(safe-area-inset-bottom, 0px));
-  width: 62px; height: 62px;
-}
-/* where the right thumb went down: a little bar, the dot shows how hard it turns */
-body.gears #steerUI {
-  display: block; position: fixed; width: 188px; height: 30px; margin: -15px 0 0 -94px; border-radius: 15px;
-  border: 2px solid var(--line); background: var(--panel); opacity: 0; transition: opacity .15s; pointer-events: none;
-}
-body.gears #steerUI.on { opacity: .5; }
-#steerUI i { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--speed); }
-/* the nose to the ground ("search"): next to the slide; a rainbow ring while sniffing */
+#gearBox.super { box-shadow: 0 0 0 2px rgba(255, 138, 42, .5), 0 0 14px rgba(255, 179, 71, .6); opacity: .8; }
+#gearBox.pop { animation: trickpop .3s ease-out; }
+/* the nose to the ground ("search"): over the jump; a rainbow ring while sniffing */
 #sniffBtn { display: none; }
 body.gears #sniffBtn {
-  display: grid; place-items: center; left: calc(162px + env(safe-area-inset-left, 0px)); bottom: calc(104px + env(safe-area-inset-bottom, 0px));
-  width: 58px; height: 58px; border-color: #a77bff;
+  display: grid; place-items: center; right: calc(36px + env(safe-area-inset-right, 0px)); bottom: calc(152px + env(safe-area-inset-bottom, 0px));
+  width: 64px; height: 64px; border-color: #a77bff;
 }
 body.gears #sniffBtn[aria-pressed="true"] {
   opacity: .9; color: #fff; border-color: transparent;
   background: radial-gradient(circle, rgba(20, 16, 30, .55) 58%, transparent 60%), conic-gradient(#ff4040, #ff9a2a, #ffe43a, #4be36e, #3fd8ff, #4a6dff, #bb55ff, #ff4040);
+}
+/* a phone held upright: the slide over the jump and the nose beside it, clear of the dog in the middle */
+@media (max-width: 500px) and (orientation: portrait) {
+  body.gears #slideBtn { right: calc(36px + env(safe-area-inset-right, 0px)); bottom: calc(152px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 64px; }
+  body.gears #sniffBtn { right: calc(116px + env(safe-area-inset-right, 0px)); bottom: calc(160px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; }
 }
