@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="night">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f1c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Собаки">
+<title>Бегун</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="loading"><span id="loadText">Загрузка</span></div>
+
+<div id="vignette" class="ui"></div>
+<div id="lines" class="ui"></div>
+<div id="flash" class="ui"></div>
+
+<div id="hud" class="ui r-only">
+  <div class="stat panel">
+    <div class="row"><label>Скорость</label><span><b id="speedNum">0</b><small>км/ч</small></span></div>
+    <div class="bar"><i id="speedFill"></i></div>
+    <div id="boostRow" class="row sub boost"><label>Рывок</label><div class="bar"><i id="boostFill"></i></div></div>
+    <div class="row sub bones"><label>Косточки</label><b id="bonesN">0</b></div>
+    <div class="row sub bones"><label>Прыжок</label><span><b id="jumpLast">0</b><small>м · рекорд <span id="jumpBest">0</span></small></span></div>
+  </div>
+  <div class="stat panel">
+    <div class="row"><label>Поймано</label><span><b id="score">0</b><span id="combo"></span><small>рекорд <span id="best">0</span></small></span></div>
+    <div class="row sub"><label>Кот рядом</label></div>
+    <div class="bar"><i id="chaseFill"></i></div>
+  </div>
+</div>
+
+<div id="dbg" class="ui panel" hidden></div>
+
+<div id="banner" class="ui r-only">Режим погони</div>
+
+<div id="compass" class="ui panel r-only" aria-label="Где кот">
+  <svg id="arrow" viewBox="0 0 24 24"><path d="M12 3l6.5 15L12 14.5 5.5 18z"/></svg>
+  <span id="cdist">0 м</span>
+</div>
+
+<div id="toast" class="ui"></div>
+<button id="questBtn" class="ui panel r-only" type="button" aria-label="Задания и гардероб (J)" hidden><span class="star">★</span><b class="stars">0</b><span class="left"></span></button>
+<div id="quests" hidden>
+  <div class="frame panel">
+    <div class="head">
+      <button type="button" data-tab="quests">Задания дня</button><button type="button" data-tab="wardrobe">Гардероб</button><button type="button" data-tab="records">Рекорды</button>
+      <span class="bal-wrap">★ <b class="bal">0</b></span>
+      <button class="close" type="button" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="body"></div>
+  </div>
+</div>
+<button id="minimap" class="ui panel" type="button" aria-label="Карта района (K)" hidden><canvas width="264" height="264"></canvas></button>
+<div id="bigmap" hidden>
+  <div class="frame panel">
+    <div class="head"><b>Карта района</b><span class="travel">нажми значок — и ты там</span><span class="place"></span><button class="close" type="button" aria-label="Закрыть карту">✕</button></div>
+    <canvas class="map"></canvas>
+    <div class="legend">
+      <span><i style="background:#ffd36a"></i>собака</span><span class="leg-cat"><i style="background:#ff4d6d"></i>кот</span>
+      <span><canvas data-icon="garages"></canvas>гаражи с трамплинами</span><span><canvas data-icon="parkour"></canvas>паркур-площадка</span>
+      <span><canvas data-icon="fountain"></canvas>площадь с фонтаном</span><span><i style="background:#5f9a4c"></i>парк</span><span><i style="background:#6c6159"></i>дома</span>
+    </div>
+  </div>
+</div>
+<div id="trick" class="ui panel r-only" hidden><span id="trickNames"></span><b id="trickMult"></b><i id="trickTime"></i></div>
+
+<div id="ghud" class="ui g-only">
+  <div class="stat panel">
+    <div class="row"><label>Ночь <span id="gNight">1</span></label><b id="gTime">2:30</b></div>
+    <div class="row sub"><label>Доверие</label><span id="gStars" data-n="3"><span>★</span><span>★</span><span>★</span></span></div>
+  </div>
+  <div class="stat panel">
+    <div class="row"><label>Поймано</label><b id="gCaught">0</b></div>
+    <div class="row sub"><label>Бдительность</label></div>
+    <div class="bar"><i id="gVig"></i></div>
+  </div>
+</div>
+<div id="marks"></div>
+
+<div id="noseFx" class="s-only"></div>
+<div id="shud" class="ui s-only">
+  <div class="stat panel">
+    <div class="row"><label>Дело <span id="sCaseN">1</span></label><b id="sCaseT" class="case">…</b></div>
+    <div id="sTask" class="task"></div>
+    <div class="row sub"><label>Свежесть запаха</label><i id="sChip" class="chip"></i></div>
+    <div class="bar"><i id="sFresh"></i></div>
+  </div>
+  <div class="stat panel">
+    <div class="row"><label>Косточки</label><span><b id="sBones">0</b><small>рекорд <span id="sBest">0</span></small></span></div>
+    <div class="row sub"><label>След</label><span id="sWarm">—</span></div>
+    <div class="bar"><i id="sWarmBar"></i></div>
+    <div class="row sub"><label>Нюх, уровень <span id="sLvl">1</span></label><span id="sXp">0 / 100</span></div>
+    <div class="bar"><i id="sXpBar"></i></div>
+  </div>
+</div>
+<div id="shint" class="ui panel s-only"><kbd>W A S D</kbd> куда бежать &nbsp;·&nbsp; мышь / <kbd>Z X</kbd> камера &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок &nbsp;·&nbsp; <kbd>E</kbd> нюх вкл/выкл &nbsp;·&nbsp; <kbd>G</kbd> рыть &nbsp;·&nbsp; иди по запаху своего цвета, чужие следы обманывают</div>
+<div id="ghint" class="ui panel g-only"><kbd>W A S D</kbd> куда бежать &nbsp;·&nbsp; мышь / <kbd>Z X</kbd> камера &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок &nbsp;·&nbsp; <kbd>G</kbd> кусь &nbsp;·&nbsp; <kbd>F</kbd> лай &nbsp;·&nbsp; <kbd>E</kbd> чутьё &nbsp;·&nbsp; обегай зелёные огоньки, кусай чужих, своих не трогай</div>
+<div id="tug" class="ui panel g-only" hidden><label>Перетягивание</label><div class="bar"><i id="tugFill"></i></div></div>
+
+<div id="result" class="g-only" hidden>
+  <div class="card panel">
+    <h2 id="resTitle">Рассвет!</h2>
+    <p id="resText"></p>
+    <div class="btns"><button id="resNext" type="button">Следующая ночь</button><button id="resMenu" type="button" class="ghost">Меню</button></div>
+  </div>
+</div>
+
+<div id="menu" hidden>
+  <div class="menu-inner">
+    <h1>Собаки</h1>
+    <p class="lead">Три собаки, один город. Выбери, за кого играть. <a href="whippet.html" style="color:#ffd36a">Мастерская уиппета</a></p>
+    <div class="cards">
+      <button class="card panel" data-mode="runner" type="button">
+        <span class="tag">Уиппет</span>
+        <b>Бегун</b>
+        <span>Гоняй кота по городу галопом: прыжки, паркур по крышам машин и контейнерам, руление в полёте.</span>
+      </button>
+      <button class="card panel" data-mode="guard" type="button">
+        <span class="tag">Доберман</span>
+        <b>Охранник</b>
+        <span>Ночь на складе. Воры, лиса и кот лезут через забор. Лай, кусай, отбивай ящики, обегай посты. Своих не трогай.</span>
+      </button>
+      <button class="card panel" data-mode="sniffer" type="button">
+        <span class="tag">Шиба-ину</span>
+        <b>Нюхач</b>
+        <span>Соседи теряют вещи. Понюхай, включи нюх и иди по цветному следу. Ключи, мячик, котёнок и лиса-воришка.</span>
+      </button>
+    </div>
+    <div class="install">
+      <button id="installBtn" class="panel" type="button" hidden>Установить на телефон</button>
+      <p id="iosHint" hidden>На iPhone: «Поделиться» → «На экран Домой» — и игра откроется на весь экран.</p>
+      <p id="offline" hidden></p>
+    </div>
+  </div>
+</div>
+
+<button id="menuBtn" class="ui panel" type="button" aria-label="Меню">
+  <svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+</button>
+
+<button id="muteBtn" class="ui panel" type="button" aria-pressed="false" aria-label="Выключить звук">
+  <svg class="on" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+  <svg class="off" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+  <i class="note" aria-hidden="true">♪</i>
+</button>
+
+<button id="themeBtn" class="ui panel" type="button" aria-label="Время суток">
+  <svg class="auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg>
+  <svg class="sunset" viewBox="0 0 24 24"><path d="M3 17h18M6.5 17a5.5 5.5 0 0 1 11 0M12 6.5v2M5.2 9.7l1.4 1.4M18.8 9.7l-1.4 1.4M7 20.5h10"/></svg>
+  <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>
+  <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>
+</button>
+
+<!-- the camera, one tap: on the leash → on the head ("GoPro") → free (the runner) -->
+<button id="camBtn" class="ui panel" type="button" aria-label="Камера" hidden>
+  <svg viewBox="0 0 24 24"><path d="M4 8.5h3l1.6-2.2h6.8L17 8.5h3v10H4z"/><circle cx="12" cy="13.3" r="3.3"/></svg>
+</button>
+<!-- everything that is not running sits behind one button in the corner -->
+<button id="moreBtn" class="ui panel" type="button" aria-label="Меню игры" aria-expanded="false" aria-controls="more">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.5" r="1.6"/></svg>
+</button>
+<div id="more" class="ui panel" role="menu" hidden>
+  <div class="run r-only" aria-label="Забег">
+    <h3>Забег</h3>
+    <dl>
+      <dt>Скорость</dt><dd data-k="speed"></dd>
+      <dt>Рывок</dt><dd data-k="boost"></dd>
+      <dt>Косточки</dt><dd data-k="bones"></dd>
+      <dt>Прыжок</dt><dd data-k="jump"></dd>
+      <dt>Поймано</dt><dd data-k="caught"></dd>
+      <dt>Кот</dt><dd data-k="cat"></dd>
+    </dl>
+    <ul class="log"></ul>
+    <p class="keys"></p>
+  </div>
+  <div class="items">
+  <button type="button" role="menuitem" data-act="quests" class="r-only"><span class="ic">★</span><b>Задания и гардероб</b><i class="v stars"></i></button>
+  <button type="button" role="menuitem" data-act="map"><span class="ic">◎</span><b>Карта района</b></button>
+  <button type="button" role="menuitem" data-act="cam" class="r-only"><span class="ic">◉</span><b>Камера</b><i class="v cam"></i></button>
+  <button type="button" role="menuitem" data-act="sound"><span class="ic">♪</span><b>Звук</b><i class="v sound"></i></button>
+  <button type="button" role="menuitem" data-act="time" class="r-only"><span class="ic">☀</span><b>Время суток</b><i class="v time"></i></button>
+  <button type="button" role="menuitem" data-act="full" hidden><span class="ic">⛶</span><b>Весь экран</b><i class="v full"></i></button>
+  <button type="button" role="menuitem" data-act="dogs"><span class="ic">↩</span><b>Выбрать собаку</b></button>
+  </div>
+</div>
+
+<div id="hint" class="ui panel r-only"><kbd>W A S D</kbd> / стрелки — куда бежать &nbsp;·&nbsp; <kbd>Пробел</kbd> прыжок (в воздухе ещё раз — сальто, у стены — отскок) &nbsp;·&nbsp; <kbd>Shift</kbd> / <kbd>C</kbd> подкат &nbsp;·&nbsp; держи <kbd>W</kbd> на галопе или <kbd>Q</kbd> — рывок &nbsp;·&nbsp; мышь или <kbd>Z</kbd> <kbd>X</kbd> — повернуть камеру &nbsp;·&nbsp; <kbd>N</kbd> время суток &nbsp;·&nbsp; <kbd>K</kbd> карта &nbsp;·&nbsp; <kbd>J</kbd> задания</div>
+
+<div id="touchUI" hidden>
+  <div id="stickHint">куда бежать</div>
+  <div id="jumpBtn" aria-label="Прыжок"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V5"/><path d="M6 11l6-6 6 6"/></svg></div>
+  <div id="stickZone"></div>
+  <div id="jumpZone"></div>
+  <div id="stick"><div id="knob"></div></div>
+  <button id="autoBtn" class="panel" type="button" aria-pressed="false">Автобег</button>
+  <button id="slideBtn" class="act r-only" type="button" aria-label="Подкат"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l6 9h10"/><path d="M16 12l4 4-4 4"/></svg></button>
+  <button id="boostBtn" class="act r-only" type="button" aria-label="Рывок"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L6 13h5l-1 8 7-10h-5z"/></svg></button>
+  <!-- the runner's gait (the camera on the leash or on the head), shown only: stop, walk, trot, run, gallop, super speed -->
+  <div id="gearBox" class="r-only" role="radiogroup" aria-label="Аллюр" aria-readonly="true" data-gear="0">
+    <button type="button" tabindex="-1" data-g="5" role="radio" aria-checked="false" aria-label="Суперскорость"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L6 13h5l-1 8 7-10h-5z"/></svg></button>
+    <button type="button" tabindex="-1" data-g="4" role="radio" aria-checked="false" aria-label="Галоп"><i></i></button>
+    <button type="button" tabindex="-1" data-g="3" role="radio" aria-checked="false" aria-label="Бег"><i></i></button>
+    <button type="button" tabindex="-1" data-g="2" role="radio" aria-checked="false" aria-label="Рысь"><i></i></button>
+    <button type="button" tabindex="-1" data-g="1" role="radio" aria-checked="false" aria-label="Шаг"><i></i></button>
+    <button type="button" tabindex="-1" data-g="0" role="radio" aria-checked="true" aria-label="Стоп"><i></i></button>
+  </div>
+  <!-- "search": the nose to the ground (only at a walk or a trot) -->
+  <button id="sniffBtn" class="act r-only" type="button" aria-label="Поиск: нос к земле" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15c3-1 4-5 8-6s6 1 8 3"/><circle cx="18.5" cy="13.5" r="1.6"/><path d="M5 19c2 .5 4-.5 5.5-2M12 20c2 0 3.5-1 4.5-2.5"/></svg></button>
+  <button id="biteBtn" class="act g-only" type="button">Кусь</button>
+  <button id="barkBtn" class="act g-only" type="button">Лай</button>
+  <button id="scentBtn" class="act g-only" type="button">Чутьё</button>
+  <button id="noseBtn" class="act s-only" type="button" aria-pressed="false">Нюх</button>
+  <button id="digBtn" class="act s-only" type="button">Рыть</button>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="vendor/BufferGeometryUtils.js"></script>
+<script src="vendor/SkeletonUtils.js"></script>
+<script src="vendor/post/CopyShader.js"></script>
+<script src="vendor/post/LuminosityHighPassShader.js"></script>
+<script src="vendor/post/EffectComposer.js"></script>
+<script src="vendor/post/RenderPass.js"></script>
+<script src="vendor/post/ShaderPass.js"></script>
+<script src="vendor/post/UnrealBloomPass.js"></script>
+<script src="vendor/post/RoomEnvironment.js"></script>
+<script src="js/config.js"></script>
+<script src="js/util.js"></script>
+<script src="js/daytime.js"></script>
+<script src="js/materials.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/world.js"></script>
+<script src="js/models.js"></script>
+<script src="js/whippet.js"></script>
+<script src="js/input.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/speedfx.js"></script>
+<script src="js/player.js"></script>
+<script src="js/cat.js"></script>
+<script src="js/chickens.js"></script>
+<script src="js/traffic.js"></script>
+<script src="js/street.js"></script>
+<script src="js/map.js"></script>
+<script src="js/wardrobe.js"></script>
+<script src="js/quests.js"></script>
+<script src="js/search.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/music.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/modes/runner.js"></script>
+<script src="js/modes/guard.js"></script>
+<script src="js/modes/sniffer.js"></script>
+<script src="js/pwa.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

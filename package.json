@@ -1,0 +1,11 @@
+{
+  "name": "animaldesign",
+  "private": true,
+  "description": "Three dogs, three games: browser tests",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

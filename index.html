@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Собачий квартал 3D</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #7AAFE0; overflow: hidden; font-family: system-ui, sans-serif; }
+canvas { display: block; }
+#hud {
+  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.6); backdrop-filter: blur(12px);
+  color: #fff; padding: 8px 18px; border-radius: 24px;
+  font-size: 12.5px; white-space: nowrap; pointer-events: none;
+  display: flex; align-items: center; gap: 10px;
+}
+.chip { display: flex; align-items: center; gap: 5px; }
+.dot  { width: 9px; height: 9px; border-radius: 50%; }
+.sep  { color: rgba(255,255,255,.3); }
+#loading {
+  position: fixed; inset: 0;
+  background: #1a2a3a;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 18px; letter-spacing: 0.05em;
+  z-index: 100;
+  transition: opacity 0.6s;
+}
+</style>
+</head>
+<body>
+<div id="loading">Загрузка...</div>
+<div id="hud">
+  <div class="chip"><div class="dot" style="background:#D4AF78"></div>Нюхач</div>
+  <div class="chip"><div class="dot" style="background:#8BAADE"></div>Бегун</div>
+  <div class="chip"><div class="dot" style="background:#F0EEE8;outline:1px solid #aaa"></div>Пудель</div>
+  <span class="sep">|</span>
+  <span>🎾 Кликни — бросить мячик</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+// ── Layout ────────────────────────────────────────────
+const ST = 3, BL = 10, STEP = ST + BL;
+const NC = 5, NR = 4;
+const MW = NC * BL + (NC+1) * ST;  // 68
+const MD = NR * BL + (NR+1) * ST;  // 55
+const CX = MW / 2, CZ = MD / 2;
+
+function stx(c) { return c * STEP + ST / 2; }
+function stz(r) { return r * STEP + ST / 2; }
+function bcx(c) { return c * STEP + ST + BL / 2; }
+function bcz(r) { return r * STEP + ST + BL / 2; }
+function bpx(c) { return c * STEP + ST; }
+function bpz(r) { return r * STEP + ST; }
+function isPark(c, r) { return (c === 3 || c === 4) && r === 1; }
+
+// ── Renderer ─────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+
+// ── Scene ────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8CC4E8);
+scene.fog = new THREE.FogExp2(0x9ACCE8, 0.012);
+
+// ── Camera (isometric) ───────────────────────────────
+const aspect = window.innerWidth / window.innerHeight;
+const CAM_D = 40;
+const camera = new THREE.OrthographicCamera(
+  -CAM_D * aspect, CAM_D * aspect, CAM_D, -CAM_D, 0.1, 600
+);
+camera.position.set(CX + 75, 72, CZ + 75);
+camera.lookAt(CX, 0, CZ);
+
+// ── Lights ───────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xFFE4CC, 0.7));
+
+const sun = new THREE.DirectionalLight(0xFFF8E8, 1.5);
+sun.position.set(CX + 50, 90, CZ - 30);
+sun.target.position.set(CX, 0, CZ);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -75; sun.shadow.camera.right = 75;
+sun.shadow.camera.top  =  75; sun.shadow.camera.bottom = -75;
+sun.shadow.camera.far = 300;
+sun.shadow.bias = -0.002;
+scene.add(sun); scene.add(sun.target);
+
+const fill = new THREE.DirectionalLight(0xCCE8FF, 0.35);
+fill.position.set(CX - 30, 40, CZ + 50);
+scene.add(fill);
+
+// ── Ground ───────────────────────────────────────────
+const gnd = new THREE.Mesh(
+  new THREE.PlaneGeometry(MW + 30, MD + 30),
+  new THREE.MeshLambertMaterial({ color: 0x38352C })
+);
+gnd.rotation.x = -Math.PI / 2;
+gnd.position.set(CX, -0.02, CZ);
+gnd.receiveShadow = true;
+scene.add(gnd);
+
+// ── Blocks ───────────────────────────────────────────
+for (let r = 0; r < NR; r++) {
+  for (let c = 0; c < NC; c++) {
+    const color = isPark(c, r) ? 0x62A83C : 0xC0B49C;
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(BL + .1, BL + .1),
+      new THREE.MeshLambertMaterial({ color })
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(bcx(c), 0, bcz(r));
+    m.receiveShadow = true;
+    scene.add(m);
+  }
+}
+// Fill street gap inside park
+{
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(ST + .1, BL + .1),
+    new THREE.MeshLambertMaterial({ color: 0x62A83C })
+  );
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(bpx(3) + BL + ST / 2, 0, bcz(1));
+  m.receiveShadow = true;
+  scene.add(m);
+}
+// Park lighter inner
+{
+  const pk = new THREE.Mesh(
+    new THREE.PlaneGeometry(BL * 2 + ST - 2, BL - 2),
+    new THREE.MeshLambertMaterial({ color: 0x72BC4A })
+  );
+  pk.rotation.x = -Math.PI / 2;
+  pk.position.set(bpx(3) + BL + ST / 2, 0.01, bcz(1));
+  pk.receiveShadow = true;
+  scene.add(pk);
+}
+
+// ── Buildings ─────────────────────────────────────────
+const WPAL = [0xD07060,0xC4986A,0xA8B8C8,0xC8C090,0xB88C6A,0xD0A070,0x9AB0BC,0xD49070,0xC8B888,0xA0C0B0];
+const RPAL = [0x8A4A38,0x786050,0x506A7A,0x988060,0x7A5848,0xA07040,0x3A6070,0x904A38,0x806040,0x507060];
+const HH   = [3.5,4.2,5.0,3.8,4.5,5.5,4.0,3.2,4.8,5.2,3.6,4.0,5.8,3.4,4.2,3.9,5.1,4.4,3.7,4.6];
+
+let hi = 0;
+for (let r = 0; r < NR; r++) {
+  for (let c = 0; c < NC; c++) {
+    if (isPark(c, r)) continue;
+    const h = HH[hi++ % HH.length];
+    const ci = (r * NC + c) % WPAL.length;
+    const m = 0.6;
+
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(BL - m*2 + 1.2, BL - m*2 + 1.2),
+      new THREE.MeshLambertMaterial({ color: 0x1A1816, transparent: true, opacity: 0.25 })
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.set(bcx(c) + 0.6, 0.01, bcz(r) + 0.6);
+    scene.add(shadow);
+
+    const wall = new THREE.Mesh(
+      new THREE.BoxGeometry(BL - m*2, h, BL - m*2),
+      new THREE.MeshLambertMaterial({ color: WPAL[ci] })
+    );
+    wall.position.set(bcx(c), h / 2, bcz(r));
+    wall.castShadow = true; wall.receiveShadow = true;
+    scene.add(wall);
+
+    const roof = new THREE.Mesh(
+      new THREE.BoxGeometry(BL - m*2 + 0.4, 0.35, BL - m*2 + 0.4),
+      new THREE.MeshLambertMaterial({ color: RPAL[ci] })
+    );
+    roof.position.set(bcx(c), h + 0.18, bcz(r));
+    roof.castShadow = true;
+    scene.add(roof);
+
+    const chim = new THREE.Mesh(
+      new THREE.BoxGeometry(0.45, 0.7, 0.45),
+      new THREE.MeshLambertMaterial({ color: RPAL[(ci+2) % RPAL.length] })
+    );
+    chim.position.set(bcx(c) + 1.3, h + 0.52, bcz(r) - 1.3);
+    chim.castShadow = true;
+    scene.add(chim);
+
+    const winMat = new THREE.MeshLambertMaterial({ color: 0xFFF4A0, emissive: 0x887830, emissiveIntensity: 0.4 });
+    const winW = 0.65, winH = 0.65;
+    const rows = [[h * .65], [h * .35]];
+    for (const [wy] of rows) {
+      for (const wx of [-1.5, 0, 1.5]) {
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(winW, winH), winMat);
+        win.position.set(bcx(c) + wx, wy, bpz(r) - 0.01);
+        scene.add(win);
+      }
+    }
+  }
+}
+
+// ── Trees ─────────────────────────────────────────────
+function mkTree(x, z, h, variant) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.18, h * .42, 6),
+    new THREE.MeshLambertMaterial({ color: 0x6B4226 })
+  );
+  trunk.position.y = h * .21;
+  trunk.castShadow = true;
+  g.add(trunk);
+
+  if (variant === 'round') {
+    const can = new THREE.Mesh(
+      new THREE.SphereGeometry(h * .48, 8, 7),
+      new THREE.MeshLambertMaterial({ color: 0x3A7828 })
+    );
+    can.position.y = h * .7;
+    can.castShadow = true;
+    g.add(can);
+    const top = new THREE.Mesh(
+      new THREE.SphereGeometry(h * .28, 7, 6),
+      new THREE.MeshLambertMaterial({ color: 0x58A040 })
+    );
+    top.position.y = h * .98;
+    g.add(top);
+  } else {
+    for (let i = 0; i < 3; i++) {
+      const layer = new THREE.Mesh(
+        new THREE.ConeGeometry(h * (.38 - i * .08), h * .35, 7),
+        new THREE.MeshLambertMaterial({ color: i === 0 ? 0x306020 : i === 1 ? 0x3A7030 : 0x50A040 })
+      );
+      layer.position.y = h * (.55 + i * .25);
+      layer.castShadow = true;
+      g.add(layer);
+    }
+  }
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return g;
+}
+
+const p3 = bpx(3), p4 = bpx(4), pz = bpz(1);
+const treeData = [
+  [p3+1.5, pz+1.5, 2.8,'round'], [p3+5.5, pz+1.2, 3.2,'pine'], [p3+9.5, pz+1.8, 2.5,'round'],
+  [p3+1.2, pz+6, 3.0,'pine'],   [p3+5.5, pz+7, 2.7,'round'], [p3+9, pz+5.5, 3.4,'pine'],
+  [p4+1.5, pz+1.5, 2.9,'round'],[p4+6, pz+1.2, 3.1,'pine'],  [p4+9, pz+7, 2.6,'round'],
+  [p4+3, pz+5.5, 2.8,'pine'],   [p4+7.5, pz+3, 3.0,'round'], [p3+3, pz+3.5, 2.4,'pine'],
+];
+for (const [x,z,h,v] of treeData) mkTree(x, z, h, v);
+mkTree(stx(1), stz(2)-1.5, 2.5, 'round');
+mkTree(stx(3), stz(0)+1,   2.4, 'pine');
+mkTree(stx(4), stz(3)+1.5, 2.7, 'round');
+
+// Park benches
+function mkBench(x, z, ry) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0x8B6040 });
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.15, 0.65), mat);
+  seat.position.y = 0.45; g.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 0.1), mat);
+  back.position.set(0, 0.75, -0.27); g.add(back);
+  const legMat = new THREE.MeshLambertMaterial({ color: 0x5A3820 });
+  for (const [lx, lz] of [[-0.8,0.2],[0.8,0.2],[-0.8,-0.2],[0.8,-0.2]]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.45, 0.1), legMat);
+    leg.position.set(lx, 0.22, lz); g.add(leg);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = ry;
+  g.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+  scene.add(g);
+}
+mkBench(p3 + 6.5, pz + 4, 0.5);
+mkBench(p4 + 4,   pz + 6.5, -0.4);
+
+// Lamp posts
+function mkLamp(x, z) {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.08, 3.5, 6),
+    new THREE.MeshLambertMaterial({ color: 0x606070 })
+  );
+  pole.position.y = 1.75; pole.castShadow = true; g.add(pole);
+  const lamp = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 8, 6),
+    new THREE.MeshLambertMaterial({ color: 0xFFEE88, emissive: 0xFFCC44, emissiveIntensity: 0.6 })
+  );
+  lamp.position.y = 3.5; g.add(lamp);
+  g.position.set(x, 0, z);
+  scene.add(g);
+}
+for (let r = 0; r <= NR; r++) {
+  for (let c = 0; c <= NC; c += 2) {
+    mkLamp(stx(c) + (c % 2 === 0 ? 1 : -1), stz(r));
+  }
+}
+
+// ── Dog meshes (procedural fallback) ─────────────────
+function mkBox(w, h, d, col) {
+  return new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshLambertMaterial({ color: col })
+  );
+}
+function mkSphere(r, col) {
+  return new THREE.Mesh(
+    new THREE.SphereGeometry(r, 8, 7),
+    new THREE.MeshLambertMaterial({ color: col })
+  );
+}
+
+function makeDogProcedural(type) {
+  const g = new THREE.Group();
+  const C = {
+    sniffer: { body:0xC8A56A, head:0xD8B47C, ear:0xA87840, nose:0x111111, acc:0x8A5A30 },
+    runner:  { body:0x7090CC, head:0x8BAADE, ear:0x5068A8, nose:0x111111, acc:0x4A6898 },
+    poodle:  { body:0xEEECE2, head:0xFAF8F4, ear:0xDAD6C8, nose:0xD87090, acc:0xFF70A8 }
+  }[type];
+
+  function add(m, x, y, z) { m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; }
+
+  if (type === 'sniffer') {
+    add(mkBox(1.55, 0.82, 1.0, C.body),   0,     0.5,  0);
+    add(mkBox(0.82, 0.78, 0.82, C.head),  0.95,  0.72, 0);
+    add(mkBox(0.48, 0.42, 0.58, C.acc),   1.52,  0.58, 0);
+    add(mkSphere(0.12, C.nose),           1.8,   0.62, 0);
+    add(mkBox(0.22, 0.68, 0.32, C.ear),   0.85,  0.52, 0.45);
+    add(mkBox(0.22, 0.68, 0.32, C.ear),   0.85,  0.52, -0.45);
+    add(mkSphere(0.08, 0x111111),         1.3,   0.9,  0.28);
+    add(mkSphere(0.08, 0x111111),         1.3,   0.9, -0.28);
+    const tail = mkBox(0.55, 0.2, 0.2, C.body); add(tail, -1.1, 0.82, 0);
+    g.userData.tail = tail;
+    add(mkBox(0.26, 0.44, 0.26, C.body),  0.5,  0.18,  0.38);
+    add(mkBox(0.26, 0.44, 0.26, C.body),  0.5,  0.18, -0.38);
+    add(mkBox(0.26, 0.44, 0.26, C.body), -0.5,  0.18,  0.38);
+    add(mkBox(0.26, 0.44, 0.26, C.body), -0.5,  0.18, -0.38);
+
+  } else if (type === 'runner') {
+    add(mkBox(1.8, 0.72, 0.88, C.body),   0,    0.48, 0);
+    add(mkBox(0.72, 0.66, 0.72, C.head),  1.05, 0.68, 0);
+    add(mkBox(0.62, 0.36, 0.5, C.acc),    1.65, 0.58, 0);
+    add(mkSphere(0.11, C.nose),            1.98, 0.62, 0);
+    const earL = mkBox(0.18, 0.44, 0.2, C.ear); earL.rotation.z = -0.2; add(earL, 0.92, 1.02, 0.32);
+    const earR = mkBox(0.18, 0.44, 0.2, C.ear); earR.rotation.z = -0.2; add(earR, 0.92, 1.02, -0.32);
+    add(mkSphere(0.08, 0x111111),          1.25, 0.82,  0.28);
+    add(mkSphere(0.08, 0x111111),          1.25, 0.82, -0.28);
+    const tail = mkBox(0.62, 0.18, 0.18, C.body); tail.rotation.z = 0.6; add(tail, -1.2, 0.9, 0);
+    g.userData.tail = tail;
+    add(mkBox(0.24, 0.5, 0.24, C.body),   0.65, 0.16,  0.38);
+    add(mkBox(0.24, 0.5, 0.24, C.body),   0.65, 0.16, -0.38);
+    add(mkBox(0.24, 0.5, 0.24, C.body),  -0.65, 0.16,  0.38);
+    add(mkBox(0.24, 0.5, 0.24, C.body),  -0.65, 0.16, -0.38);
+
+  } else {
+    add(mkSphere(0.62, C.body),  -0.32, 0.55, 0);
+    add(mkSphere(0.52, C.body),   0.38, 0.5,  0);
+    add(mkSphere(0.56, C.head),   1.1,  0.72, 0);
+    add(mkSphere(0.34, C.ear),    1.05, 1.22, 0);
+    add(mkSphere(0.3,  C.ear),    0.88, 0.6,  0.52);
+    add(mkSphere(0.3,  C.ear),    0.88, 0.6, -0.52);
+    add(mkSphere(0.26, 0xEDE9E0), 1.52, 0.62, 0);
+    add(mkSphere(0.11, C.nose),   1.74, 0.64, 0);
+    add(mkSphere(0.09, 0x111111), 1.38, 0.88, 0.3);
+    add(mkSphere(0.09, 0x111111), 1.38, 0.88,-0.3);
+    add(mkSphere(0.28, C.ear),    0.38, 0.2,  0.44);
+    add(mkSphere(0.28, C.ear),    0.38, 0.2, -0.44);
+    add(mkSphere(0.28, C.ear),   -0.55, 0.2,  0.44);
+    add(mkSphere(0.28, C.ear),   -0.55, 0.2, -0.44);
+    const tail = mkSphere(0.3, C.ear); add(tail, -1.0, 0.72, 0);
+    g.userData.tail = tail;
+    add(mkBox(0.14, 0.28, 0.38, C.acc), 1.0, 1.38, 0);
+  }
+
+  return g;
+}
+
+// ── Waypoints ─────────────────────────────────────────
+const WPS = [];
+for (let r = 0; r <= NR; r++)
+  for (let c = 0; c <= NC; c++)
+    WPS.push({ x: stx(c), z: stz(r) });
+const wpi = (c, r) => r * (NC + 1) + c;
+
+// ── Dog state objects ─────────────────────────────────
+const SPD = { sniffer: 3.8, runner: 12.5, poodle: 6.0 };
+
+function mkDogState(type, mesh, c, r) {
+  const wp = WPS[wpi(c, r)];
+  mesh.position.set(wp.x, 0, wp.z);
+  scene.add(mesh);
+  return {
+    type, mesh, x: wp.x, z: wp.z,
+    wc: c, wr: r, twc: c, twr: r, tx: wp.x, tz: wp.z,
+    state: 'idle', stateT: 0, tailP: Math.random()*6.28, sniffT: 0, legP: 0
+  };
+}
+
+let DOGS = [];
+
+function nbrs(c, r) {
+  const n = [];
+  if (c > 0)  n.push([c-1, r]);
+  if (c < NC) n.push([c+1, r]);
+  if (r > 0)  n.push([c, r-1]);
+  if (r < NR) n.push([c, r+1]);
+  return n;
+}
+function goSniff(d, t) { d.state='sniffing'; d.stateT = t||(1.5+Math.random()*2.5); }
+function goMove(d) {
+  const nb = nbrs(d.wc, d.wr);
+  const [nc, nr] = nb[Math.floor(Math.random()*nb.length)];
+  d.twc=nc; d.twr=nr;
+  const wp = WPS[wpi(nc, nr)];
+  d.tx=wp.x; d.tz=wp.z; d.state='moving';
+}
+
+// ── Ball ─────────────────────────────────────────────
+const ballMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(0.38, 10, 8),
+  new THREE.MeshLambertMaterial({ color: 0xC8E020, emissive: 0x607008, emissiveIntensity: 0.3 })
+);
+ballMesh.castShadow = true;
+ballMesh.visible = false;
+scene.add(ballMesh);
+let ball = null;
+
+// ── Smells ────────────────────────────────────────────
+const smellPool = [];
+function puff(x, z) {
+  for (let i=0;i<4;i++) {
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 5, 4),
+      new THREE.MeshBasicMaterial({ color:0xF0D040, transparent:true, opacity:0.7 })
+    );
+    m.position.set(x+(Math.random()-.5)*.5, 0.6+Math.random()*.4, z+(Math.random()-.5)*.5);
+    m.userData = { vx:(Math.random()-.5)*.025, vy:.03+Math.random()*.025, vz:(Math.random()-.5)*.025, life:1 };
+    scene.add(m); smellPool.push(m);
+  }
+}
+
+// ── Update ────────────────────────────────────────────
+function updateDog(d, dt) {
+  d.tailP += dt * (d.type==='runner' ? 9 : 5);
+  d.legP  += dt * (d.state==='moving' ? (d.type==='runner' ? 14 : 7) : 1.5);
+
+  if (ball && d.state!=='chasing' && d.state!=='sniffing') {
+    const dist = Math.hypot(ball.x-d.x, ball.z-d.z);
+    if (dist < (d.type==='runner' ? 999 : 30) && Math.random() < .0007) {
+      d.state='chasing'; d.stateT = d.type==='poodle' ? (1.5+Math.random()*3) : 999;
+    }
+  }
+
+  if (d.state==='chasing') {
+    if (!ball) { d.state='idle'; return; }
+    if (d.type==='poodle') { d.stateT-=dt; if (d.stateT<=0) { d.state='idle'; return; } }
+    const dx=ball.x-d.x, dz=ball.z-d.z, dist=Math.hypot(dx,dz);
+    if (dist<1.2) { goSniff(d,2); return; }
+    const a=Math.atan2(dz,dx), spd=SPD[d.type]*(d.type==='runner'?1.3:1);
+    d.x+=Math.cos(a)*spd*dt; d.z+=Math.sin(a)*spd*dt;
+    d.mesh.rotation.y=-a;
+    return;
+  }
+  if (d.state==='sniffing') {
+    d.stateT-=dt; d.sniffT+=dt;
+    if (d.sniffT>.2) { puff(d.x,d.z); d.sniffT=0; }
+    if (d.stateT<=0) d.state='idle'; return;
+  }
+  if (d.type==='poodle' && d.state==='moving' && Math.random()<.003) { goSniff(d); return; }
+  if (d.state==='idle') { d.type==='sniffer' && Math.random()<.3 ? goSniff(d) : goMove(d); return; }
+  if (d.state==='moving') {
+    const dx=d.tx-d.x, dz=d.tz-d.z, dist=Math.hypot(dx,dz);
+    if (dist<0.15) { d.x=d.tx; d.z=d.tz; d.wc=d.twc; d.wr=d.twr; d.state='idle'; }
+    else {
+      const a=Math.atan2(dz,dx);
+      d.x+=Math.cos(a)*SPD[d.type]*dt; d.z+=Math.sin(a)*SPD[d.type]*dt;
+      d.mesh.rotation.y=-a;
+    }
+  }
+}
+
+function animateDog(d) {
+  d.mesh.position.x = d.x;
+  d.mesh.position.z = d.z;
+  d.mesh.position.y = d.state==='moving' ? Math.abs(Math.sin(d.legP))*.06 : 0;
+  if (d.mesh.userData.tail) {
+    d.mesh.userData.tail.rotation.z = Math.sin(d.tailP) * .45;
+  }
+}
+
+// ── Input ─────────────────────────────────────────────
+const ray = new THREE.Raycaster();
+const mv  = new THREE.Vector2();
+const gp  = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+
+renderer.domElement.addEventListener('click', e => {
+  const r = renderer.domElement.getBoundingClientRect();
+  mv.x = ((e.clientX-r.left)/r.width)*2-1;
+  mv.y = -((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mv, camera);
+  const hit = new THREE.Vector3();
+  if (!ray.ray.intersectPlane(gp, hit)) return;
+
+  ball = { x: hit.x, z: hit.z, t: 10 };
+  ballMesh.position.set(hit.x, 0.38, hit.z);
+  ballMesh.visible = true;
+
+  for (const d of DOGS) {
+    if (d.state==='sniffing') continue;
+    const dist = Math.hypot(hit.x-d.x, hit.z-d.z);
+    const range = d.type==='runner' ? 999 : 32;
+    const prob  = d.type==='runner' ? .92 : d.type==='sniffer' ? .72 : .58;
+    if (dist<range && Math.random()<prob) {
+      d.state='chasing';
+      d.stateT = d.type==='poodle' ? (1.8+Math.random()*3) : 999;
+    }
+  }
+});
+
+window.addEventListener('resize', () => {
+  const w=window.innerWidth, h=window.innerHeight, a=w/h;
+  renderer.setSize(w,h);
+  camera.left=-CAM_D*a; camera.right=CAM_D*a;
+  camera.updateProjectionMatrix();
+});
+
+// ── Main loop ─────────────────────────────────────────
+let last=0;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  const dt = Math.min((ts-last)/1000, .05); last=ts;
+
+  if (ball) {
+    ball.t-=dt; ballMesh.rotation.y+=dt*4;
+    if (ball.t<=0) { ball=null; ballMesh.visible=false; }
+  }
+
+  for (const d of DOGS) { updateDog(d,dt); animateDog(d); }
+
+  for (let i=smellPool.length-1;i>=0;i--) {
+    const s=smellPool[i], u=s.userData;
+    s.position.x+=u.vx; s.position.y+=u.vy; s.position.z+=u.vz;
+    u.life-=.022; s.material.opacity=u.life*.65;
+    if (u.life<=0) { scene.remove(s); s.geometry.dispose(); s.material.dispose(); smellPool.splice(i,1); }
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ── Model loading (GLTFLoader with procedural fallback) ─
+const SCALE = { sniffer: 0.018, runner: 0.018, poodle: 0.016 };
+
+function scaleAndOrientGLB(gltf, type) {
+  const root = gltf.scene;
+  root.scale.setScalar(SCALE[type]);
+  // Quaternius models face +Z; rotate so they face +X to match procedural dogs
+  root.rotation.y = -Math.PI / 2;
+  root.traverse(m => {
+    if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; }
+  });
+  return root;
+}
+
+const MODEL_PATHS = {
+  sniffer: 'models/dog_sniffer.glb',
+  runner:  'models/dog_runner.glb',
+  poodle:  'models/dog_poodle.glb',
+};
+
+function initDogs(meshes) {
+  DOGS = [
+    mkDogState('sniffer', meshes.sniffer, 1, 0),
+    mkDogState('runner',  meshes.runner,  2, 2),
+    mkDogState('poodle',  meshes.poodle,  4, 3),
+  ];
+}
+
+function startWithFallback() {
+  initDogs({
+    sniffer: makeDogProcedural('sniffer'),
+    runner:  makeDogProcedural('runner'),
+    poodle:  makeDogProcedural('poodle'),
+  });
+  hideLoading();
+  requestAnimationFrame(loop);
+}
+
+function hideLoading() {
+  const el = document.getElementById('loading');
+  el.style.opacity = '0';
+  setTimeout(() => el.style.display = 'none', 650);
+}
+
+if (typeof THREE.GLTFLoader !== 'undefined') {
+  const loader = new THREE.GLTFLoader();
+  const meshes = {};
+  const types = ['sniffer', 'runner', 'poodle'];
+  let loaded = 0, failed = 0;
+
+  function tryLoad(type) {
+    loader.load(
+      MODEL_PATHS[type],
+      gltf => {
+        meshes[type] = scaleAndOrientGLB(gltf, type);
+        loaded++;
+        checkDone();
+      },
+      null,
+      () => {
+        // GLB not found — fall back to procedural for this dog
+        meshes[type] = makeDogProcedural(type);
+        failed++;
+        checkDone();
+      }
+    );
+  }
+
+  function checkDone() {
+    if (loaded + failed === types.length) {
+      initDogs(meshes);
+      hideLoading();
+      requestAnimationFrame(loop);
+    }
+  }
+
+  for (const t of types) tryLoad(t);
+} else {
+  startWithFallback();
+}
+</script>
+</body>
+</html>
