@@ -1,0 +1,1043 @@
+{
+ "shots": [
+  {
+   "name": "001-menu-menu.jpg",
+   "scene": "menu",
+   "kind": "menu",
+   "note": "Главное меню"
+  },
+  {
+   "name": "002-hero-select.jpg",
+   "scene": "hero",
+   "kind": "select",
+   "note": "Выбор героя"
+  },
+  {
+   "name": "003-hero-picked.jpg",
+   "scene": "hero",
+   "kind": "picked",
+   "note": "Эрик выбран"
+  },
+  {
+   "name": "004-salons-grid.jpg",
+   "scene": "salons",
+   "kind": "grid",
+   "note": "Выбор салона, совет Айи на «Пижоне»"
+  },
+  {
+   "name": "005-c1-artem-line-narr.jpg",
+   "scene": "c1-artem",
+   "kind": "line-narr",
+   "note": "рассказчик: «Пижон», вечерняя смена. Музыка, кирпич, полка с глиной и маслами. Эрик точит бритву и ждё"
+  },
+  {
+   "name": "006-c1-artem-choices-d1.jpg",
+   "scene": "c1-artem",
+   "kind": "choices-d1",
+   "note": "Решение 1 — первый контакт"
+  },
+  {
+   "name": "007-c1-artem-line-client.jpg",
+   "scene": "c1-artem",
+   "kind": "line-client",
+   "note": "Артём: Здарова, бро. Мне коротко. Сколько ждать?"
+  },
+  {
+   "name": "008-c1-artem-line-eric.jpg",
+   "scene": "c1-artem",
+   "kind": "line-eric",
+   "note": "Эрик: Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?"
+  },
+  {
+   "name": "009-c1-artem-line-aya.jpg",
+   "scene": "c1-artem",
+   "kind": "line-aya",
+   "note": "Айя: Он сам задал тон: «здарова». В мужском зале можно ответить на его языке — имя и вопрос всё"
+  },
+  {
+   "name": "010-c1-artem-feedback-d1.jpg",
+   "scene": "c1-artem",
+   "kind": "feedback-d1",
+   "note": "В кресло"
+  },
+  {
+   "name": "011-c1-artem-line-narr.jpg",
+   "scene": "c1-artem",
+   "kind": "line-narr",
+   "note": "рассказчик: Артём снимает куртку, Эрик вешает на плечики."
+  },
+  {
+   "name": "012-c1-artem-line-client.jpg",
+   "scene": "c1-artem",
+   "kind": "line-client",
+   "note": "Артём: Тёма. По бокам в ноль, сверху сантиметр. У меня в семь треня"
+  },
+  {
+   "name": "013-c1-artem-line-eric.jpg",
+   "scene": "c1-artem",
+   "kind": "line-eric",
+   "note": "Эрик: Успеем. Зачётная бэха, кстати. Твоя? Сам тонировал?"
+  },
+  {
+   "name": "014-c1-artem-line-client.jpg",
+   "scene": "c1-artem",
+   "kind": "line-client",
+   "note": "Артём: (впервые улыбается) Сам. А шрам — не от тачки, от бокса. Только не задень"
+  },
+  {
+   "name": "015-c1-artem-line-eric.jpg",
+   "scene": "c1-artem",
+   "kind": "line-eric",
+   "note": "Эрик: Расслабься. Я тут самый безопасный человек с бритвой"
+  },
+  {
+   "name": "016-c1-artem-line-narr.jpg",
+   "scene": "c1-artem",
+   "kind": "line-narr",
+   "note": "рассказчик: Во время фейда Артём крутит головой к телефону: там матч."
+  },
+  {
+   "name": "017-c1-artem-line-client.jpg",
+   "scene": "c1-artem",
+   "kind": "line-client",
+   "note": "Артём: Слушай, а быстрее нельзя? Там наши проигрывают"
+  },
+  {
+   "name": "018-c1-artem-choices-d2.jpg",
+   "scene": "c1-artem",
+   "kind": "choices-d2",
+   "note": "Решение 2 — клиент дёргается"
+  },
+  {
+   "name": "019-c1-artem-line-narr.jpg",
+   "scene": "c1-artem",
+   "kind": "line-narr",
+   "note": "рассказчик: Действие: молча придержать голову рукой."
+  },
+  {
+   "name": "020-c1-artem-line-aya.jpg",
+   "scene": "c1-artem",
+   "kind": "line-aya",
+   "note": "Айя: Без слов он примет жест за вызов. Скажите, зачем."
+  },
+  {
+   "name": "021-c1-artem-feedback-d2.jpg",
+   "scene": "c1-artem",
+   "kind": "feedback-d2",
+   "note": "Финал визита"
+  },
+  {
+   "name": "022-c1-artem-line-narr.jpg",
+   "scene": "c1-artem",
+   "kind": "line-narr",
+   "note": "рассказчик: Артём смотрит в зеркало, кивает без улыбки и молча расплачивается. Вернётся ли — неизвестн"
+  },
+  {
+   "name": "023-c1-artem-line-aya.jpg",
+   "scene": "c1-artem",
+   "kind": "line-aya",
+   "note": "Айя: Прямому клиенту — прямые слова и чёткие цифры. А лёгкая шутка делает из случайного клиента"
+  },
+  {
+   "name": "024-c1-artem-final.jpg",
+   "scene": "c1-artem",
+   "kind": "final",
+   "note": "Следующий клиент"
+  },
+  {
+   "name": "025-c1-artem-final-end.jpg",
+   "scene": "c1-artem",
+   "kind": "final-end",
+   "note": "Итог визита, низ"
+  },
+  {
+   "name": "026-c2-viktor-line-narr.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-narr",
+   "note": "рассказчик: 11:00, запись. Тёмно-синий костюм, густая седая борода. Осматривает кирпичные стены, полку"
+  },
+  {
+   "name": "027-c2-viktor-choices-d1.jpg",
+   "scene": "c2-viktor",
+   "kind": "choices-d1",
+   "note": "Решение 1 — проверка авторитета"
+  },
+  {
+   "name": "028-c2-viktor-line-client.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-client",
+   "note": "Виктор Павлович: Виктор Павлович. Я записан. Вы, стало быть, мастер? Выглядите скорее как охранник ночного "
+  },
+  {
+   "name": "029-c2-viktor-line-eric.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-eric",
+   "note": "Эрик: Ну, опыт у меня небольшой, но я стараюсь…"
+  },
+  {
+   "name": "030-c2-viktor-line-aya.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-aya",
+   "note": "Айя: Неуверенность для руководителя — сигнал к контролю каждого движения."
+  },
+  {
+   "name": "031-c2-viktor-feedback-d1.jpg",
+   "scene": "c2-viktor",
+   "kind": "feedback-d1",
+   "note": "В кресло"
+  },
+  {
+   "name": "032-c2-viktor-line-narr.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-narr",
+   "note": "рассказчик: Виктор Павлович снимает пиджак, Эрик вешает на плечики."
+  },
+  {
+   "name": "033-c2-viktor-line-client.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-client",
+   "note": "Виктор Павлович: Бороду — короче и квадратом. Как у меня было двадцать лет назад"
+  },
+  {
+   "name": "034-c2-viktor-line-eric.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-eric",
+   "note": "Эрик: Двадцать лет назад я детский сад возглавлял, так что покажите фото, если есть. А я посмотр"
+  },
+  {
+   "name": "035-c2-viktor-line-client.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-client",
+   "note": "Виктор Павлович: (уголок рта дрогнул) Фото нет. Делайте, как я сказал"
+  },
+  {
+   "name": "036-c2-viktor-line-narr.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-narr",
+   "note": "рассказчик: На щеках борода поредела: жёсткий квадрат откроет просветы. Мягкий квадрат их скроет."
+  },
+  {
+   "name": "037-c2-viktor-choices-d2.jpg",
+   "scene": "c2-viktor",
+   "kind": "choices-d2",
+   "note": "Решение 2 — клиент ошибается"
+  },
+  {
+   "name": "038-c2-viktor-line-eric.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-eric",
+   "note": "Эрик: Виктор Павлович, решать вам. Один факт: на щеках борода стала реже, жёсткий квадрат покаже"
+  },
+  {
+   "name": "039-c2-viktor-line-aya.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-aya",
+   "note": "Айя: Факт без спора, решение за ним. Авторитет цел, а вы — профессионал."
+  },
+  {
+   "name": "040-c2-viktor-feedback-d2.jpg",
+   "scene": "c2-viktor",
+   "kind": "feedback-d2",
+   "note": "Финал визита"
+  },
+  {
+   "name": "041-c2-viktor-line-narr.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-narr",
+   "note": "рассказчик: Виктор Павлович долго смотрит в зеркало и едва заметно кивает."
+  },
+  {
+   "name": "042-c2-viktor-line-client.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-client",
+   "note": "Виктор Павлович: Дельно. Для охранника — вовсе неплохо. Запишите меня через три недели"
+  },
+  {
+   "name": "043-c2-viktor-line-aya.jpg",
+   "scene": "c2-viktor",
+   "kind": "line-aya",
+   "note": "Айя: В барбершопе можно на «ты» — но не со всеми. С руководителем не спорят: дают факты и остав"
+  },
+  {
+   "name": "044-c2-viktor-final.jpg",
+   "scene": "c2-viktor",
+   "kind": "final",
+   "note": "Следующий клиент"
+  },
+  {
+   "name": "045-c2-viktor-final-end.jpg",
+   "scene": "c2-viktor",
+   "kind": "final-end",
+   "note": "Итог визита, низ"
+  },
+  {
+   "name": "046-c3-mark-line-narr.jpg",
+   "scene": "c3-mark",
+   "kind": "line-narr",
+   "note": "рассказчик: 14:15. Платиновый блондин в сером костюме выходит из белой «Камри» и заканчивает разговор "
+  },
+  {
+   "name": "047-c3-mark-choices-d1.jpg",
+   "scene": "c3-mark",
+   "kind": "choices-d1",
+   "note": "Решение 1 — просьба о скидке"
+  },
+  {
+   "name": "048-c3-mark-line-client.jpg",
+   "scene": "c3-mark",
+   "kind": "line-client",
+   "note": "Марк: Хай, бро! У меня через час переговоры. Сделаешь из меня миллионера? И скидочку новому клие"
+  },
+  {
+   "name": "049-c3-mark-line-eric.jpg",
+   "scene": "c3-mark",
+   "kind": "line-eric",
+   "note": "Эрик: Хай! Я Эрик. Миллионера — за сорок минут, по прайсу. Скидки не дам, зато вид будет такой, "
+  },
+  {
+   "name": "050-c3-mark-line-aya.jpg",
+   "scene": "c3-mark",
+   "kind": "line-aya",
+   "note": "Айя: Цена остаётся, а шутка переводит разговор на ценность. Переговорщик оценит ход."
+  },
+  {
+   "name": "051-c3-mark-feedback-d1.jpg",
+   "scene": "c3-mark",
+   "kind": "feedback-d1",
+   "note": "В кресло"
+  },
+  {
+   "name": "052-c3-mark-line-narr.jpg",
+   "scene": "c3-mark",
+   "kind": "line-narr",
+   "note": "рассказчик: Марк снимает пиджак, Эрик вешает на плечики."
+  },
+  {
+   "name": "053-c3-mark-line-client.jpg",
+   "scene": "c3-mark",
+   "kind": "line-client",
+   "note": "Марк: Марк. Слушай, а свой барбершоп не думал открыть? Я бы вошёл в долю…"
+  },
+  {
+   "name": "054-c3-mark-line-eric.jpg",
+   "scene": "c3-mark",
+   "kind": "line-eric",
+   "note": "Эрик: Камри у входа твоя? Зачётная — на такой переговоры сами выигрываются. А про барбершоп — сн"
+  },
+  {
+   "name": "055-c3-mark-line-client.jpg",
+   "scene": "c3-mark",
+   "kind": "line-client",
+   "note": "Марк: Вот! Укладка к вечеру разваливается. На утренних встречах я бог, на вечерних — одуванчик"
+  },
+  {
+   "name": "056-c3-mark-line-narr.jpg",
+   "scene": "c3-mark",
+   "kind": "line-narr",
+   "note": "рассказчик: Клиент сам назвал проблему. На полке — матовая глина и спрей для объёма."
+  },
+  {
+   "name": "057-c3-mark-choices-d2.jpg",
+   "scene": "c3-mark",
+   "kind": "choices-d2",
+   "note": "Решение 2 — продажа ухода"
+  },
+  {
+   "name": "058-c3-mark-line-eric.jpg",
+   "scene": "c3-mark",
+   "kind": "line-eric",
+   "note": "Эрик: Бери всё: глину, спрей, шампунь и масло для бороды"
+  },
+  {
+   "name": "059-c3-mark-line-aya.jpg",
+   "scene": "c3-mark",
+   "kind": "line-aya",
+   "note": "Айя: Бороды у него нет. Впаривание договорщик чувствует лучше всех."
+  },
+  {
+   "name": "060-c3-mark-feedback-d2.jpg",
+   "scene": "c3-mark",
+   "kind": "feedback-d2",
+   "note": "Финал визита"
+  },
+  {
+   "name": "061-c3-mark-line-narr.jpg",
+   "scene": "c3-mark",
+   "kind": "line-narr",
+   "note": "рассказчик: Марк смотрит в зеркало, кивает без улыбки и молча расплачивается. Вернётся ли — неизвестно"
+  },
+  {
+   "name": "062-c3-mark-line-aya.jpg",
+   "scene": "c3-mark",
+   "kind": "line-aya",
+   "note": "Айя: Договорщику не сдают цену — ему показывают ценность. Один точный совет продаёт лучше десят"
+  },
+  {
+   "name": "063-c3-mark-final.jpg",
+   "scene": "c3-mark",
+   "kind": "final",
+   "note": "Следующий клиент"
+  },
+  {
+   "name": "064-c3-mark-final-end.jpg",
+   "scene": "c3-mark",
+   "kind": "final-end",
+   "note": "Итог визита, низ"
+  },
+  {
+   "name": "065-c4-denis-line-narr.jpg",
+   "scene": "c4-denis",
+   "kind": "line-narr",
+   "note": "рассказчик: 16:30. Рыжие кудри, сливовая рубашка. Денис заходит с улыбкой и сразу нюхает банки на полк"
+  },
+  {
+   "name": "066-c4-denis-choices-d1.jpg",
+   "scene": "c4-denis",
+   "kind": "choices-d1",
+   "note": "Решение 1 — приветствие"
+  },
+  {
+   "name": "067-c4-denis-line-client.jpg",
+   "scene": "c4-denis",
+   "kind": "line-client",
+   "note": "Денис: Ой, как у вас атмосферно! Кирпич, лампочки… Слушайте, я хочу отрастить кудри до плеч. Надо"
+  },
+  {
+   "name": "068-c4-denis-line-eric.jpg",
+   "scene": "c4-denis",
+   "kind": "line-eric",
+   "note": "Эрик: Кудри? Да давай фейд жахнем, сейчас все так ходят"
+  },
+  {
+   "name": "069-c4-denis-line-aya.jpg",
+   "scene": "c4-denis",
+   "kind": "line-aya",
+   "note": "Айя: Вы навязываете своё и обесцениваете его идею. Для чувствительного клиента это отвержение."
+  },
+  {
+   "name": "070-c4-denis-feedback-d1.jpg",
+   "scene": "c4-denis",
+   "kind": "feedback-d1",
+   "note": "В кресло"
+  },
+  {
+   "name": "071-c4-denis-line-client.jpg",
+   "scene": "c4-denis",
+   "kind": "line-client",
+   "note": "Денис: Денис. У меня выставка через месяц, хочу образ как у художников Возрождения!"
+  },
+  {
+   "name": "072-c4-denis-line-eric.jpg",
+   "scene": "c4-denis",
+   "kind": "line-eric",
+   "note": "Эрик: Мой образ Возрождения — это когда после курсов заказал новую машинку"
+  },
+  {
+   "name": "073-c4-denis-line-narr.jpg",
+   "scene": "c4-denis",
+   "kind": "line-narr",
+   "note": "рассказчик: Эрик про себя: кудри, длина, расчёт под форму… Этого на курсах не было."
+  },
+  {
+   "name": "074-c4-denis-line-client.jpg",
+   "scene": "c4-denis",
+   "kind": "line-client",
+   "note": "Денис: (смеётся) Ты ведь справишься? Я тебе доверяю!"
+  },
+  {
+   "name": "075-c4-denis-choices-d2.jpg",
+   "scene": "c4-denis",
+   "kind": "choices-d2",
+   "note": "Решение 2 — честность про границы"
+  },
+  {
+   "name": "076-c4-denis-line-eric.jpg",
+   "scene": "c4-denis",
+   "kind": "line-eric",
+   "note": "Эрик: Ден, скажу честно: удлинённые стрижки на кудрях — не мой профиль. Сегодня сделаю окантовку"
+  },
+  {
+   "name": "077-c4-denis-line-aya.jpg",
+   "scene": "c4-denis",
+   "kind": "line-aya",
+   "note": "Айя: Эталон Академии: честно про границы и совет коллеги. И с юмором — отказ не звучит как отве"
+  },
+  {
+   "name": "078-c4-denis-feedback-d2.jpg",
+   "scene": "c4-denis",
+   "kind": "feedback-d2",
+   "note": "Финал визита"
+  },
+  {
+   "name": "079-c4-denis-line-narr.jpg",
+   "scene": "c4-denis",
+   "kind": "line-narr",
+   "note": "рассказчик: Денис на секунду стихает, потом улыбается."
+  },
+  {
+   "name": "080-c4-denis-line-client.jpg",
+   "scene": "c4-denis",
+   "kind": "line-client",
+   "note": "Денис: Знаешь, это даже приятно. Мне обычно обещают всё, а потом… Давай окантовку — и скинь имя т"
+  },
+  {
+   "name": "081-c4-denis-line-narr.jpg",
+   "scene": "c4-denis",
+   "kind": "line-narr",
+   "note": "рассказчик: Эрик чешет затылок."
+  },
+  {
+   "name": "082-c4-denis-line-eric.jpg",
+   "scene": "c4-denis",
+   "kind": "line-eric",
+   "note": "Эрик: Второй раз за неделю… Кажется, машинка — это ещё не вся профессия"
+  },
+  {
+   "name": "083-c4-denis-line-aya.jpg",
+   "scene": "c4-denis",
+   "kind": "line-aya",
+   "note": "Айя: Честное «не мой профиль» сохраняет клиента лучше испорченной стрижки. А удлинённые мужские"
+  },
+  {
+   "name": "084-c4-denis-final.jpg",
+   "scene": "c4-denis",
+   "kind": "final",
+   "note": "Следующий клиент"
+  },
+  {
+   "name": "085-c4-denis-final-end.jpg",
+   "scene": "c4-denis",
+   "kind": "final-end",
+   "note": "Итог визита, низ"
+  },
+  {
+   "name": "086-c5-aleksey-line-narr.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-narr",
+   "note": "рассказчик: 10:00. Стройный блондин в бежевом бомбере осторожно смотрит на барберский столб и на татуи"
+  },
+  {
+   "name": "087-c5-aleksey-choices-d1.jpg",
+   "scene": "c5-aleksey",
+   "kind": "choices-d1",
+   "note": "Решение 1 — точный клиент в мужском зале"
+  },
+  {
+   "name": "088-c5-aleksey-line-client.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-client",
+   "note": "Алексей: Добрый день. Вот фото моей стрижки на третий день. Нужно именно так. В прошлый раз виски б"
+  },
+  {
+   "name": "089-c5-aleksey-line-eric.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-eric",
+   "note": "Эрик: Добрый день! Я Эрик, барбер. Не пугайтесь татуировок, линейкой я пользуюсь точнее, чем рис"
+  },
+  {
+   "name": "090-c5-aleksey-line-aya.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-aya",
+   "note": "Айя: Самоирония снимает его настороженность, а «вы» и работа с его фото показывают: его услышал"
+  },
+  {
+   "name": "091-c5-aleksey-feedback-d1.jpg",
+   "scene": "c5-aleksey",
+   "kind": "feedback-d1",
+   "note": "В кресло"
+  },
+  {
+   "name": "092-c5-aleksey-line-narr.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-narr",
+   "note": "рассказчик: Алексей снимает бомбер, Эрик вешает на плечики."
+  },
+  {
+   "name": "093-c5-aleksey-line-client.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-client",
+   "note": "Алексей: Алексей. Я аналитик, привык к точности. Извините, если дотошный"
+  },
+  {
+   "name": "094-c5-aleksey-line-eric.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-eric",
+   "note": "Эрик: Дотошный клиент — мечта барбера. Худшее — когда говорят «ну, как-нибудь», а потом оказывае"
+  },
+  {
+   "name": "095-c5-aleksey-line-client.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-client",
+   "note": "Алексей: (мягко улыбается) Интересное наблюдение. Так на сколько короче сегодня?"
+  },
+  {
+   "name": "096-c5-aleksey-choices-d2.jpg",
+   "scene": "c5-aleksey",
+   "kind": "choices-d2",
+   "note": "Решение 2 — консультация фактами"
+  },
+  {
+   "name": "097-c5-aleksey-line-eric.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-eric",
+   "note": "Эрик: Да на глаз сделаю, рука набита"
+  },
+  {
+   "name": "098-c5-aleksey-line-aya.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-aya",
+   "note": "Айя: «На глаз» — именно то, чего он боится. В прошлый раз он уже получил лишние полсантиметра."
+  },
+  {
+   "name": "099-c5-aleksey-feedback-d2.jpg",
+   "scene": "c5-aleksey",
+   "kind": "feedback-d2",
+   "note": "Финал визита"
+  },
+  {
+   "name": "100-c5-aleksey-line-narr.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-narr",
+   "note": "рассказчик: Алексей смотрит в зеркало, кивает без улыбки и молча расплачивается. Вернётся ли — неизвес"
+  },
+  {
+   "name": "101-c5-aleksey-line-aya.jpg",
+   "scene": "c5-aleksey",
+   "kind": "line-aya",
+   "note": "Айя: Не каждый мужчина в барбершопе ждёт «бро». Точному клиенту — цифры, план и немного лёгкой "
+  },
+  {
+   "name": "102-c5-aleksey-final.jpg",
+   "scene": "c5-aleksey",
+   "kind": "final",
+   "note": "Следующий клиент"
+  },
+  {
+   "name": "103-c5-aleksey-final-end.jpg",
+   "scene": "c5-aleksey",
+   "kind": "final-end",
+   "note": "Итог визита, низ"
+  },
+  {
+   "name": "104-c6-vadim-line-narr.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-narr",
+   "note": "рассказчик: 17:20. Худощавый мужчина в сером пальто, волосы с сединой. В зале играет рок, соседний бар"
+  },
+  {
+   "name": "105-c6-vadim-choices-d1.jpg",
+   "scene": "c6-vadim",
+   "kind": "choices-d1",
+   "note": "Решение 1 — тихий клиент в шумном зале"
+  },
+  {
+   "name": "106-c6-vadim-line-client.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-client",
+   "note": "Вадим: (тихо, после паузы) Добрый вечер. Как обычно"
+  },
+  {
+   "name": "107-c6-vadim-line-eric.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-eric",
+   "note": "Эрик: Ок"
+  },
+  {
+   "name": "108-c6-vadim-line-aya.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-aya",
+   "note": "Айя: Вы видите его впервые. Угадать «как обычно» нельзя."
+  },
+  {
+   "name": "109-c6-vadim-feedback-d1.jpg",
+   "scene": "c6-vadim",
+   "kind": "feedback-d1",
+   "note": "В кресло"
+  },
+  {
+   "name": "110-c6-vadim-line-narr.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-narr",
+   "note": "рассказчик: Вадим снимает пальто, Эрик вешает на плечики."
+  },
+  {
+   "name": "111-c6-vadim-line-client.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-client",
+   "note": "Вадим: Вадим. Коротко, аккуратно, виски прямые"
+  },
+  {
+   "name": "112-c6-vadim-line-narr.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-narr",
+   "note": "рассказчик: Дальше молчит и смотрит в зеркало."
+  },
+  {
+   "name": "113-c6-vadim-line-client.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-client",
+   "note": "Вадим: Дочь сказала, что седина меня старит. У вас тут все молодые… Думаете, стоит что-то делать?"
+  },
+  {
+   "name": "114-c6-vadim-choices-d2.jpg",
+   "scene": "c6-vadim",
+   "kind": "choices-d2",
+   "note": "Решение 2 — деликатный вопрос"
+  },
+  {
+   "name": "115-c6-vadim-line-eric.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-eric",
+   "note": "Эрик: Седина вам идёт — ровная, благородная. Я бы сам такую хотел, да мне до неё ещё лет двадцат"
+  },
+  {
+   "name": "116-c6-vadim-line-aya.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-aya",
+   "note": "Айя: Честно, бережно, с выбором и лёгкой самоиронией. Комплимент звучит искренне, а не как прод"
+  },
+  {
+   "name": "117-c6-vadim-feedback-d2.jpg",
+   "scene": "c6-vadim",
+   "kind": "feedback-d2",
+   "note": "Финал визита"
+  },
+  {
+   "name": "118-c6-vadim-line-narr.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-narr",
+   "note": "рассказчик: Вадим долго смотрит в зеркало и едва заметно улыбается."
+  },
+  {
+   "name": "119-c6-vadim-line-client.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-client",
+   "note": "Вадим: Спасибо, что не торопили. И за музыку. Подумаю про камуфляж"
+  },
+  {
+   "name": "120-c6-vadim-line-aya.jpg",
+   "scene": "c6-vadim",
+   "kind": "line-aya",
+   "note": "Айя: В шумном барбершопе тихий клиент ценит покой больше шуток. А о седине говорят как о выборе"
+  },
+  {
+   "name": "121-c6-vadim-final.jpg",
+   "scene": "c6-vadim",
+   "kind": "final",
+   "note": "Следующий клиент"
+  },
+  {
+   "name": "122-c6-vadim-final-end.jpg",
+   "scene": "c6-vadim",
+   "kind": "final-end",
+   "note": "Итог визита, низ"
+  },
+  {
+   "name": "123-c7-mikhail-line-narr.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-narr",
+   "note": "рассказчик: 12:40. Коренастый мужчина в оливковой рубашке, рукава закатаны, на пальцах следы мазута. Г"
+  },
+  {
+   "name": "124-c7-mikhail-choices-d1.jpg",
+   "scene": "c7-mikhail",
+   "kind": "choices-d1",
+   "note": "Решение 1 — забота делом"
+  },
+  {
+   "name": "125-c7-mikhail-line-client.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-client",
+   "note": "Михаил: Здравствуй. Подстричься и бороду в порядок. А у вас тут винт разболтался, могу подтянуть"
+  },
+  {
+   "name": "126-c7-mikhail-line-eric.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-eric",
+   "note": "Эрик: Здравствуйте! Я Эрик. Вот спасибо — я неделю на него смотрю и делаю вид, что так задумано."
+  },
+  {
+   "name": "127-c7-mikhail-line-aya.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-aya",
+   "note": "Айя: Самоирония плюс благодарность. Практичный человек проявил заботу делом — заметьте это."
+  },
+  {
+   "name": "128-c7-mikhail-feedback-d1.jpg",
+   "scene": "c7-mikhail",
+   "kind": "feedback-d1",
+   "note": "В кресло"
+  },
+  {
+   "name": "129-c7-mikhail-line-client.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-client",
+   "note": "Михаил: Михаил. Бороду покороче и чтобы форма была, а то жена говорит — как лесник. Вот с такой ок"
+  },
+  {
+   "name": "130-c7-mikhail-line-eric.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-eric",
+   "note": "Эрик: Сделаем. Борода — это моё, тут я уверен. А вы чем занимаетесь? Руки рабочие"
+  },
+  {
+   "name": "131-c7-mikhail-line-client.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-client",
+   "note": "Михаил: (улыбка появляется постепенно) Автосервис свой. Сейчас через одного китайцы. Да и сам на «"
+  },
+  {
+   "name": "132-c7-mikhail-line-eric.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-eric",
+   "note": "Эрик: Зачётная тачка! А я пока на самокате — зато парковка всегда бесплатная"
+  },
+  {
+   "name": "133-c7-mikhail-line-narr.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-narr",
+   "note": "рассказчик: Борода сделана, Михаил доволен, но чешет щеку:"
+  },
+  {
+   "name": "134-c7-mikhail-line-client.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-client",
+   "note": "Михаил: Чешется вечно. Да ладно, перетерплю"
+  },
+  {
+   "name": "135-c7-mikhail-choices-d2.jpg",
+   "scene": "c7-mikhail",
+   "kind": "choices-d2",
+   "note": "Решение 2 — уход за бородой"
+  },
+  {
+   "name": "136-c7-mikhail-line-eric.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-eric",
+   "note": "Эрик: Да, борода всегда чешется, привыкнете"
+  },
+  {
+   "name": "137-c7-mikhail-line-aya.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-aya",
+   "note": "Айя: Клиент сам назвал проблему. У барбера есть решение — молчать о нём нельзя."
+  },
+  {
+   "name": "138-c7-mikhail-feedback-d2.jpg",
+   "scene": "c7-mikhail",
+   "kind": "feedback-d2",
+   "note": "Финал визита"
+  },
+  {
+   "name": "139-c7-mikhail-line-narr.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-narr",
+   "note": "рассказчик: Михаил смотрит в зеркало, кивает без улыбки и молча расплачивается. Вернётся ли — неизвест"
+  },
+  {
+   "name": "140-c7-mikhail-line-aya.jpg",
+   "scene": "c7-mikhail",
+   "kind": "line-aya",
+   "note": "Айя: То, что для Киры предел, для Эрика — сила. А уход продаётся одним точным средством под про"
+  },
+  {
+   "name": "141-c7-mikhail-final.jpg",
+   "scene": "c7-mikhail",
+   "kind": "final",
+   "note": "Следующий клиент"
+  },
+  {
+   "name": "142-c7-mikhail-final-end.jpg",
+   "scene": "c7-mikhail",
+   "kind": "final-end",
+   "note": "Итог визита, низ"
+  },
+  {
+   "name": "143-c8-roman-line-narr.jpg",
+   "scene": "c8-roman",
+   "kind": "line-narr",
+   "note": "рассказчик: 19:05. У Эрика затянулся предыдущий клиент с бородой. Роман — загорелый, в белой льняной р"
+  },
+  {
+   "name": "144-c8-roman-choices-d1.jpg",
+   "scene": "c8-roman",
+   "kind": "choices-d1",
+   "note": "Решение 1 — вспышка из-за ожидания"
+  },
+  {
+   "name": "145-c8-roman-line-client.jpg",
+   "scene": "c8-roman",
+   "kind": "line-client",
+   "note": "Роман: (громко, всплескивая руками) Слушай, я записан на семь! Завтра в шесть самолёт, а я тут ст"
+  },
+  {
+   "name": "146-c8-roman-line-eric.jpg",
+   "scene": "c8-roman",
+   "kind": "line-eric",
+   "note": "Эрик: Расслабься, бро, не кипи. Не я же виноват, что клиент затянулся"
+  },
+  {
+   "name": "147-c8-roman-line-aya.jpg",
+   "scene": "c8-roman",
+   "kind": "line-aya",
+   "note": "Айя: «Не кипи» и оправдание — бензин в огонь. Неформальный тон не спасает, если смысл обесценив"
+  },
+  {
+   "name": "148-c8-roman-feedback-d1.jpg",
+   "scene": "c8-roman",
+   "kind": "feedback-d1",
+   "note": "В кресло"
+  },
+  {
+   "name": "149-c8-roman-line-client.jpg",
+   "scene": "c8-roman",
+   "kind": "line-client",
+   "note": "Роман: (уже теплее) Роман. Извини, перегнул. День сумасшедший. Лечу на море, там байк возьму — и "
+  },
+  {
+   "name": "150-c8-roman-line-eric.jpg",
+   "scene": "c8-roman",
+   "kind": "line-eric",
+   "note": "Эрик: Вот это план. Я бы тоже укатил, но меня тут бороды держат в заложниках"
+  },
+  {
+   "name": "151-c8-roman-line-client.jpg",
+   "scene": "c8-roman",
+   "kind": "line-client",
+   "note": "Роман: (смеётся, потом вдруг проводит ладонью по волосам) А знаешь что? Давай под ноль! Шлем всё "
+  },
+  {
+   "name": "152-c8-roman-choices-d2.jpg",
+   "scene": "c8-roman",
+   "kind": "choices-d2",
+   "note": "Решение 2 — импульсивное решение"
+  },
+  {
+   "name": "153-c8-roman-line-eric.jpg",
+   "scene": "c8-roman",
+   "kind": "line-eric",
+   "note": "Эрик: Могу, машинка заряжена. Но секунду: под ноль на южном солнце макушка сгорит в первый же де"
+  },
+  {
+   "name": "154-c8-roman-line-aya.jpg",
+   "scene": "c8-roman",
+   "kind": "line-aya",
+   "note": "Айя: Факт, шутка и вариант вместо запрета. Импульсивному клиенту дают паузу, а решение оставляю"
+  },
+  {
+   "name": "155-c8-roman-feedback-d2.jpg",
+   "scene": "c8-roman",
+   "kind": "feedback-d2",
+   "note": "Финал визита"
+  },
+  {
+   "name": "156-c8-roman-line-narr.jpg",
+   "scene": "c8-roman",
+   "kind": "line-narr",
+   "note": "рассказчик: Роман смеётся и трясёт головой."
+  },
+  {
+   "name": "157-c8-roman-line-client.jpg",
+   "scene": "c8-roman",
+   "kind": "line-client",
+   "note": "Роман: Слушай, ты прав. Я бы в самолёте уже пожалел. Вернусь — сразу к тебе, фотки с байка покажу"
+  },
+  {
+   "name": "158-c8-roman-line-aya.jpg",
+   "scene": "c8-roman",
+   "kind": "line-aya",
+   "note": "Айя: Вспышку гасят признанием и действием, а импульсивное «режь всё» — повод на секунду останов"
+  },
+  {
+   "name": "159-c8-roman-final.jpg",
+   "scene": "c8-roman",
+   "kind": "final",
+   "note": "Итог смены"
+  },
+  {
+   "name": "160-c8-roman-final-end.jpg",
+   "scene": "c8-roman",
+   "kind": "final-end",
+   "note": "Итог визита, низ"
+  },
+  {
+   "name": "161-c8-roman-line-eric.jpg",
+   "scene": "c8-roman",
+   "kind": "line-eric",
+   "note": "Эрик: Барбер — это не только машинка. Разберу ошибки — и завтра лучше."
+  },
+  {
+   "name": "162-c8-roman-line-aya.jpg",
+   "scene": "c8-roman",
+   "kind": "line-aya",
+   "note": "Айя: Ошибаться — нормально. Перечитайте мои подсказки и попробуйте ещё раз."
+  },
+  {
+   "name": "163-shift-summary.jpg",
+   "scene": "shift",
+   "kind": "summary",
+   "note": "Итог смены"
+  },
+  {
+   "name": "164-shift-summary-end.jpg",
+   "scene": "shift",
+   "kind": "summary-end",
+   "note": "Итог смены, низ"
+  }
+ ],
+ "images": [
+  "academy_entrance",
+  "aya_c0",
+  "aya_c1",
+  "aya_c2",
+  "aya_c3",
+  "barber_buxme",
+  "barber_pijon",
+  "desk",
+  "eric_cut",
+  "eric_diploma",
+  "eric_e1",
+  "eric_e2",
+  "eric_e4",
+  "eric_stand",
+  "kira_diploma",
+  "man_aleksey_e0",
+  "man_aleksey_happy",
+  "man_aleksey_happy_bust",
+  "man_aleksey_photo",
+  "man_aleksey_sit",
+  "man_aleksey_stand",
+  "man_artem_e0",
+  "man_artem_happy_bust",
+  "man_artem_sit",
+  "man_artem_stand",
+  "man_denis_e0",
+  "man_denis_sit",
+  "man_denis_stand",
+  "man_mark_happy",
+  "man_mark_happy_bust",
+  "man_mark_phone",
+  "man_mark_sit",
+  "man_mark_stand",
+  "man_mikhail_e0",
+  "man_mikhail_happy",
+  "man_mikhail_happy_bust",
+  "man_mikhail_sit",
+  "man_mikhail_stand",
+  "man_roman_e0",
+  "man_roman_sit",
+  "man_roman_stand",
+  "man_vadim_e0",
+  "man_vadim_sit",
+  "man_vadim_stand",
+  "man_viktor_e0",
+  "man_viktor_sit",
+  "man_viktor_stand",
+  "salon",
+  "salon_econom",
+  "salon_econom_plus",
+  "salon_premium",
+  "salon_super_econom",
+  "salon_super_premium"
+ ]
+}
