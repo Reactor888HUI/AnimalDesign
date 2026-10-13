@@ -1,0 +1,348 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Стили для «Пижона»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700&family=Rubik:wght@500;800&family=Nunito:wght@600;900&family=Comfortaa:wght@700&family=M+PLUS+Rounded+1c:wght@500;800&family=Onest:wght@500;800&family=Golos+Text:wght@500&family=Oswald:wght@600&family=Pangolin&family=Cormorant+Garamond:wght@600&family=Russo+One&family=Exo+2:wght@500&family=Press+Start+2P&family=Pixelify+Sans:wght@500&family=IBM+Plex+Sans:wght@500;600&family=Caveat:wght@700&family=Lora:wght@500&display=swap">
+<style>
+/* Layout: сверху вывод и тройка рекомендаций, затем сводная таблица, затем 10 карточек стилей (живой мини-экран + паспорт стиля), внизу практики и источники */
+:root{--bg:#f1efea;--surface:#fffdf8;--ink:#201c19;--muted:#6c645c;--line:#dcd4c9;--brick:#a2462e;--brick-soft:#f4e3db;--good:#2f7a4c;
+ --display:"Unbounded","Manrope",system-ui,sans-serif;--body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161311;--surface:#201b18;--ink:#eee7e0;--muted:#a6998d;--line:#372e28;--brick:#e07a5c;--brick-soft:#3a251d;--good:#7cc89a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161311;--surface:#201b18;--ink:#eee7e0;--muted:#a6998d;--line:#372e28;--brick:#e07a5c;--brick-soft:#3a251d;--good:#7cc89a;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+.wrap{max-width:1160px;margin:0 auto;padding-inline:16px;padding-block:28px 72px;display:flex;flex-direction:column;gap:44px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--brick);font-weight:700}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,5.4vw,44px);line-height:1.08;margin:6px 0 12px;text-wrap:balance}
+h2{font-family:var(--display);font-weight:500;font-size:clamp(19px,3vw,24px);margin:0 0 6px;text-wrap:balance}
+h3{font-family:var(--display);font-weight:500;font-size:18px;margin:0;text-wrap:balance}
+p{margin:0;max-width:70ch}.lead{color:var(--muted);font-size:16.5px}
+a{color:var(--brick);text-underline-offset:2px}
+section{display:flex;flex-direction:column;gap:16px}
+.picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.pick{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.pick .n{font-family:var(--display);font-size:13px;color:var(--brick)}
+.pick b{font-size:17px}.pick p{font-size:14.5px;color:var(--muted)}
+.axes{background:var(--brick-soft);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+td.sc{font-variant-numeric:tabular-nums}
+.dots{display:inline-flex;gap:3px;vertical-align:middle}.dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}.dots i.on{background:var(--brick)}
+tr.rec td:first-child{font-weight:700}tr.rec td:first-child::after{content:" ★";color:var(--brick)}
+.sum{font-family:var(--display);font-weight:500}
+
+/* карточка стиля */
+.style{display:grid;grid-template-columns:290px 1fr;gap:26px;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:22px;scroll-margin-top:16px}
+.style.rec{border-color:var(--brick);box-shadow:0 0 0 1px var(--brick)}
+@media (max-width:760px){.style{grid-template-columns:1fr;padding:16px}.style .ph{margin-inline:auto}}
+.info{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ttl{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.ttl .id{font-family:var(--display);color:var(--brick);font-size:15px}
+.badge{font-size:12px;font-weight:700;background:var(--brick);color:var(--surface);border-radius:999px;padding:2px 9px}
+.mood{font-size:16px;font-style:italic;color:var(--muted)}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:8px 14px;font-size:14.5px}
+.kv dt{color:var(--muted);font-weight:600}.kv dd{margin:0;min-width:0}
+@media (max-width:520px){.kv{grid-template-columns:1fr}.kv dt{margin-top:4px}}
+.sw{display:flex;flex-wrap:wrap;gap:6px}
+.sw span{display:inline-flex;align-items:center;gap:6px;font:500 12px/1 "IBM Plex Sans",monospace;border:1px solid var(--line);border-radius:999px;padding:3px 8px 3px 3px;background:var(--bg)}
+.sw span i{width:16px;height:16px;border-radius:50%;border:1px solid rgba(0,0,0,.15)}
+.refs{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 16px;font-size:13px}
+.scores div{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.prompt{display:flex;gap:8px;align-items:flex-start;background:var(--bg);border:1px dashed var(--line);border-radius:12px;padding:10px 12px}
+.prompt code{flex:1;min-width:0;font:13px/1.45 "IBM Plex Sans",monospace;overflow-wrap:anywhere}
+.copy{flex:none;font:600 12px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 11px;cursor:pointer}
+.copy:focus-visible,a:focus-visible{outline:2px solid var(--brick);outline-offset:2px}
+
+/* ===== мини-экран телефона: всё в токенах стиля ===== */
+.ph{width:280px;max-width:100%;border-radius:30px;padding:9px;background:#0d0d0d;box-shadow:0 10px 30px rgba(0,0,0,.18);flex:none;align-self:start}
+.scr{border-radius:22px;overflow:hidden;background:var(--s-bg);color:var(--s-tx);font-family:var(--s-fb);font-size:11px;line-height:1.35;display:flex;flex-direction:column}
+.hud{display:flex;gap:4px;padding:8px 8px 6px}
+.pill{flex:1;display:flex;align-items:center;justify-content:center;gap:3px;font-weight:700;font-size:10px;padding:4px 2px;border-radius:var(--s-r);background:var(--s-sf);color:var(--s-tx);border:var(--s-bw) solid var(--s-ln);white-space:nowrap}
+.scene{position:relative;height:150px;margin:0 8px;border-radius:var(--s-r);overflow:hidden;border:var(--s-bw) solid var(--s-ln)}
+.scene .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:38% 40%;filter:var(--s-filter,none)}
+.scene .sp{position:absolute;bottom:-34px;height:170px;width:auto;filter:var(--s-filter,none)}
+.scene .a{left:14%}.scene .e{right:12%;transform:scaleX(-1)}
+.bub{position:absolute;left:8px;right:8px;bottom:8px;background:var(--s-sf);color:var(--s-tx);border:var(--s-bw) solid var(--s-ln);border-radius:var(--s-r);padding:6px 8px;font-size:10.5px}
+.bub b{display:block;font-family:var(--s-fd);font-size:9.5px;color:var(--s-ac);text-transform:var(--s-tt,none)}
+.pnl{padding:8px;display:flex;flex-direction:column;gap:6px}
+.t1{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.t1 h4{margin:0;font-family:var(--s-fd);font-size:12.5px;line-height:1.15;text-transform:var(--s-tt,none);color:var(--s-tx)}
+.t1 span{font-size:8.5px;opacity:.7;white-space:nowrap;text-transform:uppercase}
+.step{font-size:10px;font-weight:700;opacity:.85}
+.tmr{height:5px;border-radius:9px;background:var(--s-ln);overflow:hidden}.tmr i{display:block;height:100%;width:62%;background:var(--s-ac)}
+.opt{background:var(--s-sf);border:var(--s-bw) solid var(--s-ln);border-radius:var(--s-r);padding:6px 8px;font-size:10.5px}
+.opt.on{border-color:var(--s-ok);background:var(--s-okbg)}
+.opt.off{opacity:.5}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chp{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--s-okbg);color:var(--s-ok)}
+.aya{display:flex;gap:6px;align-items:flex-start;background:var(--s-aybg);color:var(--s-tx);border-radius:var(--s-r);padding:6px 8px;font-size:10px;border:var(--s-bw) solid var(--s-ln)}
+.aya img{width:26px;height:26px;border-radius:50%;flex:none;object-fit:cover;background:#fff}
+.aya b{color:var(--s-ay)}
+.btn{align-self:flex-end;font-family:var(--s-fd);font-size:11px;padding:7px 14px;border-radius:var(--s-r);background:var(--s-btn);color:var(--s-btx);text-transform:var(--s-tt,none)}
+
+/* --- характер каждого стиля --- */
+.sA .pill,.sA .btn,.sA .opt{box-shadow:0 3px 0 rgba(0,0,0,.22)}
+.sA .btn{background:linear-gradient(#ffb43a,#ff7a1a);box-shadow:0 4px 0 #b84f00}
+.sA .pill{background:linear-gradient(#ffffff,#ffe9c4)}
+.sB .scr{background:linear-gradient(160deg,#fbf3ff,#e8f0ff)}
+.sB .opt,.sB .bub,.sB .aya,.sB .pill{background:rgba(255,255,255,.72);backdrop-filter:blur(6px)}
+.sB .btn{background:linear-gradient(90deg,#a879ff,#ff8ac8)}
+.sC .opt,.sC .pill,.sC .aya,.sC .bub{border:0}
+.sC .opt.on{box-shadow:inset 0 0 0 2px var(--s-ok)}
+.sC .btn{border-radius:14px}
+.sD .scr{background-color:var(--s-bg);background-image:radial-gradient(rgba(0,0,0,.13) 1px,transparent 1.3px);background-size:6px 6px}
+.sD .opt,.sD .pill,.sD .bub,.sD .aya,.sD .btn,.sD .scene{box-shadow:3px 3px 0 #1b1b1b}
+.sD .bub{border-radius:14px}.sD .bub::after{content:"";position:absolute;left:30px;top:-9px;border:6px solid transparent;border-bottom-color:#1b1b1b}
+.sD .btn{transform:rotate(-1.5deg)}
+.sE .opt.on{background:transparent}
+.sE .btn{border:1px solid var(--s-ac);background:transparent;color:var(--s-ac);letter-spacing:.12em}
+.sE .t1 h4{font-size:15px;font-weight:600}
+.sF .opt,.sF .pill,.sF .bub,.sF .scene{box-shadow:0 0 8px rgba(255,61,201,.35)}
+.sF .opt.on{box-shadow:0 0 10px rgba(39,240,255,.7)}
+.sF .btn{box-shadow:0 0 12px rgba(255,61,201,.8)}
+.sF .t1 h4{text-shadow:0 0 8px rgba(255,61,201,.7)}
+.sG .opt,.sG .pill,.sG .bub,.sG .aya{box-shadow:0 4px 10px rgba(80,60,160,.15),inset 0 -3px 0 rgba(0,0,0,.06)}
+.sG .scene{border-radius:22px}.sG .bub,.sG .aya{border-radius:16px}.sG .btn{box-shadow:0 5px 0 #2f7bd8,0 8px 14px rgba(47,123,216,.35)}
+.sH .scr{font-size:10.5px}
+.sH .opt,.sH .pill,.sH .bub,.sH .aya,.sH .btn,.sH .scene{box-shadow:0 0 0 2px #1a1230,3px 3px 0 2px #1a1230}
+.sH .scene .bg,.sH .scene .sp{image-rendering:pixelated}
+.sH .t1 h4{font-size:9px;line-height:1.5;color:#f4e9d8}.sH .step,.sH .t1 span{color:#f4e9d8}.sH .btn{font-size:8px}.sH .bub b{font-size:7px}
+.sJ .scr{background:radial-gradient(circle at 20% 10%,#fff 0,transparent 40%),radial-gradient(circle at 90% 80%,#f1e4d0 0,transparent 50%),#faf3e7}
+.sJ .opt,.sJ .bub,.sJ .aya,.sJ .pill{border-radius:12px 18px 10px 16px/16px 10px 18px 12px}
+.sJ .btn{border-radius:18px 10px 16px 12px}
+/* мессенджер: другая компоновка */
+.chat{padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--s-bg)}
+.chat .who{display:flex;align-items:center;gap:7px;padding:6px 8px;background:var(--s-sf);border-bottom:1px solid var(--s-ln)}
+.chat .who img{width:28px;height:28px;border-radius:50%;object-fit:cover;object-position:top}
+.chat .who b{font-size:11.5px}.chat .who small{display:block;font-size:9px;opacity:.6}
+.msg{max-width:82%;padding:6px 9px;border-radius:14px;font-size:10.5px}
+.msg.in{background:var(--s-sf);border:1px solid var(--s-ln);border-bottom-left-radius:4px}
+.msg.out{align-self:flex-end;background:var(--s-ac);color:#fff;border-bottom-right-radius:4px}
+.msg.sys{align-self:center;max-width:94%;background:var(--s-aybg);color:var(--s-tx);font-size:10px;border-radius:10px;text-align:left}
+.msg.sys b{color:var(--s-ay)}
+.qr{display:flex;flex-direction:column;gap:5px;margin-top:2px}
+.qr span{border:1px solid var(--s-ac);color:var(--s-ac);border-radius:14px;padding:5px 9px;font-size:10px;background:var(--s-sf)}
+.qr span.off{opacity:.45}
+.mini{display:flex;gap:6px;align-items:center;font-size:9.5px;opacity:.75}
+
+.prac{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;counter-reset:p}
+.prac div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;font-size:14.5px;min-width:0}
+.prac b{font-size:15px}.prac small{color:var(--muted);font-size:12.5px}
+.src{columns:2 320px;column-gap:28px;font-size:13.5px;padding-left:18px}.src li{break-inside:avoid;margin-bottom:5px}
+.note{color:var(--muted);font-size:13.5px}
+@media (prefers-reduced-motion:no-preference){.sF .tmr i{animation:gl 1.6s ease-in-out infinite alternate}@keyframes gl{to{filter:brightness(1.5)}}}
+</style>
+
+<div class="wrap">
+<header>
+ <div class="eyebrow">Ромашка · редизайн · исследование стилей</div>
+ <h1>Стили для «Пижона»</h1>
+ <p class="lead">Десять визуальных направлений для новой оболочки игры. У каждого есть живой мини-экран одного и того же момента: Артём только что получил ответ Эрика, Айя объясняет, почему ответ удачный. Тексты на мини-экранах настоящие, из игры. Фон и персонажи пока старые: их стиль меняется отдельно, по фразе для генератора в каждой карточке.</p>
+</header>
+
+<section>
+ <h2>Вывод</h2>
+ <div class="axes">
+  <b>Стиль — это два независимых решения</b>
+  <p>Первое — как нарисованы персонажи (рисунок). Второе — как устроен экран (компоновка): сцена сверху и выбор снизу, как сейчас, или диалог как переписка. Их можно сочетать: например, комиксные персонажи в компоновке мессенджера. Мессенджер к тому же сокращает работу: на сцене нужны только портреты, а это около 55 картинок вместо 131.</p>
+ </div>
+ <div class="picks" id="picks"></div>
+</section>
+
+<section>
+ <h2>Сравнение</h2>
+ <p class="note">Оценки от 1 до 5, больше — лучше. «Дешевле сделать» — насколько легко получить 131 картинку в одном стиле с одинаковой внешностью персонажей. «Не детский» — насколько стиль далёк от детской игры. Это моя экспертная оценка, а не измерение.</p>
+ <div class="tbl"><table id="cmp"></table></div>
+</section>
+
+<div id="cards" style="display:flex;flex-direction:column;gap:22px"></div>
+
+<section>
+ <h2>Что учесть в любом стиле: 10 правил</h2>
+ <p class="note">Правила интерфейса для обучающей игры с выбором реплик. Правило 8 касается только того, как таймер выглядит: сам таймер в 30 секунд — часть механики и не меняется.</p>
+ <div class="prac" id="prac"></div>
+</section>
+
+<section>
+ <h2>Источники</h2>
+ <ol class="src" id="src"></ol>
+</section>
+</div>
+
+<script>
+const LINE = 'Здарова, бро. Мне коротко. Сколько ждать?';
+const OPTS = [
+ {t:'«Добрый вечер! Меня зовут Эрик, я барбер, окончил курсы, мои сильные стороны — фейды…»'},
+ {t:'«Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?»', ok:true},
+ {t:'«Видишь, я занят. Сядь, подожди»'}];
+const AYA = 'Он сам задал тон: «здарова». В мужском зале можно ответить на его языке — имя и вопрос всё равно на месте.';
+
+const S = [
+{id:'A', name:'Казуальный мобайл', mood:'Ярко, сочно, «как в топовой мобильной игре».',
+ pal:[['фон','#fff4e2'],['поверхность','#ffffff'],['текст','#3a2a1a'],['акцент','#ff8a1f'],['хорошо','#3fa34d'],['плохо','#e5484d']],
+ fonts:['Rubik 800 — заголовки','Rubik 500 — текст'], v:{fd:"'Rubik'",fb:"'Rubik'",r:'12px',bw:'0px',ln:'#ffd9a8',okbg:'#e3f6e4',aybg:'#f1e8ff',ay:'#7a4fd6',btn:'#ff8a1f',btx:'#fff'},
+ ui:'Толстые скруглённые плашки с объёмной тенью снизу, кнопки-«конфеты» с градиентом, показатели в «таблетках» с иконками. Таймер — толстая оранжевая полоса.',
+ chars:'Полуреализм с мультяшной заливкой (cel-shading), крупные головы и выразительная мимика. Эмоции утрированы.',
+ layout:'Как сейчас: сцена сверху, выбор снизу. Кнопка «Дальше» во всю ширину внизу под большим пальцем.',
+ anim:'Прыжок плашки «+12» вверх; кнопка «вдавливается» при нажатии; конфетти за верный ответ.',
+ refs:[['Homescapes (Playrix, 2017, классика жанра)','https://apps.apple.com/mx/app/homescapes/id1292510839','мультяшный цвет и простой интерфейс'],['Project Makeover (Magic Tavern, 2020)','https://apps.apple.com/app/1483058899','клиенты-персонажи с утрированными характерами, тема преображения']],
+ sc:[3,4,3,2,2], prompt:'glossy casual mobile game UI like Homescapes and Project Makeover, chunky rounded buttons with soft 3D bevel, saturated warm palette, cel-shaded semi-realistic characters'},
+{id:'B', name:'Аниме-новелла', mood:'Лёгкая, «глянцевая» визуальная новелла с полупрозрачными окнами.',
+ pal:[['фон','#f6f0ff'],['поверхность','#ffffffb8'],['текст','#2b2440'],['акцент','#a879ff'],['хорошо','#2fa47a'],['плохо','#e0577a']],
+ fonts:['Comfortaa 700 — заголовки','M PLUS Rounded 1c — текст'], v:{fd:"'Comfortaa'",fb:"'M PLUS Rounded 1c'",r:'12px',bw:'1px',ln:'#e4dafc',okbg:'#e2f6ee',aybg:'#efe6ff',ay:'#7b4fe0',btn:'#a879ff',btx:'#fff'},
+ ui:'Матовое стекло (полупрозрачные панели с размытием), тонкие белые рамки, мягкие градиенты от сиреневого к розовому. Имя говорящего — мелкой капителью над репликой.',
+ chars:'Чистое аниме: обводка, плоская заливка, большие глаза. Генераторы хорошо держат одинаковую внешность. Эмоции — набор стандартных аниме-выражений.',
+ layout:'Персонаж крупно, по пояс, почти во весь экран; реплика внизу поверх сцены; варианты всплывают поверх.',
+ anim:'Персонаж «дышит» (лёгкое покачивание); при смене эмоции короткий рывок и блик; реплика проявляется затуханием.',
+ refs:[['Love and Deepspace (Papergames, 2024)','https://www.gematsu.com/games/love-and-deepspace','кинематографичные крупные планы и глянец'],['Neon White (2022), портреты новеллы','https://cogconnected.com/review/neon-white-review/','портрет из трёх цветов: чёрный, белый и цвет персонажа'],['Metaphor: ReFantazio (Atlus, 2024)','https://kotaku.com/-metaphor-refantazio-persona-5-menu-ui-hashino-1851667088','выразительные меню, но предупреждение: каждый уникальный экран дорог']],
+ sc:[3,4,4,3,3], prompt:'modern anime visual novel UI like Love and Deepspace, clean cel-shaded anime characters, elegant translucent frosted panels, soft lilac-to-pink gradients'},
+{id:'C', name:'Плоская векторная иллюстрация', mood:'Чисто, дружелюбно, максимально читаемо.',
+ pal:[['фон','#f3f6f1'],['поверхность','#ffffff'],['текст','#1d2b24'],['акцент','#1f8a5b'],['хорошо','#1f8a5b'],['плохо','#d6453d']],
+ fonts:['Onest 800 — заголовки','Golos Text — текст'], v:{fd:"'Onest'",fb:"'Golos Text'",r:'14px',bw:'0px',ln:'#dfe8e1',okbg:'#dcf1e5',aybg:'#ece8fb',ay:'#5a46c2',btn:'#1d2b24',btx:'#fff'},
+ ui:'Без рамок и теней: цветные плоские блоки, много воздуха, крупный кегль. Состояние ответа — цветом и толстой внутренней обводкой.',
+ chars:'Персонажи из простых геометрических форм, без обводки, 3–4 цвета на персонажа. Для взрослой аудитории — взрослые пропорции, а не «большая голова».',
+ layout:'Сцена ниже и шире, текст крупнее; варианты — полноширинные карточки.',
+ anim:'Мягкое появление карточек по очереди; персонаж моргает и кивает; шкала настроения плавно перетекает.',
+ refs:[['Duolingo: язык форм','https://blog.duolingo.com/shape-language-duolingos-art-style/','чёткие силуэты и воздух на маленьком экране'],['Duolingo: правила персонажей','https://design.duolingo.com/illustration/characters','персонаж из повторяющихся форм'],['Venba (2023)','https://blog.playstation.com/2023/06/12/the-story-of-venbas-culinary-and-cultural-roots-from-creative-director-abhi/','тёплая стилизация взрослой бытовой истории']],
+ sc:[4,5,5,3,2], prompt:'flat vector illustration UI like Duolingo and Headspace, bold simple shapes, no outlines, adult-proportioned friendly characters, big rounded type, bright limited palette'},
+{id:'D', name:'Комикс / графический роман', mood:'Чёткая линия, растровые точки, реплики в «облачках». По-взрослому и узнаваемо.',
+ pal:[['фон','#f4ecdc'],['поверхность','#fffaf0'],['текст','#1b1b1b'],['акцент','#c4402a'],['хорошо','#2e7d4f'],['плохо','#c4402a']],
+ fonts:['Oswald 600 — заголовки, капсом','Pangolin — реплики'], v:{fd:"'Oswald'",fb:"'Pangolin'",r:'4px',bw:'2px',ln:'#1b1b1b',okbg:'#e3f0d9',aybg:'#efe6ff',ay:'#5b3ab0',btn:'#c4402a',btx:'#fff',tt:'uppercase',filter:'contrast(1.12) saturate(1.15)'},
+ ui:'Толстая чёрная обводка и жёсткая тень со сдвигом, фон в растровую точку, реплики — облачка с хвостиком. Заголовки узким шрифтом капсом, как надписи в комиксе.',
+ chars:'Чистая линия в духе франко-бельгийского комикса, плоский цвет, штриховка точками. Персонажи узнаются по силуэту. Нужна единая толщина линии во всей серии.',
+ layout:'Сцена как кадр комикса; при крупном плане — «нарезка» на два кадра (клиент и мастер).',
+ anim:'Кадр «встряхивается» при ошибке; звукоподражание-надпись при верном ответе; облачко выпрыгивает с отскоком.',
+ refs:[['Sable (Shedworks, 2021)','https://www.gamedeveloper.com/marketing/how-shedworks-refined-the-art-of-sable-in-pursuit-of-readability','чистая линия в духе Мёбиуса, работа на читаемость'],['Hi-Fi Rush (Tango, 2023)','https://unwinnable.com/2023/07/21/in-hi-fi-rush-style-is-substance-165/','растровые точки, контрастные цвета, линии движения'],['Florence (2018, классика)','https://gamesbeat.com/florence-uses-clever-interactions-to-create-a-relatable-mobile-game-about-romance/','графический роман на телефоне, мягкий цвет']],
+ sc:[5,4,3,5,5], prompt:'graphic novel UI, clean ligne claire ink line art with halftone shading, comic panels and speech balloons, limited palette of brick red, black and cream, bold condensed hand-lettered headings'},
+{id:'E', name:'Премиум-салон', mood:'Матовый чёрный, шампанское золото, тонкая антиква. Статусно.',
+ pal:[['фон','#121110'],['поверхность','#1d1b19'],['текст','#efe7da'],['акцент','#c9a45c'],['хорошо','#8fc79f'],['плохо','#e08a7a']],
+ fonts:['Cormorant Garamond 600 — заголовки','Manrope — текст'], v:{fd:"'Cormorant Garamond'",fb:"'Manrope'",r:'3px',bw:'1px',ln:'#3a342c',okbg:'#1f2a22',aybg:'#221d2b',ay:'#c3a8f0',btn:'transparent',btx:'#c9a45c',filter:'brightness(.78) contrast(1.08) saturate(.9)'},
+ ui:'Тёмный фон, тонкие золотые линии, почти прямые углы, кнопка-контур с разрядкой. Цифры — тонким шрифтом. Много пустого пространства.',
+ chars:'Расписной полуреализм с мягким студийным светом — ближе всего к нынешним картинкам. Часть текущих персонажей можно оставить, если выровнять цвет и свет.',
+ layout:'Сцена во всю ширину с затемнением снизу; реплика поверх градиента; варианты — тонкие строки с золотым маркером.',
+ anim:'Медленные плавные переходы; золотой блик по кнопке; приглушение сцены при выборе ответа.',
+ refs:[['Hades II (Supergiant, 2025)','https://www.gameinformer.com/nintendo-direct/2025/09/12/hades-ii-launches-into-10-on-switch-2-switch-and-pc-this-month','тёмный интерфейс с золотыми рамками и расписными портретами'],['Citizen Sleeper (2022)','https://indiegamereviewer.com/?p=50414','аккуратный тёмный интерфейс для большого объёма текста'],['Metaphor: ReFantazio (2024)','https://www.pushsquare.com/news/2024/10/making-metaphor-refantazio-personas-immaculate-menus-is-really-annoying-says-director','роскошные меню и их цена в производстве']],
+ sc:[5,4,4,5,4], prompt:'luxury salon app UI, matte black and champagne gold, thin elegant serif headings, hairline gold borders, soft studio lighting, refined semi-realistic painted characters'},
+{id:'F', name:'Неоновый лофт', mood:'Ночной барбершоп: кирпич, розовый и бирюзовый неон.',
+ pal:[['фон','#140f1f'],['поверхность','#1e1830'],['текст','#f2ecff'],['акцент','#ff3dc9'],['хорошо','#27f0ff'],['плохо','#ff6b5a']],
+ fonts:['Russo One — заголовки','Exo 2 — текст'], v:{fd:"'Russo One'",fb:"'Exo 2'",r:'8px',bw:'1px',ln:'#ff3dc966',okbg:'#10303a',aybg:'#251a3d',ay:'#c7a6ff',btn:'#ff3dc9',btx:'#140f1f',filter:'hue-rotate(-12deg) saturate(1.3) brightness(.7) contrast(1.1)'},
+ ui:'Тёмные панели со свечением по краю, неоновые подписи, акцентные линии. Правильный ответ светится бирюзовым.',
+ chars:'Стилизованный полуреализм с контровым светом (розовый с одной стороны, голубой с другой). Узнаваемо, но требует аккуратного света на каждой картинке.',
+ layout:'Как сейчас, но сцена темнее и выше; панель выбора — тёмное «стекло».',
+ anim:'Мерцание неоновой вывески; пульс таймера; свечение верного ответа.',
+ refs:[['VA-11 Hall-A (2016, классика)','https://en.wikipedia.org/wiki/VA-11_Hall-A','бар, клиенты и разговоры — та же схема, что у вас; неон и синтвейв'],['Neon White (2022)','https://gamingtrend.com/reviews/neon-white-review-bullet-ballet/','резкие линии и контрастный цвет для читаемости']],
+ sc:[3,2,3,4,4], prompt:'neon loft night aesthetic UI, dark brick, magenta and cyan neon accents, glowing outlines, synthwave mood, stylized semi-realistic characters with pink and blue rim light'},
+{id:'G', name:'3D-игрушка', mood:'Мягкие объёмные персонажи, «пластилин» и глянец.',
+ pal:[['фон','#eef3ff'],['поверхность','#ffffff'],['текст','#22284a'],['акцент','#4c8dff'],['хорошо','#2fb36d'],['плохо','#ff5a6a']],
+ fonts:['Nunito 900 — заголовки','Nunito 600 — текст'], v:{fd:"'Nunito'",fb:"'Nunito'",r:'999px',bw:'0px',ln:'#dde5fb',okbg:'#dcf5e7',aybg:'#ece6ff',ay:'#6b4fd6',btn:'#4c8dff',btx:'#fff'},
+ ui:'Всё в форме «таблеток», мягкие большие тени, внутренний блик, насыщенная пастель. Очень дружелюбно.',
+ chars:'Стилизованное 3D: округлые пропорции, материал как у игрушки, тёплый студийный свет. Одинаковую внешность в 2D-генераторе держать трудно; лучше делать настоящие 3D-модели, а это дорого.',
+ layout:'Как сейчас; варианты ответа — крупные «таблетки».',
+ anim:'Персонажи подпрыгивают и сжимаются; кнопки пружинят; звёздочки за баллы.',
+ refs:[['Animal Crossing: New Horizons (2020)','https://uxdesign.cc/animal-crossing-delight-by-design-e2c0a1a4d462','скруглённые шрифты, мягкая палитра, «радость в деталях»'],['Duolingo + Rive','https://blog.duolingo.com/world-character-visemes','живые персонажи с анимацией губ и реакцией на ответ']],
+ sc:[2,4,2,1,4], prompt:'3D stylized toy-like characters like Pixar and Animal Crossing, soft clay materials, rounded proportions, warm studio lighting, pill-shaped glossy UI'},
+{id:'H', name:'Пиксель-арт', mood:'Уютная ночная смена в стиле ретро-игры.',
+ pal:[['фон','#2a1f3d'],['поверхность','#f4e9d8'],['текст','#1a1230'],['акцент','#e2733a'],['хорошо','#3f9e5a'],['плохо','#c4402a']],
+ fonts:['Press Start 2P — заголовки','Pixelify Sans — текст'], v:{fd:"'Press Start 2P'",fb:"'Pixelify Sans'",r:'0px',bw:'0px',ln:'#1a1230',okbg:'#d5ecc9',aybg:'#e8dcf5',ay:'#5b3ab0',btn:'#e2733a',btx:'#1a1230'},
+ ui:'Прямые углы, «ступенчатые» пиксельные рамки, окно диалога как в старых приставочных играх. Заголовки пиксельным шрифтом, длинный текст — более читаемым пиксельным.',
+ chars:'Детальные спрайты в духе 32-битных игр. Анимации дешёвые (2–4 кадра), но генераторы рисуют «ненастоящие» пиксели — нужна ручная доводка.',
+ layout:'Сцена выше, с крупными пикселями; окно диалога внизу сцены.',
+ anim:'Реплика печатается по буквам (с возможностью сразу показать целиком); персонаж в 2 кадра «дышит»; мигающая стрелка «дальше».',
+ refs:[['Coffee Talk Episode 2 (Toge, 2023)','https://en.wikipedia.org/wiki/Coffee_Talk_Episode_2:_Hibiscus_%26_Butterfly','работа за стойкой + разговоры с клиентами в пиксель-арте'],['VA-11 Hall-A (2016, классика)','https://en.wikipedia.org/wiki/VA-11_Hall-A','ретро-аниме в духе PC-98']],
+ sc:[3,3,3,4,4], prompt:'cozy pixel art UI like Coffee Talk and VA-11 Hall-A, detailed 32-bit sprites, warm lamp light, chunky pixel frames, retro dialogue box'},
+{id:'I', name:'Мессенджер', mood:'Диалог как переписка: максимум читаемости, привычно всем.', chat:true,
+ pal:[['фон','#eef1f5'],['поверхность','#ffffff'],['текст','#1c2330'],['акцент','#2f7cf6'],['хорошо','#22a06b'],['плохо','#e5484d']],
+ fonts:['IBM Plex Sans 600 — заголовки','IBM Plex Sans 500 — текст'], v:{fd:"'IBM Plex Sans'",fb:"'IBM Plex Sans'",r:'14px',bw:'1px',ln:'#dfe4ec',okbg:'#dcf3e8',aybg:'#ece7fb',ay:'#6046c9',btn:'#2f7cf6',btx:'#fff'},
+ ui:'Шапка с аватаром клиента, реплики — облачка слева и справа, варианты ответа — «быстрые ответы» внизу, Айя — системное сообщение по центру. Сцена — маленькая полоска сверху или открывается по нажатию.',
+ chars:'Любой рисунок; нужны в основном портреты эмоций. Это около 55 картинок вместо 131. Хорошо сочетается с C или D.',
+ layout:'Чат во весь экран, варианты под большим пальцем, история визита прокручивается вверх.',
+ anim:'Индикатор «печатает…» перед репликой; ответ «улетает» в чат; реакция-эмодзи клиента на ответ.',
+ refs:[['Emily Is Away <3 (2021)','https://techraptor.net/gaming/reviews/emily-is-away-3','ветвящийся сюжет целиком через интерфейс соцсети'],['Mystic Messenger (2016, классика)','https://mechanicsofmagic.com/2023/06/08/looking-back-on-mystic-messenger/','игра как приложение-чат; предупреждение про доступность декоративных шрифтов']],
+ sc:[4,5,5,4,3], prompt:'chat messenger UI as game interface, dialogue shown as message bubbles with avatars, typing indicator, answer options as quick replies, clean modern messenger design'},
+{id:'J', name:'Акварель и тушь', mood:'Тёплый ручной рисунок на бумаге, «с душой».',
+ pal:[['фон','#faf3e7'],['поверхность','#fffdf8'],['текст','#2e2620'],['акцент','#b5562f'],['хорошо','#4f8a5b'],['плохо','#b5402f']],
+ fonts:['Caveat 700 — заголовки','Lora — текст'], v:{fd:"'Caveat'",fb:"'Lora'",r:'14px',bw:'1.5px',ln:'#3b2f2633',okbg:'#e4efe0',aybg:'#efe7f6',ay:'#6b4c9a',btn:'#b5562f',btx:'#fff',filter:'saturate(.8) sepia(.12)'},
+ ui:'Бумажная фактура, неровные «нарисованные» края у карточек, рукописные заголовки, текст — книжной антиквой.',
+ chars:'Тушь и акварельные заливки, живая неровная линия. Очень выразительно, но труднее всего держать одинаковые позы и внешность на 131 картинке.',
+ layout:'Как сейчас; сцена в рамке-«листе».',
+ anim:'Акварельное «растекание» при смене сцены; заголовок «дописывается» от руки.',
+ refs:[['Spiritfarer (Thunder Lotus, 2020)','https://www.gamereactor.eu/spiritfarer-review/','рисованная анимация и тёплый свет'],['Venba (2023)','https://techraptor.net/gaming/reviews/venba-review-seconds-please','мягкая техника «масляной пастели», тёплая палитра']],
+ sc:[4,4,2,4,5], prompt:'hand-painted watercolor and ink illustration UI, textured paper panels, warm muted palette, sketchy expressive characters, editorial book typography'}
+];
+const REC = {D:'Самый взрослый и узнаваемый вариант. Облачки-реплики естественно подходят игре, где весь смысл в диалоге. Риск — единая линия на всех картинках, поэтому сначала делаем Артёма целиком.',
+ E:'Ближе всего к нынешнему рисунку, поэтому переход самый дешёвый: часть картинок можно доработать, а не рисовать заново. Статусно и подходит барбершопу.',
+ I:'Лучшая читаемость длинных реплик и меньше всего картинок. Это не отдельный стиль рисунка, а компоновка экрана: проверяем её в паре с плоской иллюстрацией (C) или комиксом (D).'};
+const DIM = ['Взрослым','Читаемость','Дешевле сделать','Не детский','Выделяется'];
+
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const dots = n => '<span class="dots" aria-label="'+n+' из 5">'+[1,2,3,4,5].map(i=>'<i class="'+(i<=n?'on':'')+'"></i>').join('')+'</span>';
+function vars(s){ const v=s.v, p=Object.fromEntries(s.pal); return `--s-bg:${p['фон']};--s-sf:${p['поверхность']};--s-tx:${p['текст']};--s-ac:${p['акцент']};--s-ok:${p['хорошо']};--s-fd:${v.fd},sans-serif;--s-fb:${v.fb},sans-serif;--s-r:${v.r};--s-bw:${v.bw};--s-ln:${v.ln};--s-okbg:${v.okbg};--s-aybg:${v.aybg};--s-ay:${v.ay};--s-btn:${v.btn};--s-btx:${v.btx};${v.tt?'--s-tt:'+v.tt+';':''}${v.filter?'--s-filter:'+v.filter+';':''}`; }
+function phone(s){
+ const hud = `<div class="hud"><span class="pill">🙂 +12</span><span class="pill">★ 2</span><span class="pill">₽ 900</span><span class="pill">✂ Желез.</span></div>`;
+ if (s.chat) return `<div class="ph s${s.id}" style="${vars(s)}" role="img" aria-label="Мини-экран: ${esc(s.name)}"><div class="scr">${hud}
+  <div class="chat" style="padding:0"><div class="who"><img src="../assets/man_artem_happy_bust.webp" alt=""><div><b>Артём, 27</b><small>Клиент 1 из 8 · Скажи прямо</small></div></div></div>
+  <div class="chat"><div class="mini">⏱ Решение 1 — первый контакт</div>
+   <div class="msg in">${esc(LINE)}</div>
+   <div class="msg out">${esc(OPTS[1].t.slice(1,-1))}</div>
+   <div class="chips" style="align-self:flex-end"><span class="chp">Настроение +12</span><span class="chp">+2 балла</span></div>
+   <div class="msg sys"><b>Айя:</b> ${esc(AYA)}</div>
+   <div class="qr"><span class="off">${esc(OPTS[0].t)}</span><span class="off">${esc(OPTS[2].t)}</span></div>
+   <div class="btn">В кресло</div></div></div></div>`;
+ return `<div class="ph s${s.id}" style="${vars(s)}" role="img" aria-label="Мини-экран: ${esc(s.name)}"><div class="scr">${hud}
+  <div class="scene"><img class="bg" src="../assets/barber_pijon.webp" alt=""><img class="sp a" src="../assets/man_artem_stand.webp" alt=""><img class="sp e" src="../assets/eric_stand.webp" alt="">
+   <div class="bub"><b>Артём</b>${esc(LINE)}</div></div>
+  <div class="pnl"><div class="t1"><h4>Артём, 27 — Скажи прямо</h4><span>Клиент 1 из 8</span></div>
+   <div class="step">Решение 1 — первый контакт</div><div class="tmr"><i></i></div>
+   ${OPTS.map(o=>`<div class="opt ${o.ok?'on':'off'}">${esc(o.t)}</div>`).join('')}
+   <div class="chips"><span class="chp">Настроение +12</span><span class="chp">+2 балла</span></div>
+   <div class="aya"><img src="../assets/aya_c1.webp" alt=""><div><b>Айя:</b> ${esc(AYA)}</div></div>
+   <div class="btn">В кресло</div></div></div></div>`;
+}
+document.getElementById('picks').innerHTML = Object.keys(REC).map((k,i)=>{ const s=S.find(x=>x.id===k); return `<a class="pick" href="#s${k}" style="text-decoration:none;color:inherit"><span class="n">${i+1} · стиль ${k}</span><b>${esc(s.name)}</b><p>${esc(REC[k])}</p></a>`; }).join('');
+document.getElementById('cmp').innerHTML = '<thead><tr><th>Стиль</th>'+DIM.map(d=>'<th>'+d+'</th>').join('')+'<th>Сумма</th></tr></thead><tbody>'+
+ S.map(s=>`<tr class="${REC[s.id]?'rec':''}"><td>${s.id} · ${esc(s.name)}</td>${s.sc.map(n=>'<td class="sc">'+dots(n)+'</td>').join('')}<td class="sc sum">${s.sc.reduce((a,b)=>a+b,0)}</td></tr>`).join('')+'</tbody>';
+document.getElementById('cards').innerHTML = S.map(s=>`<article class="style ${REC[s.id]?'rec':''}" id="s${s.id}">${phone(s)}
+ <div class="info"><div class="ttl"><span class="id">${s.id}</span><h3>${esc(s.name)}</h3>${REC[s.id]?'<span class="badge">рекомендую</span>':''}</div>
+  <p class="mood">${esc(s.mood)}</p>
+  <dl class="kv">
+   <dt>Палитра</dt><dd><div class="sw">${s.pal.map(([n,c])=>`<span><i style="background:${c}"></i>${n} ${c.slice(0,7)}</span>`).join('')}</div></dd>
+   <dt>Шрифты</dt><dd>${s.fonts.map(esc).join('; ')} (все с кириллицей, Google Fonts)</dd>
+   <dt>Интерфейс</dt><dd>${esc(s.ui)}</dd>
+   <dt>Персонажи</dt><dd>${esc(s.chars)}</dd>
+   <dt>Компоновка</dt><dd>${esc(s.layout)}</dd>
+   <dt>Анимации</dt><dd>${esc(s.anim)}</dd>
+   <dt>Образцы</dt><dd><ul class="refs">${s.refs.map(([t,u,w])=>`<li><a href="${u}" target="_blank" rel="noopener">${esc(t)}</a>: ${esc(w)}</li>`).join('')}</ul></dd>
+  </dl>
+  <div class="scores">${DIM.map((d,i)=>`<div><span>${d}</span>${dots(s.sc[i])}</div>`).join('')}</div>
+  <div class="prompt"><code>${esc(s.prompt)}</code><button class="copy" type="button" data-t="${esc(s.prompt)}">Копировать</button></div>
+ </div></article>`).join('');
+const P = [
+ ['Крупный текст по умолчанию','Реплики до 250 знаков читаются с телефона только при 16–17 px и выше; на сцене — на сплошной подложке.','Game Accessibility Guidelines; Xbox XAG 101'],
+ ['Контраст не ниже 4,5 : 1','Текст поверх сцены — всегда на подложке. Проверять обе темы, светлую и тёмную.','IGDA Game Accessibility Top Ten (WCAG 2 AA)'],
+ ['Имя говорящего всегда на виду','Даже когда понятно по портрету: без имени теряется, кто сказал реплику.','Can I Play That? — гайд по субтитрам'],
+ ['Текст сразу целиком','Если реплика печатается по буквам, нажатие должно сразу показать её целиком.','Can I Play That? — гайд по субтитрам'],
+ ['Кнопки не меньше 44×44','Варианты ответа и «Дальше» — в нижней половине экрана, под большим пальцем.','Apple HIG 44 pt, Material 48 dp, WCAG 2.5.5'],
+ ['Сразу: верно или нет, почему и как лучше','Немедленная развёрнутая обратная связь работает лучше простого «верно/неверно». В игре это уже есть: Айя и блок «Лучше» — дизайн должен их выделять, а не прятать.','Shute, ETS 2007; исследование игр с обратной связью'],
+ ['Обратная связь короткая и простая','Сложное объяснение хуже усваивается. Визуально — одна главная мысль Айи крупно, детали мельче.','Vasalou и др., UCL'],
+ ['Спокойный таймер','Ощущение нехватки времени само ухудшает решения. Таймер показываем без паники: тонкая полоса, цвет меняется только в последние секунды. Длительность не трогаем.','DeDonno, Demaree, 2008'],
+ ['Один набор деталей интерфейса','Atlus признаёт: уникальный дизайн каждого меню очень трудоёмок. Нам нужен один набор деталей (кнопка, карточка, облачко) на все экраны.','Kotaku, The Verge — интервью К. Хасино'],
+ ['Анимация со смыслом','Анимация подтверждает действие (ответ принят, баллы начислены), а не украшает. Учитывать системную настройку «уменьшить движение».','Duolingo: анимации-реакции на ответ']];
+document.getElementById('prac').innerHTML = P.map(([b,t,s],i)=>`<div><b>${i+1}. ${esc(b)}</b><span>${esc(t)}</span><small>${esc(s)}</small></div>`).join('');
+const SRC = [
+ ['Game Accessibility Guidelines','https://gameaccessibilityguidelines.com/?p=111'],['IGDA GA-SIG: Game Accessibility Top Ten','https://igda-gasig.org/?p=42'],['Xbox Accessibility Guidelines 101: Text display','https://devdocs.xbox.com/gaming/accessibility/xbox-accessibility-guidelines/101'],['Can I Play That? Deaf and HoH accessibility guide','https://caniplaythat.com/basic-accessibility-options-for-deaf-hoh-players/'],
+ ['Touch target size (Apple HIG, Material, WCAG)','https://specification.website/spec/accessibility/touch-target-size/'],['Shute V. Focus on Formative Feedback (ETS)','https://www.ets.org/research/policy_research_reports/publications/report/2007/hslv.html'],['Vasalou et al. Feedback in early reading games (UCL)','https://discovery-pp.ucl.ac.uk/id/eprint/10129142/7/Vasalou_bjet.13145.pdf'],['DeDonno, Demaree. Perceived time pressure (2008)','https://ideas.repec.org/a/cup/judgdm/v3y2008i8p636-640_4.html'],
+ ['Kotaku: меню Metaphor: ReFantazio','https://kotaku.com/-metaphor-refantazio-persona-5-menu-ui-hashino-1851667088'],['Push Square: стоимость меню Metaphor','https://www.pushsquare.com/news/2024/10/making-metaphor-refantazio-personas-immaculate-menus-is-really-annoying-says-director'],['Duolingo: Shape language','https://blog.duolingo.com/shape-language-duolingos-art-style/'],['Duolingo: Characters','https://design.duolingo.com/illustration/characters'],['Duolingo: World character visemes (Rive)','https://blog.duolingo.com/world-character-visemes'],
+ ['Game Developer: Sable и читаемость','https://www.gamedeveloper.com/marketing/how-shedworks-refined-the-art-of-sable-in-pursuit-of-readability'],['Unwinnable: Hi-Fi Rush','https://unwinnable.com/2023/07/21/in-hi-fi-rush-style-is-substance-165/'],['GamesBeat: Florence','https://gamesbeat.com/florence-uses-clever-interactions-to-create-a-relatable-mobile-game-about-romance/'],['Game Informer: Hades II 1.0','https://www.gameinformer.com/nintendo-direct/2025/09/12/hades-ii-launches-into-10-on-switch-2-switch-and-pc-this-month'],['Indie Game Reviewer: Citizen Sleeper','https://indiegamereviewer.com/?p=50414'],
+ ['Wikipedia: VA-11 Hall-A','https://en.wikipedia.org/wiki/VA-11_Hall-A'],['GamingTrend: Neon White','https://gamingtrend.com/reviews/neon-white-review-bullet-ballet/'],['COGconnected: Neon White','https://cogconnected.com/review/neon-white-review/'],['UX Collective: Animal Crossing','https://uxdesign.cc/animal-crossing-delight-by-design-e2c0a1a4d462'],['Wikipedia: Coffee Talk Episode 2','https://en.wikipedia.org/wiki/Coffee_Talk_Episode_2:_Hibiscus_%26_Butterfly'],
+ ['TechRaptor: Emily Is Away <3','https://techraptor.net/gaming/reviews/emily-is-away-3'],['Mechanics of Magic: Mystic Messenger','https://mechanicsofmagic.com/2023/06/08/looking-back-on-mystic-messenger/'],['Gamereactor: Spiritfarer','https://www.gamereactor.eu/spiritfarer-review/'],['TechRaptor: Venba','https://techraptor.net/gaming/reviews/venba-review-seconds-please'],['PlayStation Blog: Venba','https://blog.playstation.com/2023/06/12/the-story-of-venbas-culinary-and-cultural-roots-from-creative-director-abhi/'],
+ ['Gematsu: Love and Deepspace','https://www.gematsu.com/games/love-and-deepspace'],['App Store: Project Makeover','https://apps.apple.com/app/1483058899'],['App Store: Homescapes','https://apps.apple.com/mx/app/homescapes/id1292510839']];
+document.getElementById('src').innerHTML = SRC.map(([t,u])=>`<li><a href="${u}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join('');
+document.addEventListener('click', e => {
+ const b = e.target.closest('.copy'); if (!b) return;
+ const done = () => { b.textContent = 'Скопировано'; setTimeout(()=>b.textContent='Копировать', 1600); };
+ try { navigator.clipboard.writeText(b.dataset.t).then(done, () => { const r=document.createRange(); r.selectNodeContents(b.previousElementSibling); const s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='Выделено — скопируйте'; }); } catch(err) {}
+});
+</script>
+</html>
