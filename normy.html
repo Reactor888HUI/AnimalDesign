@@ -1,0 +1,224 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Нормы времени мастера</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: справочник мастера — шапка с правилом +30%, калькулятор визита, затем таблицы по залам */
+:root{
+  --bg:#f3f5f0; --surface:#ffffff; --ink:#1f2a24; --muted:#5d6b62; --line:#d9e0d8;
+  --sage:#5f8a6e; --sage-soft:#e3ece4; --gold:#c9962b; --gold-soft:#f6ecd3;
+  --ok:#2f7d4f; --warn:#b4472f; --warn-soft:#f7e3dd; --on-sage:#ffffff; --on-sage-muted:#e8f1ea;
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141a16; --surface:#1c241f; --ink:#e6ece7; --muted:#9aa89f; --line:#2e3a33;
+  --sage:#86b394; --sage-soft:#24332a; --gold:#e0b04a; --gold-soft:#3a3020;
+  --ok:#6cc58f; --warn:#ec8a72; --warn-soft:#3d2620; --on-sage:#0f1a13; --on-sage-muted:#24382b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141a16; --surface:#1c241f; --ink:#e6ece7; --muted:#9aa89f; --line:#2e3a33;
+  --sage:#86b394; --sage-soft:#24332a; --gold:#e0b04a; --gold-soft:#3a3020;
+  --ok:#6cc58f; --warn:#ec8a72; --warn-soft:#3d2620; --on-sage:#0f1a13; --on-sage-muted:#24382b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55}
+.wrap{max-width:980px;margin:0 auto;padding-inline:20px;padding-block:32px 64px;display:flex;flex-direction:column;gap:40px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);font-weight:600}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,6vw,48px);line-height:1.05;margin:8px 0 14px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:500;font-size:22px;margin:0;text-wrap:balance}
+p{margin:0;max-width:65ch}
+.lead{font-size:18px;color:var(--muted)}
+.rule{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:22px}
+.rule div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.rule b{display:block;font-family:var(--f-display);font-weight:500;font-size:22px}
+.rule .plus b{color:var(--gold)}
+.rule span{font-size:14px;color:var(--muted)}
+.src{font-size:13px;color:var(--muted);margin-top:12px}
+
+/* калькулятор */
+.calc{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:18px}
+.calc-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.preset{font:inherit;font-size:14px;border:1px dashed var(--sage);background:transparent;color:var(--sage);border-radius:999px;padding:6px 12px;cursor:pointer}
+.preset:hover{background:var(--sage-soft)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer;text-align:left;display:flex;gap:8px;align-items:baseline}
+.chip small{font-family:var(--f-num);color:var(--muted);font-size:12px}
+.chip[aria-pressed="true"]{background:var(--sage);border-color:var(--sage);color:var(--on-sage)}
+.chip[aria-pressed="true"] small{color:var(--on-sage-muted)}
+.chip:focus-visible,.preset:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.grp-label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.result{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;border-top:1px solid var(--line);padding-top:18px}
+.result .k{font-size:13px;color:var(--muted)}
+.result .v{font-family:var(--f-display);font-size:30px;font-weight:500;font-variant-numeric:tabular-nums}
+.result .v.gold{color:var(--gold)}
+.client{display:flex;flex-direction:column;gap:6px}
+.client label{font-size:13px;color:var(--muted)}
+.client input{font:inherit;font-family:var(--f-num);font-size:18px;width:110px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.verdict{border-radius:12px;padding:12px 14px;font-size:15px}
+.verdict.ok{background:var(--sage-soft);color:var(--ok)}
+.verdict.bad{background:var(--warn-soft);color:var(--warn)}
+.verdict.none{background:var(--bg);color:var(--muted)}
+
+/* таблицы */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tab{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:10px 16px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.search{margin-left:auto;font:inherit;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);min-width:0;width:240px;max-width:100%}
+@media (max-width:560px){.search{margin-left:0;width:100%}}
+.tbl-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top}
+thead th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap}
+td.n{font-family:var(--f-num);color:var(--muted);width:44px}
+td.m,th.m{text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.g{color:var(--gold);font-weight:600}
+tr.cat td{background:var(--sage-soft);font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--sage);padding-block:7px}
+tbody tr:not(.cat)+tr:not(.cat) td{border-top:1px solid var(--line)}
+.ingame{display:inline-block;margin-left:8px;font-size:11px;font-weight:600;letter-spacing:.04em;background:var(--gold-soft);color:var(--gold);border-radius:6px;padding:1px 7px;vertical-align:2px;white-space:nowrap}
+.empty{padding:24px;color:var(--muted)}
+.note{font-size:14px;color:var(--muted)}
+</style>
+
+<main class="wrap">
+  <a href="index.html" style="align-self:flex-start;color:var(--sage);font-weight:600;text-decoration:none">← Вернуться в игру</a>
+  <header>
+    <div class="eyebrow">Справочник мастера · Симулятор парикмахера</div>
+    <h1>Нормы времени на услуги</h1>
+    <p class="lead">Сколько минут занимает каждая услуга по государственной норме и сколько даёт на неё игра. Уложился в эталон — клиент доволен и салон заработал. Вышел за него — следующий клиент ждёт, а Айя это заметит.</p>
+    <div class="rule">
+      <div><b>Норма</b><span>Чистое время работы руками по приказу Росбытсоюза</span></div>
+      <div class="plus"><b>+30%</b><span>На приветствие, консультацию, подготовку места и расчёт</span></div>
+      <div><b>Эталон в игре</b><span>Норма × 1,3, округлено до минуты. По нему оценивают мастера</span></div>
+    </div>
+    <p class="src">Источник: Приказ АО «Росбытсоюз» № 25 от 24.03.1998 «Об утверждении нормативной документации по услугам парикмахерских», раздел 1 «Нормы времени».</p>
+  </header>
+
+  <section class="calc" aria-labelledby="calc-h">
+    <div class="calc-head">
+      <h2 id="calc-h">Собери визит</h2>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div id="chips"></div>
+    <div class="result">
+      <div><div class="k">По норме</div><div class="v" id="r-norm">0</div></div>
+      <div><div class="k">Эталон в игре</div><div class="v gold" id="r-game">0</div></div>
+      <div class="client"><label for="client-min">У клиента есть, минут</label><input id="client-min" type="number" min="0" step="5" inputmode="numeric" placeholder="—"></div>
+    </div>
+    <div class="verdict none" id="verdict">Выбери услуги — посчитаем, сколько займёт визит.</div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px" aria-labelledby="tbl-h">
+    <h2 id="tbl-h">Полный список</h2>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-w" aria-selected="true">Женский зал</button>
+      <button class="tab" role="tab" id="tab-m" aria-selected="false">Мужской зал</button>
+      <input class="search" id="q" type="search" placeholder="Найти услугу" aria-label="Найти услугу">
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>№</th><th>Услуга</th><th class="m">Норма, мин</th><th class="m">Эталон, мин</th></tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+    <p class="note">Метка <span class="ingame">в игре</span> — услуги, которые уже встречаются в сценах. Нумерация как в приказе.</p>
+  </section>
+</main>
+
+<script>
+const W=[
+[1,"Стрижка волос простая",13.7,"Стрижки"],[2,"То же, детская",9.8,"Стрижки"],[3,"Стрижка волос модельная с филировкой ножницами или бритвой",20,"Стрижки"],[4,"То же, детская",16.6,"Стрижки"],[5,"Стрижка волос модельная по методу «Сэссун»",23,"Стрижки"],
+[6,"Мытьё волос жидким мылом или шампунем",5,"Мытьё"],[7,"Мытьё волос длиной до 25 см с хной или патентованными препаратами с массажем головы",17.8,"Мытьё"],
+[8,"Укладка волос феном",14.3,"Укладки и причёски"],[9,"Причёска волос горячим способом (щипцами)",20.8,"Укладки и причёски"],[10,"Причёска волос холодным способом без применения бигуди с сушкой волос",10.4,"Укладки и причёски"],[11,"Причёска простая волос до 25 см холодным способом с применением бигуди, сушкой волос",22,"Укладки и причёски"],[12,"То же, длиной свыше 25 см",25,"Укладки и причёски"],[13,"То же, длиной свыше 40 см",28,"Укладки и причёски"],[14,"Частичная причёска коротких волос теменной и височной части головы с бигуди, сушкой",20,"Укладки и причёски"],[15,"Причёска модельная до 25 см с применением бигуди, лака, с сушкой волос",25,"Укладки и причёски"],[16,"То же, свыше 25 см",29,"Укладки и причёски"],[17,"То же, свыше 40 см",32.8,"Укладки и причёски"],[18,"Причёска волос с применением накладной косы, декоративных косичек, плетений, укладка на бигуди",25,"Укладки и причёски"],[19,"Причёска волос с применением шиньона с укладкой волос и шиньона на бигуди, сушка, лак",30,"Укладки и причёски"],[20,"Прикрепление фаты и украшений",4,"Укладки и причёски"],
+[21,"Завивка волос (перманент) с мытьём головы (без стрижки и причёски)",40,"Завивка"],[22,"То же, частичная завивка",27,"Завивка"],[23,"Завивка волос до 25 см с применением химических составов с мытьём головы (стрижка, причёска)",60,"Завивка"],[24,"То же, свыше 25 см",80,"Завивка"],[25,"То же, частичная завивка",38,"Завивка"],[26,"Вертикальная завивка волос свыше 40 см",120,"Завивка"],
+[27,"Мелирование волос до 25 см с мытьём головы, с подкрашиванием красящими шампунями",35,"Цвет"],[28,"Мелирование волос до 25 см (без подкрашивания красящими шампунями)",27,"Цвет"],[29,"То же, свыше 25 см",40,"Цвет"],[30,"Обесцвечивание пряди волос (независимо от длины) без окраски с мытьём головы",10.4,"Цвет"],[31,"Обесцвечивание волос у корней (до 5 см) без окраски с мытьём головы",16,"Цвет"],[32,"То же, свыше 5 см",22,"Цвет"],[33,"То же, свыше 25 см",25,"Цвет"],[34,"То же, свыше 40 см",30,"Цвет"],[35,"Окраска волос у корней (до 5 см) растительными красителями (хна, хна и басма) с мытьём",26,"Цвет"],[36,"То же, свыше 5 см",29.5,"Цвет"],[37,"То же, свыше 25 см",33.2,"Цвет"],[38,"То же, свыше 40 см",35.2,"Цвет"],[39,"Окраска пряди волос (независимо от длины) химическими красителями с мытьём головы без обесцвечивания",18,"Цвет"],[40,"Окраска волос у корней (до 5 см) химическими красителями с мытьём головы (без обесцвечивания)",24,"Цвет"],[41,"То же, свыше 5 см",28,"Цвет"],[42,"То же, свыше 25 см",31.8,"Цвет"],[43,"То же, свыше 40 см",35,"Цвет"],[44,"Подкрашивание (тонирование) волос до 25 см красящими шампунями",15.8,"Цвет"],[45,"То же, свыше 25 см",17.8,"Цвет"],[46,"Применение оттеночных бальзамов",15,"Цвет"],
+[47,"Укрепление волос с применением препарата «Лондавитал»",10.6,"Уход"],[48,"Укрепление волос с применением препаратов типа «Субрина» и т. д.",8.4,"Уход"],[49,"Укрепление волос патентованными препаратами",12.6,"Уход"],[50,"Укрепление волос с применением препаратов типа «Лондестраль-Эмульсия» и т. д.",18.1,"Уход"]];
+const M=[
+[1,"Стрижка волос машинкой (наголо)",8,"Стрижки"],["2","Стрижка простая мужская",12,"Стрижки"],["2а","Стрижка простая детская",9.8,"Стрижки"],[3,"Стрижка волос модельная с филировкой ножницами или бритвой",17,"Стрижки"],[4,"То же, детская",16.6,"Стрижки"],[5,"Стрижка волос модельная по методу «Сэссун»",23,"Стрижки"],[6,"Стрижка волос типа «ёжик»",25,"Стрижки"],
+[7,"Стрижка бороды",13,"Борода, усы, бритьё"],[8,"Стрижка усов и бакенбард",3.6,"Борода, усы, бритьё"],[9,"Бритьё лица",7.8,"Борода, усы, бритьё"],[10,"Бритьё головы",11.8,"Борода, усы, бритьё"],[11,"Поправка усов, или бровей, или стрижка на шее и висках",3,"Борода, усы, бритьё"],[12,"Массаж лица с применением крема после бритья",5.7,"Борода, усы, бритьё"],[13,"Компресс лица (холодный или горячий)",2.1,"Борода, усы, бритьё"],
+[14,"Мытьё волос жидким мылом или шампунем",4,"Мытьё"],[15,"Мытьё волос с хной с массажем головы",17.7,"Мытьё"],[45,"Ополаскивание волос",4,"Мытьё"],
+[16,"Укладка волос феном",13,"Укладки и причёски"],[17,"Укладка волос с бриолином и подобными препаратами",2.5,"Укладки и причёски"],[18,"Причёска волос горячим способом (щипцами)",19,"Укладки и причёски"],[19,"Причёска волос холодным способом без применения бигуди с сушкой волос",9.5,"Укладки и причёски"],[20,"Причёска волос простая холодным способом с применением бигуди и сушкой волос",16.5,"Укладки и причёски"],[38,"Фиксирование причёски лаком",1.2,"Укладки и причёски"],[41,"Сушка волос под сушуаром",3.2,"Укладки и причёски"],
+[21,"Завивка волос (перманент) с мытьём головы (без стрижки и причёски)",36.3,"Завивка"],[22,"То же, частичная завивка",27,"Завивка"],[23,"Завивка волос с применением химических составов с мытьём головы без стрижки",40,"Завивка"],[24,"То же, частичная завивка",25,"Завивка"],
+[25,"Мелирование волос с мытьём головы с подкрашиванием красящими шампунями",31.5,"Цвет"],[26,"Обесцвечивание волос у корней (до 5 см)",14,"Цвет"],[27,"То же, длиной свыше 5 см",16,"Цвет"],[28,"Окраска волос у корней (до 5 см) растительными красителями (хна, басма) с мытьём головы",25,"Цвет"],[29,"То же, длиной свыше 5 см",28,"Цвет"],[30,"Окраска волос у корней (до 5 см) химическими красителями с мытьём головы (без обесцвечивания)",24.2,"Цвет"],[31,"То же, свыше 5 см",27.3,"Цвет"],[32,"Окраска бороды растительными красителями",12,"Цвет"],[33,"То же, усов",6.5,"Цвет"],[34,"Окраска бороды химическими красителями",13,"Цвет"],[35,"То же, усов",5.2,"Цвет"],[36,"Подкрашивание (тонирование) волос красящими шампунями",14,"Цвет"],[37,"Применение оттеночных бальзамов",20,"Цвет"],
+[42,"Укрепление волос с применением кремообразных препаратов типа «Лондавитал»",9,"Уход"],[43,"Укрепление волос с применением препаратов по уходу за волосами типа «Субрина» и т. д.",7.9,"Уход"],[44,"Укрепление волос патентованными препаратами",17,"Уход"],
+[39,"Освежение лица одеколоном",0.8,"Прочее"],[40,"Освежение головы одеколоном",1.1,"Прочее"]];
+const IN_W=new Set([1,3,6,8]), IN_M=new Set(["2",3,7,14,16]);
+const fmt=x=>String(Math.round(x*10)/10).replace(".",",");
+const game=x=>Math.round(x*1.3);
+const minW=n=>{const a=n%10,b=n%100;return (a===1&&b!==11)?"минуту":(a>=2&&a<=4&&(b<12||b>14))?"минуты":"минут"};
+const minG=n=>{const a=n%10,b=n%100;return (a===1&&b!==11)?"минуты":"минут"};
+
+/* таблица */
+let hall="w";
+const tb=document.getElementById("tb"), q=document.getElementById("q");
+function esc(s){return s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+function renderTable(){
+  const data=hall==="w"?W:M, inSet=hall==="w"?IN_W:IN_M, raw=q.value.trim().toLowerCase(), term=raw.length>4?raw.slice(0,-1):raw;
+  let html="", last="";
+  for(const [n,name,min,cat] of data){
+    if(term && !name.toLowerCase().includes(term)) continue;
+    if(cat!==last){html+=`<tr class="cat"><td colspan="4">${cat}</td></tr>`;last=cat}
+    const tag=inSet.has(n)?'<span class="ingame">в игре</span>':"";
+    html+=`<tr><td class="n">${n}</td><td>${esc(name)}${tag}</td><td class="m">${fmt(min)}</td><td class="m g">${game(min)}</td></tr>`;
+  }
+  tb.innerHTML=html||`<tr><td colspan="4" class="empty">Ничего не нашли. Попробуйте другое слово, например «укладка» или «борода».</td></tr>`;
+}
+for(const [id,h] of [["tab-w","w"],["tab-m","m"]]){
+  document.getElementById(id).addEventListener("click",()=>{
+    hall=h;
+    document.getElementById("tab-w").setAttribute("aria-selected",h==="w");
+    document.getElementById("tab-m").setAttribute("aria-selected",h==="m");
+    renderTable();
+  });
+}
+q.addEventListener("input",renderTable);
+
+/* калькулятор */
+const CALC=[
+  {label:"Женский зал",items:[["w6","Мытьё",5],["w1","Стрижка простая",13.7],["w3","Стрижка модельная",20],["w8","Укладка феном",14.3],["w10","Причёска без бигуди",10.4],["w44","Тонирование до 25 см",15.8]]},
+  {label:"Мужской зал",items:[["m14","Мытьё",4],["m1","Машинкой наголо",8],["m2","Стрижка простая",12],["m3","Стрижка модельная",17],["m7","Стрижка бороды",13],["m11","Шея и виски",3],["m16","Укладка феном",13],["m9","Бритьё лица",7.8]]}
+];
+const PRESETS=[
+  {name:"«Ромашка»: стрижка + укладка",ids:["w6","w3","w8"],client:""},
+  {name:"Марина: только укладка",ids:["w6","w8"],client:""},
+  {name:"Виктория: «у меня 50 минут»",ids:["w6","w3","w8"],client:50},
+  {name:"«Пижон»: стрижка + борода",ids:["m14","m3","m7"],client:""}
+];
+const sel=new Set();
+const chipsEl=document.getElementById("chips");
+chipsEl.innerHTML=CALC.map(g=>`<div style="margin-bottom:12px"><div class="grp-label">${g.label}</div><div class="chips">${
+  g.items.map(([id,name,min])=>`<button class="chip" data-id="${id}" aria-pressed="false">${name}<small>${fmt(min)}</small></button>`).join("")}</div></div>`).join("");
+const byId={}; CALC.forEach(g=>g.items.forEach(([id,name,min])=>byId[id]={name,min}));
+chipsEl.addEventListener("click",e=>{
+  const b=e.target.closest(".chip"); if(!b) return;
+  const id=b.dataset.id; sel.has(id)?sel.delete(id):sel.add(id); syncCalc();
+});
+const presetsEl=document.getElementById("presets");
+presetsEl.innerHTML=PRESETS.map((p,i)=>`<button class="preset" data-i="${i}">${p.name}</button>`).join("");
+presetsEl.addEventListener("click",e=>{
+  const b=e.target.closest(".preset"); if(!b) return;
+  const p=PRESETS[+b.dataset.i]; sel.clear(); p.ids.forEach(i=>sel.add(i));
+  document.getElementById("client-min").value=p.client; syncCalc();
+});
+const clientIn=document.getElementById("client-min");
+clientIn.addEventListener("input",syncCalc);
+function syncCalc(){
+  chipsEl.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",sel.has(c.dataset.id)));
+  let norm=0; sel.forEach(id=>norm+=byId[id].min);
+  const g=Math.round(norm*1.3);
+  document.getElementById("r-norm").textContent=fmt(norm)+" мин";
+  document.getElementById("r-game").textContent=g+" мин";
+  const v=document.getElementById("verdict"), have=parseFloat(clientIn.value);
+  if(!sel.size){v.className="verdict none";v.textContent="Выбери услуги — посчитаем, сколько займёт визит.";return}
+  if(!have){v.className="verdict none";v.textContent=`Визит займёт около ${g} ${minG(g)}. Назови клиенту точное время окончания.`;return}
+  if(g<=have){v.className="verdict ok";v.textContent=`Успеваем: ${g} из ${have} мин, запас ${have-g} мин. Скажи клиенту, во сколько закончишь.`}
+  else{
+    const over=g-have;
+    let tip="Предложи сократить визит: например, без мытья или простую стрижку вместо модельной.";
+    v.className="verdict bad";v.textContent=`Не успеваем на ${over} мин (${g} при ${have} доступных). ${tip} Честно скажи об этом до начала работы.`;
+  }
+}
+renderTable(); syncCalc();
+</script>
+
+</body></html>
