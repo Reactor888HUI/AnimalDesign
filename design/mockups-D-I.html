@@ -1,0 +1,423 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Пижон: макеты D и I</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700&family=Oswald:wght@500;700&family=Pangolin&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: шапка и переключатель вариантов; дальше 7 экранов «Пижона» по порядку игры, в каждом ряду — телефон D (комикс) и телефон I (мессенджер) рядом */
+:root{--bg:#efece6;--surface:#fffdf8;--ink:#201c19;--muted:#6c645c;--line:#dcd4c9;--brick:#a2462e;--brick-soft:#f4e3db;
+ --display:"Unbounded","Manrope",system-ui,sans-serif;--body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151210;--surface:#1f1a17;--ink:#eee7e0;--muted:#a6998d;--line:#372e28;--brick:#e07a5c;--brick-soft:#3a251d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#151210;--surface:#1f1a17;--ink:#eee7e0;--muted:#a6998d;--line:#372e28;--brick:#e07a5c;--brick-soft:#3a251d;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+.wrap{max-width:1000px;margin:0 auto;padding-inline:16px;padding-block:28px 72px;display:flex;flex-direction:column;gap:40px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--brick);font-weight:700}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,5.4vw,42px);line-height:1.08;margin:6px 0 12px;text-wrap:balance}
+h2{font-family:var(--display);font-weight:500;font-size:clamp(18px,3vw,22px);margin:0;text-wrap:balance}
+p{margin:0;max-width:68ch}.lead{color:var(--muted);font-size:16.5px}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:18px}
+.legend div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px}
+.legend b{display:block;font-size:15px;margin-bottom:2px}
+.switch{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);padding-block:10px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.switch button{font:600 13.5px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--brick);border-color:var(--brick);color:var(--surface)}
+.switch button:focus-visible{outline:2px solid var(--brick);outline-offset:2px}
+.row{display:flex;flex-direction:column;gap:14px}
+.row .head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.row .num{font-family:var(--display);color:var(--brick);font-size:14px}
+.row .why{color:var(--muted);font-size:14px}
+.pair{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
+.cell{display:flex;flex-direction:column;align-items:center;gap:8px}
+.cell .tag{font-size:12.5px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+body[data-v="D"] .cell.I,body[data-v="I"] .cell.D{display:none}
+.notes{background:var(--brick-soft);border-radius:14px;padding:14px 16px;font-size:14.5px;display:flex;flex-direction:column;gap:6px}
+
+/* ============ телефон ============ */
+.ph{width:360px;max-width:calc(100vw - 32px);height:740px;border-radius:44px;padding:10px;background:#0c0c0c;box-shadow:0 14px 40px rgba(0,0,0,.2);flex:none}
+.scr{position:relative;width:100%;height:100%;border-radius:34px;overflow:hidden;display:flex;flex-direction:column}
+.sb{flex:none;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:600 12px "IBM Plex Sans",sans-serif}
+
+/* ============ D · КОМИКС ============ */
+.D .scr{--ink:#1b1b1b;--paper:#fffaf0;--red:#c4402a;--yel:#ffd84d;--grn:#2e7d4f;--aya:#6b4fc4;--sh:4px 4px 0 #1b1b1b;
+ background-color:#f4ecdc;background-image:radial-gradient(rgba(27,27,27,.12) 1px,transparent 1.4px);background-size:7px 7px;color:var(--ink);font:15px/1.38 "Pangolin",cursive}
+.D .sb{color:#1b1b1b}
+.D .hd{font-family:"Oswald",sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.D .pan{background:var(--paper);border:3px solid var(--ink);box-shadow:var(--sh)}
+.D .body{flex:1;min-height:0;overflow:hidden;padding:4px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.D .hud{display:flex;gap:6px}
+.D .hud span{flex:1;display:flex;justify-content:center;align-items:center;gap:4px;font:700 13px "Oswald",sans-serif;background:var(--paper);border:2.5px solid var(--ink);padding:3px 0;box-shadow:2px 2px 0 var(--ink)}
+.D .scene{position:relative;height:250px;flex:none;overflow:hidden}
+.D .scene .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:36% 42%;filter:contrast(1.15) saturate(1.2)}
+.D .scene .sp{position:absolute;bottom:-60px;height:300px;filter:contrast(1.15) saturate(1.2)}
+.D .cap{position:absolute;left:-3px;top:-3px;max-width:78%;background:var(--yel);border:3px solid var(--ink);padding:6px 9px;font-size:13.5px;line-height:1.3;z-index:2}
+.D .bal{position:absolute;background:#fff;border:3px solid var(--ink);border-radius:26px;padding:8px 12px;font-size:15px;line-height:1.3;z-index:2}
+.D .bal::before,.D .bal::after{content:"";position:absolute;width:0;height:0;border-style:solid}
+.D .bal.dl::before{left:34px;bottom:-19px;border-width:19px 14px 0 0;border-color:var(--ink) transparent transparent}
+.D .bal.dl::after{left:37px;bottom:-12px;border-width:13px 9px 0 0;border-color:#fff transparent transparent}
+.D .bal.dr::before{right:40px;bottom:-19px;border-width:19px 0 0 14px;border-color:var(--ink) transparent transparent}
+.D .bal.dr::after{right:43px;bottom:-12px;border-width:13px 0 0 9px;border-color:#fff transparent transparent}
+.D .bal b{display:block;font:700 11px "Oswald",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--red)}
+.D .title{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.D .title h3{margin:0;font:700 19px/1.1 "Oswald",sans-serif;text-transform:uppercase}
+.D .title small{font:600 11px "Oswald",sans-serif;text-transform:uppercase;white-space:nowrap}
+.D .step{font:600 13px "Oswald",sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--red)}
+.D .fuse{display:flex;align-items:center;gap:8px}
+.D .fuse .rope{flex:1;height:6px;background:repeating-linear-gradient(90deg,var(--ink) 0 7px,transparent 7px 11px);position:relative}
+.D .fuse .rope i{position:absolute;right:38%;top:50%;width:18px;height:18px;transform:translate(50%,-50%);background:var(--yel);clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+.D .fuse .rope::after{content:"";position:absolute;right:0;top:0;bottom:0;width:38%;background:#f4ecdc}
+.D .fuse b{font:700 15px "Oswald",sans-serif}
+.D .opt{display:flex;gap:9px;align-items:flex-start;padding:9px 11px;font-size:14.5px;line-height:1.3}
+.D .opt .k{flex:none;width:24px;height:24px;display:grid;place-items:center;background:var(--ink);color:var(--paper);font:700 13px "Oswald",sans-serif}
+.D .opt.on{background:#e7f2dc;border-color:var(--grn);box-shadow:4px 4px 0 var(--grn)}
+.D .opt.on .k{background:var(--grn)}
+.D .opt.off{opacity:.45;box-shadow:none}
+.D .burst{position:absolute;display:grid;place-items:center;width:96px;height:96px;background:var(--red);color:#fff;font:700 22px "Oswald",sans-serif;clip-path:polygon(50% 0,60% 18%,80% 6%,79% 28%,100% 25%,88% 44%,100% 60%,80% 64%,86% 86%,64% 78%,55% 100%,44% 80%,22% 94%,24% 70%,0 66%,14% 48%,2% 28%,24% 28%,22% 6%,40% 18%);transform:rotate(-8deg);z-index:3}
+.D .burst small{display:block;font-size:11px;text-align:center;line-height:1;margin-top:-26px}
+.D .aya{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;font-size:14px;line-height:1.32;background:#efe8ff;border-color:var(--aya);box-shadow:4px 4px 0 var(--aya)}
+.D .aya img{width:50px;height:50px;border-radius:50%;border:3px solid var(--aya);flex:none;object-fit:cover;background:#fff}
+.D .aya b{font:700 12px "Oswald",sans-serif;text-transform:uppercase;color:var(--aya);display:block}
+.D .best{background:#fff3cf;border-color:var(--ink);padding:8px 11px;font-size:13.5px}
+.D .btn{align-self:flex-end;font:700 16px "Oswald",sans-serif;text-transform:uppercase;letter-spacing:.04em;background:var(--red);color:#fff;border:3px solid var(--ink);box-shadow:var(--sh);padding:9px 20px;transform:rotate(-1.5deg)}
+.D .btn.alt{background:var(--paper);color:var(--ink);transform:none}
+.D .chip{display:inline-block;font:700 12.5px "Oswald",sans-serif;text-transform:uppercase;padding:2px 9px;border:2.5px solid var(--ink);background:#e7f2dc;color:var(--grn)}
+/* обложка-меню */
+.D .cover{padding:14px;display:flex;flex-direction:column;gap:9px;background:var(--paper)}
+.D .cover .issue{display:flex;justify-content:space-between;font:600 11px "Oswald",sans-serif;text-transform:uppercase;letter-spacing:.08em;border-bottom:3px solid var(--ink);padding-bottom:5px}
+.D .cover h2{font:700 38px/0.95 "Oswald",sans-serif;text-transform:uppercase;margin:0;color:var(--red);-webkit-text-stroke:1.5px var(--ink);text-shadow:3px 3px 0 var(--ink)}
+.D .cover .sub{font:600 14px "Oswald",sans-serif;text-transform:uppercase;letter-spacing:.06em}
+.D .cta{background:var(--yel);padding:11px 13px;display:flex;flex-direction:column;gap:2px}
+.D .cta b{font:700 22px "Oswald",sans-serif;text-transform:uppercase}
+.D .cta span{font-size:13.5px;line-height:1.3}
+.D .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.D .tile{padding:8px 10px;display:flex;flex-direction:column;gap:2px;font-size:12.5px;line-height:1.25}
+.D .tile b{font:700 14px/1.1 "Oswald",sans-serif;text-transform:uppercase}
+.D .link{font-size:13px;text-decoration:underline;text-underline-offset:3px;text-align:center}
+.D .rank{display:flex;justify-content:space-between;align-items:center;font:600 13px "Oswald",sans-serif;text-transform:uppercase;padding:6px 10px;background:var(--ink);color:var(--paper)}
+.D .rank b{color:var(--yel)}
+/* выбор салона */
+.D .segs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.D .seg{display:flex;flex-direction:column;font-size:11.5px;line-height:1.2;position:relative}
+.D .seg img{width:100%;height:62px;object-fit:cover;border-bottom:3px solid var(--ink);filter:contrast(1.1) saturate(1.15)}
+.D .seg div{padding:5px 7px 7px}
+.D .seg b{display:block;font:700 13px/1.1 "Oswald",sans-serif;text-transform:uppercase}
+.D .seg.lock img{filter:grayscale(1) contrast(.9);opacity:.55}
+.D .seg.lock{background:repeating-linear-gradient(-45deg,var(--paper) 0 6px,#ece3d2 6px 8px)}
+.D .seg.rec{box-shadow:5px 5px 0 var(--red);border-color:var(--red)}
+.D .seg .stk{position:absolute;right:-8px;top:-10px;background:var(--yel);border:2.5px solid var(--ink);font:700 11px "Oswald",sans-serif;text-transform:uppercase;padding:2px 6px;transform:rotate(6deg)}
+/* итоги */
+.D .rcpt{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.D .rcpt .ln{display:flex;justify-content:space-between;gap:10px;font-size:14px;border-bottom:2px dashed rgba(27,27,27,.35);padding-bottom:6px}
+.D .rcpt .big{font:700 30px "Oswald",sans-serif}
+.D .stamp{display:inline-block;font:700 15px "Oswald",sans-serif;text-transform:uppercase;color:var(--red);border:3px solid var(--red);padding:2px 10px;transform:rotate(-6deg)}
+.D .err{padding:8px 10px;font-size:13px;line-height:1.3;display:flex;flex-direction:column;gap:3px}
+.D .err .t{font:700 13px "Oswald",sans-serif;text-transform:uppercase}
+.D .err.ok .t{color:var(--grn)}.D .err.bad .t{color:var(--red)}
+
+/* ============ I · МЕССЕНДЖЕР ============ */
+.I .scr{--bg:#eef1f5;--sf:#fff;--ink:#1c2330;--mut:#6b7686;--ln:#dfe4ec;--ac:#2f7cf6;--ok:#22a06b;--okbg:#dcf3e8;--bad:#e5484d;--badbg:#fde7e7;--aya:#6046c9;--ayabg:#ece7fb;
+ background:var(--bg);color:var(--ink);font:15px/1.4 "IBM Plex Sans",system-ui,sans-serif}
+.I .sb{background:var(--sf);color:var(--ink)}
+.I .top{flex:none;display:flex;align-items:center;gap:10px;padding:8px 12px 10px;background:var(--sf);border-bottom:1px solid var(--ln)}
+.I .top .back{font-size:22px;color:var(--ac);line-height:1}
+.I .av{width:38px;height:38px;border-radius:50%;object-fit:cover;object-position:top;flex:none;background:#dde3ec}
+.I .top .nm{flex:1;min-width:0}.I .top .nm b{display:block;font-size:15.5px;line-height:1.2}.I .top .nm small{font-size:12px;color:var(--mut)}
+.I .top .nm small.mood{color:var(--ok);font-weight:600}
+.I .stats{flex:none;display:flex;gap:6px;padding:6px 12px;background:var(--sf);border-bottom:1px solid var(--ln);font-size:12.5px;font-weight:600}
+.I .stats span{background:var(--bg);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.I .stats span.ok{background:var(--okbg);color:var(--ok)}
+.I .strip{flex:none;position:relative;height:96px;overflow:hidden}
+.I .strip img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:40% 45%}
+.I .strip .sp{position:absolute;bottom:-90px;height:210px}
+.I .strip span{position:absolute;right:8px;bottom:6px;font-size:11px;font-weight:600;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;padding:2px 8px}
+.I .chat{flex:1;min-height:0;overflow:hidden;padding:12px;display:flex;flex-direction:column;gap:8px;justify-content:flex-end}
+.I .day{align-self:center;font-size:11.5px;color:var(--mut);background:rgba(255,255,255,.7);border-radius:999px;padding:2px 10px}
+.I .nar{align-self:center;max-width:92%;text-align:center;font-size:13px;font-style:italic;color:var(--mut);line-height:1.35}
+.I .m{max-width:84%;padding:8px 11px;border-radius:18px;font-size:15px;line-height:1.36;position:relative}
+.I .m.in{align-self:flex-start;background:var(--sf);border-bottom-left-radius:5px;box-shadow:0 1px 1px rgba(0,0,0,.06)}
+.I .m.out{align-self:flex-end;background:var(--ac);color:#fff;border-bottom-right-radius:5px}
+.I .m small{display:block;font-size:11px;opacity:.65;text-align:right;margin-top:2px}
+.I .react{align-self:flex-end;display:flex;gap:5px;margin-top:-4px}
+.I .react span{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--okbg);color:var(--ok)}
+.I .ayam{align-self:stretch;display:flex;gap:9px;background:var(--ayabg);border-radius:16px;padding:9px 11px;font-size:14px;line-height:1.36}
+.I .ayam img{width:34px;height:34px;border-radius:50%;flex:none;object-fit:cover;background:#fff}
+.I .ayam b{display:block;font-size:12px;color:var(--aya)}
+.I .typing{align-self:flex-start;background:var(--sf);border-radius:18px;padding:10px 14px;display:flex;gap:4px}
+.I .typing i{width:7px;height:7px;border-radius:50%;background:#b5bdc9}
+.I .compose{flex:none;background:var(--sf);border-top:1px solid var(--ln);padding:8px 10px 12px;display:flex;flex-direction:column;gap:7px}
+.I .tbar{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--mut)}
+.I .tbar div{flex:1;height:4px;border-radius:4px;background:var(--ln);overflow:hidden}.I .tbar div i{display:block;height:100%;width:60%;background:var(--ac)}
+.I .qr{border:1.5px solid var(--ac);color:var(--ac);border-radius:16px;padding:8px 12px;font-size:14px;line-height:1.32;background:var(--sf)}
+.I .qr.off{opacity:.4}
+.I .send{align-self:stretch;text-align:center;background:var(--ac);color:#fff;border-radius:14px;padding:11px;font-weight:600;font-size:15px}
+.I .send.alt{background:var(--bg);color:var(--ink)}
+.I .row2{display:flex;gap:8px}.I .row2 .send{flex:1}
+/* список чатов (меню, выбор салона) */
+.I .lt{flex:none;padding:6px 16px 8px;background:var(--sf)}
+.I .lt h3{margin:0;font-size:26px;font-weight:700}
+.I .lt small{color:var(--mut);font-size:13px}
+.I .search{margin:0 12px 8px;background:var(--bg);border-radius:12px;padding:7px 12px;font-size:14px;color:var(--mut)}
+.I .list{flex:1;min-height:0;overflow:hidden;background:var(--sf);display:flex;flex-direction:column}
+.I .it{display:flex;gap:11px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--ln)}
+.I .it .ic{width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:21px;background:var(--bg);overflow:hidden}
+.I .it .ic img{width:100%;height:100%;object-fit:cover}
+.I .it .tx{flex:1;min-width:0}.I .it .tx b{display:block;font-size:15px}.I .it .tx span{display:block;font-size:13px;color:var(--mut);line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.I .it .mt{font-size:11.5px;color:var(--mut);align-self:flex-start;white-space:nowrap}
+.I .it .badge{background:var(--ac);color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:1px 7px}
+.I .it.pin{background:#f3f7ff}
+.I .it.lock{opacity:.45}
+.I .it.hero .ic{background:var(--ac);color:#fff}
+.I .tabbar{flex:none;display:flex;justify-content:space-around;padding:7px 0 12px;background:var(--sf);border-top:1px solid var(--ln);font-size:11px;color:var(--mut);text-align:center}
+.I .tabbar span.on{color:var(--ac);font-weight:600}
+.I .tabbar i{display:block;font-style:normal;font-size:18px}
+/* карточки итогов */
+.I .card{align-self:stretch;background:var(--sf);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:7px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.I .card .ln{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.I .card .ln b.ok{color:var(--ok)}
+.I .card h4{margin:0;font-size:16px}
+.I .card .big{font-size:28px;font-weight:700;line-height:1.1}
+.I .er{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.32;padding:8px 0;border-top:1px solid var(--ln)}
+.I .er .mk{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700}
+.I .er.ok .mk{background:var(--okbg);color:var(--ok)}.I .er.bad .mk{background:var(--badbg);color:var(--bad)}
+.I .er b{display:block;font-size:13px}
+</style>
+
+<div class="wrap">
+<header>
+ <div class="eyebrow">Ромашка · редизайн · макеты</div>
+ <h1>«Пижон» в двух вариантах</h1>
+ <p class="lead">Семь ключевых экранов барбершопа «Пижон» по порядку игры: меню, выбор салона, сцена, решение, разбор Айи, итог визита, итог смены. Тексты, цифры и порядок шагов взяты из эталона игры без изменений. Фон и персонажи пока старые: в варианте D к ним добавлен только комиксный контраст.</p>
+ <div class="legend">
+  <div><b>D · Комикс</b>Сцена — кадр комикса, рассказ — жёлтая подпись, реплики — облачка. Варианты ответа — карточки A/B/C, таймер — догорающий фитиль, результат — «взрыв» с баллами.</div>
+  <div><b>I · Мессенджер</b>Визит — переписка с клиентом. Сцена — фото-полоска сверху, рассказ — курсивом по центру, варианты — быстрые ответы внизу под большим пальцем, Айя — отдельное сообщение.</div>
+ </div>
+</header>
+
+<nav class="switch" aria-label="Варианты"><button type="button" data-v="both" aria-pressed="true">Оба рядом</button><button type="button" data-v="D" aria-pressed="false">Только D · комикс</button><button type="button" data-v="I" aria-pressed="false">Только I · мессенджер</button></nav>
+
+<!-- 1. МЕНЮ -->
+<section class="row"><div class="head"><span class="num">1</span><h2>Главное меню</h2><span class="why">вход в игру, ранг, режимы</span></div><div class="pair">
+<div class="cell D"><div class="ph D"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="body">
+  <div class="cover pan">
+   <h2>Симулятор парикмахера</h2>
+   <div class="issue"><span>Академия Льва Кравца</span></div>
+   <div class="cta pan"><b>🏪 Выбор салона</b><span>Выберите героя — Киру или Эрика — и салон, где он будет работать</span></div>
+   <div class="link">или пройти сюжет с самого начала: выход из Академии</div>
+  </div>
+  <div class="grid2">
+   <div class="tile pan"><b>👋 Тренажёр приветствия</b>5 клиентов, первая минута</div>
+   <div class="tile pan"><b>⏱ Нормы времени</b>Сколько минут на услугу</div>
+   <div class="tile pan"><b>🎓 Экзамен</b>Кира или Эрик: 80% — новый ранг</div>
+   <div class="tile pan"><b>👥 Персонажи</b>С кем вы встретитесь в игре</div>
+  </div>
+  <div class="rank"><span>Ваш ранг:</span><b>Без ранга</b></div>
+  <div class="aya pan" style="margin-top:auto"><img src="../assets/aya_c3.webp" alt=""><div><b>Айя</b>Привет! Я Айя, ваш технолог. Буду подсказывать по ходу визита.</div></div>
+ </div></div></div><span class="tag">D · комикс</span></div>
+<div class="cell I"><div class="ph I"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="lt"><h3>Симулятор парикмахера</h3><small>Академия Льва Кравца · Ваш ранг: Без ранга</small></div>
+  <div class="list">
+  <div class="it pin"><div class="ic"><img src="../assets/aya_c3.webp" alt=""></div><div class="tx"><b>Айя</b><span>Привет! Я Айя, ваш технолог. Буду подсказывать по ходу визита.</span></div><div class="mt"><span class="badge">1</span></div></div>
+  <div class="it hero"><div class="ic">🏪</div><div class="tx"><b>Выбор салона</b><span>Выберите героя — Киру или Эрика — и салон, где он будет работать</span></div></div>
+  <div class="it"><div class="ic">🎓</div><div class="tx"><b>или пройти сюжет с самого начала: выход из Академии</b></div></div>
+  <div class="it"><div class="ic">👋</div><div class="tx"><b>Тренажёр приветствия</b><span>5 клиентов, первая минута</span></div></div>
+  <div class="it"><div class="ic">⏱</div><div class="tx"><b>Нормы времени</b><span>Сколько минут на услугу</span></div></div>
+  <div class="it"><div class="ic">🎓</div><div class="tx"><b>Экзамен</b><span>Кира или Эрик: 80% — новый ранг</span></div></div>
+  <div class="it"><div class="ic">👥</div><div class="tx"><b>Персонажи</b><span>С кем вы встретитесь в игре</span></div></div>
+ </div>
+ <div class="tabbar"><span class="on"><i>💬</i></span><span><i>✂</i></span><span><i>🔊</i></span><span><i>🎵</i></span></div>
+</div></div><span class="tag">I · мессенджер</span></div>
+</div></section>
+
+<!-- 2. ВЫБОР САЛОНА -->
+<section class="row"><div class="head"><span class="num">2</span><h2>Выбор салона</h2><span class="why">Эрику открыты барбершопы, «Пижон» — совет Айи</span></div><div class="pair">
+<div class="cell D"><div class="ph D"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="body">
+  <div class="title"><h3>Куда пойдёшь?</h3><small>Выбор салона</small></div>
+  <div class="pan" style="background:var(--yel);padding:6px 10px;font-size:13.5px;line-height:1.3">Эрику открыты барбершопы. Женский зал — после повышения квалификации в Академии.</div>
+  <div class="segs">
+   <div class="seg pan rec"><span class="stk">совет Айи</span><img src="../assets/barber_pijon.webp" alt=""><div><b>Пижон</b>Барбершоп · средний<br>Лофт, кирпич, мужские стрижки и бороды</div></div>
+   <div class="seg pan"><img src="../assets/barber_buxme.webp" alt=""><div><b>BUXME MAN</b>Барбершоп · премиум<br>Премиальный барбершоп, сильная команда</div></div>
+   <div class="seg pan lock"><img src="../assets/salon_econom.webp" alt=""><div><b>Семейная парикмахерская</b>Эконом<br>🔒 Женский зал — после повышения квалификации</div></div>
+   <div class="seg pan lock"><img src="../assets/salon.webp" alt=""><div><b>Ромашка</b>Эконом+<br>🔒 Женский зал — после повышения квалификации</div></div>
+  </div>
+  <div class="link" style="margin-top:auto">← Сменить героя</div>
+ </div></div></div><span class="tag">D · комикс</span></div>
+<div class="cell I"><div class="ph I"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="top"><span class="back">‹</span><img class="av" src="../assets/eric_e1.webp" alt=""><div class="nm"><b>Куда пойдёшь?</b><small>Выбор салона</small></div></div>
+ <div class="chat" style="flex:none;padding:10px 12px"><div class="ayam"><img src="../assets/aya_c0.webp" alt=""><div><b>Айя</b>Эрику открыты барбершопы. Женский зал — после повышения квалификации в Академии.</div></div></div>
+ <div class="list">
+  <div class="it pin"><div class="ic"><img src="../assets/barber_pijon.webp" alt=""></div><div class="tx"><b>Пижон</b><span>Барбершоп · средний · совет Айи. Лофт, кирпич, мужские стрижки и бороды</span></div><div class="mt">⭐</div></div>
+  <div class="it"><div class="ic"><img src="../assets/barber_buxme.webp" alt=""></div><div class="tx"><b>BUXME MAN</b><span>Барбершоп · премиум. Премиальный барбершоп, сильная команда</span></div></div>
+  <div class="it lock"><div class="ic"><img src="../assets/salon_super_econom.webp" alt=""></div><div class="tx"><b>Парикмахерская</b><span>🔒 Женский зал — после повышения квалификации</span></div></div>
+  <div class="it lock"><div class="ic"><img src="../assets/salon_econom.webp" alt=""></div><div class="tx"><b>Семейная парикмахерская</b><span>🔒 Женский зал — после повышения квалификации</span></div></div>
+  <div class="it lock"><div class="ic"><img src="../assets/salon.webp" alt=""></div><div class="tx"><b>Ромашка</b><span>🔒 Женский зал — после повышения квалификации</span></div></div>
+  <div class="it lock"><div class="ic"><img src="../assets/salon_econom_plus.webp" alt=""></div><div class="tx"><b>Пантера</b><span>🔒 Женский зал — после повышения квалификации</span></div></div>
+ </div>
+</div></div><span class="tag">I · мессенджер</span></div>
+</div></section>
+
+<!-- 3. СЦЕНА -->
+<section class="row"><div class="head"><span class="num">3</span><h2>Клиент входит</h2><span class="why">рассказ и первая реплика Артёма</span></div><div class="pair">
+<div class="cell D"><div class="ph D"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="body">
+  <div class="hud"><span>🙂 0</span><span>★ 0</span><span>₽ 0</span><span>✂ —</span></div>
+  <div class="scene pan"><img class="bg" src="../assets/barber_pijon.webp" alt=""><img class="sp" style="left:8%" src="../assets/man_artem_stand.webp" alt=""><img class="sp" style="right:6%;transform:scaleX(-1)" src="../assets/eric_stand.webp" alt="">
+   <div class="cap">18:40. Дверь распахивается. Массивный парень в чёрном бомбере, над бровью шрам. За окном — чёрная «бэха» с тонировкой.</div></div>
+  <div class="title"><h3>Артём, 27 — Скажи прямо</h3><small>Клиент 1 из 8</small></div>
+  <div style="position:relative;height:120px"><div class="bal dl" style="left:0;top:8px;right:40px"><b>Артём</b>Здарова, бро. Мне коротко. Сколько ждать?</div></div>
+  <div class="link" style="margin-top:auto">Нажмите на сцену или на реплику, чтобы ускорить её.</div>
+ </div></div></div><span class="tag">D · комикс</span></div>
+<div class="cell I"><div class="ph I"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="top"><span class="back">‹</span><img class="av" src="../assets/man_artem_e0.webp" alt=""><div class="nm"><b>Артём, 27</b><small>Клиент 1 из 8 · Скажи прямо</small></div></div>
+ <div class="stats"><span>🙂 0</span><span>★ 0</span><span>₽ 0</span><span>⏱ Визит 0 мин · норма 27</span></div>
+ <div class="strip"><img class="bg" src="../assets/barber_pijon.webp" alt=""><img class="sp" style="left:22%" src="../assets/man_artem_stand.webp" alt=""><img class="sp" style="right:18%;transform:scaleX(-1)" src="../assets/eric_stand.webp" alt=""></div>
+ <div class="chat">
+    <div class="nar">«Пижон», вечерняя смена. Музыка, кирпич, полка с глиной и маслами. Эрик точит бритву и ждёт клиентов.</div>
+  <div class="nar">18:40. Дверь распахивается. Массивный парень в чёрном бомбере, над бровью шрам. За окном — чёрная «бэха» с тонировкой.</div>
+  <div class="m in">Здарова, бро. Мне коротко. Сколько ждать?</div>
+  <div class="typing" aria-label="Эрик печатает"><i></i><i></i><i></i></div>
+ </div>
+</div></div><span class="tag">I · мессенджер</span></div>
+</div></section>
+
+<!-- 4. РЕШЕНИЕ -->
+<section class="row"><div class="head"><span class="num">4</span><h2>Решение 1 — первый контакт</h2><span class="why">три варианта, 30 секунд</span></div><div class="pair">
+<div class="cell D"><div class="ph D"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="body">
+  <div class="hud"><span>🙂 0</span><span>★ 0</span><span>₽ 0</span><span>✂ —</span></div>
+  <div class="scene pan" style="height:190px"><img class="bg" src="../assets/barber_pijon.webp" alt=""><img class="sp" style="left:8%;height:250px;bottom:-56px" src="../assets/man_artem_stand.webp" alt=""><img class="sp" style="right:6%;height:250px;bottom:-56px;transform:scaleX(-1)" src="../assets/eric_stand.webp" alt="">
+   <div class="bal dl" style="left:8px;right:70px;bottom:auto;top:8px;font-size:14px"><b>Артём</b>Здарова, бро. Мне коротко. Сколько ждать?</div></div>
+  <div class="title"><h3>Артём, 27 — Скажи прямо</h3><small>Клиент 1 из 8</small></div>
+  <div class="step">Решение 1 — первый контакт</div>
+  <div class="fuse"><div class="rope"><i></i></div><b>⏱ 18</b></div>
+  <div class="opt pan"><span class="k">A</span>«Добрый вечер! Меня зовут Эрик, я барбер, окончил курсы, мои сильные стороны — фейды…»</div>
+  <div class="opt pan"><span class="k">B</span>«Видишь, я занят. Сядь, подожди»</div>
+  <div class="opt pan"><span class="k">C</span>«Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?»</div>
+  <div class="link">← Сменить мастера или салон</div>
+ </div></div></div><span class="tag">D · комикс</span></div>
+<div class="cell I"><div class="ph I"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="top"><span class="back">‹</span><img class="av" src="../assets/man_artem_e0.webp" alt=""><div class="nm"><b>Артём, 27</b><small>Клиент 1 из 8 · Скажи прямо</small></div></div>
+ <div class="stats"><span>🙂 0</span><span>★ 0</span><span>₽ 0</span><span>⏱ Визит 0 мин · норма 27</span></div>
+ <div class="chat">
+  <div class="nar">18:40. Дверь распахивается. Массивный парень в чёрном бомбере, над бровью шрам. За окном — чёрная «бэха» с тонировкой.</div>
+  <div class="m in">Здарова, бро. Мне коротко. Сколько ждать?</div>
+ </div>
+ <div class="compose">
+  <div class="tbar"><span>Решение 1 — первый контакт</span><div><i></i></div><span>⏱ 18</span></div>
+  <div class="qr">«Добрый вечер! Меня зовут Эрик, я барбер, окончил курсы, мои сильные стороны — фейды…»</div>
+  <div class="qr">«Видишь, я занят. Сядь, подожди»</div>
+  <div class="qr">«Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?»</div>
+ </div>
+</div></div><span class="tag">I · мессенджер</span></div>
+</div></section>
+
+<!-- 5. РАЗБОР -->
+<section class="row"><div class="head"><span class="num">5</span><h2>Ответ и разбор Айи</h2><span class="why">настроение +12, +2 балла</span></div><div class="pair">
+<div class="cell D"><div class="ph D"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="body">
+  <div class="hud"><span>🙂 +12</span><span>★ 2</span><span>₽ 0</span><span>✂ —</span></div>
+  <div class="scene pan" style="height:190px"><img class="bg" src="../assets/barber_pijon.webp" alt=""><img class="sp" style="left:8%;height:250px;bottom:-56px" src="../assets/man_artem_stand.webp" alt=""><img class="sp" style="right:6%;height:250px;bottom:-56px;transform:scaleX(-1)" src="../assets/eric_stand.webp" alt="">
+   <div class="bal dr" style="right:8px;left:40px;top:8px;font-size:14px"><b>Эрик</b>Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?</div>
+   <div class="burst" style="left:6px;bottom:6px">+12<small>настроение</small></div></div>
+  <div class="title"><h3>Артём, 27 — Скажи прямо</h3><small>Клиент 1 из 8</small></div>
+  <div class="opt pan off"><span class="k">A</span>«Добрый вечер! Меня зовут Эрик, я барбер, окончил курсы, мои сильные стороны — фейды…»</div>
+  <div class="opt pan on"><span class="k">C</span>«Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?»</div>
+  <div style="display:flex;gap:6px"><span class="chip">Настроение +12</span><span class="chip">+2 балла</span></div>
+  <div class="aya pan"><img src="../assets/aya_c1.webp" alt=""><div><b>Айя</b>Он сам задал тон: «здарова». В мужском зале можно ответить на его языке — имя и вопрос всё равно на месте.</div></div>
+  <div class="btn">В кресло</div>
+ </div></div></div><span class="tag">D · комикс</span></div>
+<div class="cell I"><div class="ph I"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="top"><span class="back">‹</span><img class="av" src="../assets/man_artem_happy_bust.webp" alt=""><div class="nm"><b>Артём, 27</b><small class="mood">Настроение +12</small></div></div>
+ <div class="stats"><span class="ok">🙂 +12</span><span class="ok">★ 2</span><span>₽ 0</span><span>⏱ Визит 3 мин · норма 27</span></div>
+ <div class="chat">
+  <div class="m in">Здарова, бро. Мне коротко. Сколько ждать?</div>
+  <div class="m out">Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?<small>✓✓</small></div>
+  <div class="react"><span>Настроение +12</span><span>+2 балла</span></div>
+  <div class="ayam"><img src="../assets/aya_c1.webp" alt=""><div><b>Айя</b>Он сам задал тон: «здарова». В мужском зале можно ответить на его языке — имя и вопрос всё равно на месте.</div></div>
+ </div>
+ <div class="compose"><div class="send">В кресло</div></div>
+</div></div><span class="tag">I · мессенджер</span></div>
+</div></section>
+
+<!-- 6. ИТОГ ВИЗИТА -->
+<section class="row"><div class="head"><span class="num">6</span><h2>Итог визита</h2><span class="why">настроение, время против нормы, деньги мастера</span></div><div class="pair">
+<div class="cell D"><div class="ph D"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="body">
+  <div class="hud"><span>🙂 +8</span><span>★ 2</span><span>₽ 900</span><span>✂ —</span></div>
+  <div class="title"><h3>Визит окончен</h3><small>Клиент 1 из 8</small></div>
+  <div class="rcpt pan">
+   <div style="display:flex;justify-content:space-between;align-items:center"><span class="hd" style="font-size:20px;font-weight:700">Артём</span><span class="stamp">настроение +8</span></div>
+   <div>Без восторга, но и без обиды.</div>
+   <div class="ln"><span>Время визита</span><span>31 мин при норме 27</span></div>
+   <div class="ln"><span>Стрижка 1 800 ₽, 50% мастеру</span><span class="big" style="font-size:20px;color:var(--grn)">+900 ₽</span></div>
+  </div>
+  <div class="aya pan"><img src="../assets/aya_c3.webp" alt=""><div><b>Айя</b>Прямому клиенту — прямые слова и чёткие цифры. А лёгкая шутка делает из случайного клиента своего</div></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto;gap:10px"><div class="btn alt">Закончить смену</div><div class="btn">Следующий клиент</div></div>
+  <div class="link">← Сменить мастера или салон</div>
+ </div></div></div><span class="tag">D · комикс</span></div>
+<div class="cell I"><div class="ph I"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="top"><span class="back">‹</span><img class="av" src="../assets/man_artem_e0.webp" alt=""><div class="nm"><b>Артём, 27</b><small>Визит окончен · Клиент 1 из 8</small></div></div>
+ <div class="chat">
+  <div class="nar">Артём смотрит в зеркало, кивает без улыбки и молча расплачивается. Вернётся ли — неизвестно.</div>
+  <div class="card">
+   <h4>Артём: настроение +8</h4>
+   <div style="font-size:14px;color:var(--mut)">Без восторга, но и без обиды.</div>
+   <div class="ln"><span>Время визита</span><b>31 мин при норме 27</b></div>
+   <div class="ln"><span>Стрижка 1 800 ₽, 50% мастеру</span><b class="ok">+900 ₽</b></div>
+  </div>
+  <div class="ayam"><img src="../assets/aya_c3.webp" alt=""><div><b>Айя</b>Прямому клиенту — прямые слова и чёткие цифры. А лёгкая шутка делает из случайного клиента своего</div></div>
+ </div>
+ <div class="compose"><div class="row2"><div class="send alt">Закончить смену</div><div class="send">Следующий клиент</div></div></div>
+</div></div><span class="tag">I · мессенджер</span></div>
+</div></section>
+
+<!-- 7. ИТОГ СМЕНЫ -->
+<section class="row"><div class="head"><span class="num">7</span><h2>Итог смены</h2><span class="why">8 клиентов, деньги, баллы, работа над ошибками</span></div><div class="pair">
+<div class="cell D"><div class="ph D"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="body">
+  <div class="title"><h3>Итог смены</h3><small>Мужской зал</small></div>
+  <div class="rcpt pan">
+   <div class="hd" style="font-size:15px;font-weight:700">Эрик · «Пижон»</div>
+   <div class="ln"><span>Довольных клиентов</span><b>0 из 8</b></div>
+   <div class="ln"><span>Лучших ответов</span><b>8 из 16 (50%)</b></div>
+   <div class="ln"><span>Заработано за смену</span><span class="big" style="font-size:22px">8 000 ₽</span></div>
+   <div class="ln" style="border:0;padding:0"><span>Баллы мастерства</span><b>16</b></div>
+  </div>
+  <div class="pan" style="background:var(--yel);padding:7px 10px;font-size:13px;line-height:1.3">Удлинённые стрижки (Денис) — предел барбера. Повышение квалификации в Академии откроет и их, и женский зал.</div>
+  <div class="hd" style="font-weight:700;font-size:15px">Работа над ошибками</div>
+  <div class="err pan ok"><span class="t">✓ Артём · первый контакт</span>Вы: «Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?»</div>
+  <div class="err pan bad"><span class="t">✗ Артём · клиент дёргается · настроение −4</span>Вы сказали: Молча придержать голову рукой<span class="best" style="display:block;border:0;padding:3px 6px">Лучше: «Давай так: десять минут голова неподвижно — и ты свободен к второму тайму. А наши как раз во втором и отыгрываются, традиция»</span></div>
+ </div></div></div><span class="tag">D · комикс</span></div>
+<div class="cell I"><div class="ph I"><div class="scr"><div class="sb"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="top"><span class="back">‹</span><img class="av" src="../assets/aya_c1.webp" alt=""><div class="nm"><b>Итог смены</b><small>Мужской зал · Эрик · «Пижон»</small></div></div>
+ <div class="chat" style="justify-content:flex-start">
+  <div class="card">
+   <div class="ln"><span>Довольных клиентов</span><b>0 из 8</b></div>
+   <div class="ln"><span>Лучших ответов</span><b>8 из 16 (50%)</b></div>
+   <div class="ln"><span>Заработано за смену</span><b class="ok">8 000 ₽</b></div>
+   <div class="ln"><span>Баллы мастерства</span><b>16</b></div>
+  </div>
+  <div class="ayam"><img src="../assets/aya_c0.webp" alt=""><div><b>Айя</b>Удлинённые стрижки (Денис) — предел барбера. Повышение квалификации в Академии откроет и их, и женский зал.</div></div>
+  <div class="card" style="gap:0"><h4 style="margin-bottom:4px">Работа над ошибками</h4>
+   <div class="er ok"><span class="mk">✓</span><div><b>Артём · первый контакт</b>Вы: «Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?»</div></div>
+   <div class="er bad"><span class="mk">✗</span><div><b>Артём · клиент дёргается · настроение −4</b>Вы сказали: Молча придержать голову рукой<br>Лучше: «Давай так: десять минут голова неподвижно — и ты свободен к второму тайму. А наши как раз во втором и отыгрываются, традиция»</div></div>
+  </div>
+ </div>
+ <div class="compose"><div class="row2"><div class="send alt">В меню</div><div class="send alt">За Киру</div><div class="send">Ещё раз</div></div></div>
+</div></div><span class="tag">I · мессенджер</span></div>
+</div></section>
+
+<section class="notes">
+ <b>Что дальше</b>
+ <p>1. Выберите вариант или скажите, что взять из каждого: например, облачка и фитиль из D, а быстрые ответы снизу из I.</p>
+ <p>2. Я собираю выбранную оболочку в копии игры. Проверки <code>etalon.mjs</code> и <code>trace.mjs</code> подтвердят, что тексты и механика не изменились, а <code>trace.mjs shots</code> снимет все 164 экрана «было/стало».</p>
+ <p>3. Параллельно — персонажи в выбранном стиле по промптам П4–П5: начинаем с Артёма.</p>
+</section>
+</div>
+<script>
+document.querySelectorAll('.switch button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.switch button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  document.body.dataset.v = b.dataset.v;
+});
+</script>
+</html>
