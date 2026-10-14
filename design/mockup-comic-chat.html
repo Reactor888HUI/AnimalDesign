@@ -1,0 +1,259 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Пижон: взрослый комикс</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Rubik:wght@400;500;600;800&display=swap">
+<style>
+/* Layout: тёмная «типография» — заголовок-обложка, две компоновки (полэкрана / полный экран), шесть телефонов в порядке визита, под каждым — что и зачем */
+:root{--bg:#f2ede3;--surface:#fffaf0;--ink:#151312;--muted:#625b53;--line:#d9cfbf;--red:#e8321c;--yel:#ffd60a;
+ --display:"Oswald","Arial Narrow",sans-serif;--body:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121110;--surface:#1c1a18;--ink:#f1ebe2;--muted:#a59b90;--line:#34302b;--red:#ff4a30;--yel:#ffd60a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121110;--surface:#1c1a18;--ink:#f1ebe2;--muted:#a59b90;--line:#34302b;--red:#ff4a30;--yel:#ffd60a;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15.5px/1.55 var(--body)}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:28px 80px;display:flex;flex-direction:column;gap:40px}
+.eyebrow{font:600 12px var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
+h1{font:700 clamp(40px,8vw,84px)/.92 var(--display);text-transform:uppercase;margin:8px 0 14px;letter-spacing:-.01em;text-wrap:balance}
+h1 em{font-style:normal;background:var(--yel);color:#151312;padding:0 .12em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+h2{font:700 clamp(22px,3.4vw,30px)/1.05 var(--display);text-transform:uppercase;margin:0;text-wrap:balance}
+p{margin:0;max-width:68ch}.lead{font-size:17px;color:var(--muted)}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.rules div{border:2px solid var(--ink);background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:4px;box-shadow:4px 4px 0 var(--ink)}
+.rules b{font:700 17px var(--display);text-transform:uppercase}
+.rules span{font-size:14.5px;color:var(--muted)}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.modes div{background:var(--ink);color:var(--bg);padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.modes b{font:700 22px var(--display);text-transform:uppercase;color:var(--yel)}
+.modes span{font-size:14.5px;opacity:.85}
+.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:40px 24px;justify-items:center}
+@media (max-width:420px){.screens{grid-template-columns:1fr}}
+.cell{display:flex;flex-direction:column;gap:10px;align-items:center;max-width:380px}
+.cap{display:flex;flex-direction:column;gap:3px;width:100%;padding-inline:6px}
+.cap .t{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.cap .n{font:700 15px var(--display);color:var(--red)}
+.cap b{font:700 18px var(--display);text-transform:uppercase}
+.cap .mode{font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;background:var(--ink);color:var(--bg);padding:2px 8px}
+.cap .mode.full{background:var(--red);color:#fff}
+.cap span.d{font-size:14px;color:var(--muted)}
+.next{border:2px solid var(--ink);background:var(--yel);color:#151312;padding:16px 18px;display:flex;flex-direction:column;gap:6px;box-shadow:5px 5px 0 var(--ink)}
+.next b{font:700 20px var(--display);text-transform:uppercase}
+
+/* ================= ТЕЛЕФОН ================= */
+.ph{width:360px;max-width:calc(100vw - 32px);height:760px;border-radius:46px;padding:10px;background:#0a0a0a;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+.scr{--ink:#111;--paper:#f7f1e3;--red:#ff3b1f;--yel:#ffd60a;--aya:#8a6bff;--ok:#00c27a;
+ position:relative;width:100%;height:100%;border-radius:36px;overflow:hidden;background:#111;color:#fff;font:16px/1.38 "Rubik",sans-serif;display:flex;flex-direction:column}
+.sbar{position:absolute;z-index:20;top:0;left:0;right:0;height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font:600 12px "Rubik",sans-serif;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+/* сцена-кадр */
+.art{position:relative;overflow:hidden;background:#222}
+.art .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:contrast(1.22) saturate(1.3) brightness(.92)}
+.art .sp{position:absolute;filter:contrast(1.2) saturate(1.25)}
+.art::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.22) 1px,transparent 1.5px) 0 0/5px 5px;mix-blend-mode:multiply;z-index:1}
+.vig::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse at 50% 40%,transparent 45%,rgba(0,0,0,.55))}
+.speed::before{content:"";position:absolute;inset:-40%;z-index:2;pointer-events:none;background:repeating-conic-gradient(from 0deg at 50% 50%,rgba(255,255,255,.0) 0 4deg,rgba(255,255,255,.28) 4deg 5deg)}
+.fade{position:absolute;left:0;right:0;bottom:0;z-index:3;pointer-events:none;background:linear-gradient(transparent,rgba(10,10,10,.92) 55%)}
+/* HUD-таблетки */
+.hud{position:absolute;z-index:15;top:34px;left:12px;right:12px;display:flex;gap:6px}
+.hud span{white-space:nowrap;display:flex;align-items:center;gap:4px;font:800 13px "Rubik",sans-serif;background:#111;color:#fff;border:2px solid #fff;border-radius:999px;padding:3px 10px}
+.hud span.ok{background:var(--ok);border-color:#111;color:#111}
+.hud span.y{background:var(--yel);color:#111;border-color:#111}
+.hud .sp1{flex:1}
+/* подпись рассказчика — прямоугольная, как в комиксе */
+.capt{position:absolute;z-index:6;background:var(--yel);color:#111;border:2.5px solid #111;padding:8px 11px;font:500 14px/1.32 "Rubik",sans-serif;box-shadow:4px 4px 0 #111}
+.capt b{display:block;font:700 11px "Oswald",sans-serif;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+/* ЧАТ-ОБЛАЧКА: полукруглые, толстый контур, хвостик к говорящему */
+.bub{position:relative;max-width:86%;padding:10px 14px 11px;border-radius:24px;border:2.5px solid #111;font:500 16px/1.36 "Rubik",sans-serif;box-shadow:3px 3px 0 #111}
+.bub .who{display:block;font:700 12px "Oswald",sans-serif;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1px}
+.bub.in{align-self:flex-start;background:#fff;color:#111;border-bottom-left-radius:6px}
+.bub.in .who{color:var(--red)}
+.bub.out{align-self:flex-end;background:var(--yel);color:#111;border-bottom-right-radius:6px}
+.bub.out .who{color:#6a5400}
+.bub.aya{align-self:stretch;max-width:100%;background:#f1ecff;color:#111;border-color:#111;display:flex;gap:10px;align-items:flex-start;border-radius:22px}
+.bub.aya img{width:44px;height:44px;border-radius:50%;border:2.5px solid var(--aya);flex:none;object-fit:cover;background:#fff}
+.bub.aya .who{color:#5a3fd6}
+.bub.tl::after{content:"";position:absolute;left:-2px;bottom:-12px;width:18px;height:14px;background:#fff;border-left:2.5px solid #111;border-bottom:2.5px solid #111;border-bottom-left-radius:16px;clip-path:polygon(0 0,100% 0,0 100%)}
+.bub.tr::after{content:"";position:absolute;right:-2px;bottom:-12px;width:18px;height:14px;background:var(--yel);border-right:2.5px solid #111;border-bottom:2.5px solid #111;border-bottom-right-radius:16px;clip-path:polygon(0 0,100% 0,100% 100%)}
+.nar{align-self:center;max-width:94%;background:var(--paper);color:#111;border:2.5px solid #111;padding:7px 11px;font:500 13.5px/1.32 "Rubik",sans-serif;box-shadow:3px 3px 0 #111}
+.nar b{display:block;font:700 10.5px "Oswald",sans-serif;letter-spacing:.1em;text-transform:uppercase}
+/* лента чата поверх сцены (полный экран) */
+.feed{position:absolute;z-index:8;left:12px;right:12px;bottom:16px;display:flex;flex-direction:column;gap:12px}
+/* нижняя половина (полэкрана) */
+.half{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px 12px 14px;background:#111 radial-gradient(rgba(255,255,255,.06) 1px,transparent 1.4px) 0 0/6px 6px;position:relative}
+.edge{height:0;border-top:3px solid #111;position:relative;z-index:4}
+.tline{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.tline h3{margin:0;font:700 20px/1.05 "Oswald",sans-serif;text-transform:uppercase;color:#fff}
+.tline small{font:600 11px "Oswald",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--yel);white-space:nowrap}
+.step{display:flex;align-items:center;gap:10px;font:700 13px "Oswald",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--yel)}
+.fuse{flex:1;height:6px;position:relative;background:repeating-linear-gradient(90deg,#fff 0 8px,transparent 8px 12px)}
+.fuse::after{content:"";position:absolute;right:0;top:-2px;bottom:-2px;width:40%;background:#111}
+.fuse i{position:absolute;right:40%;top:50%;width:22px;height:22px;transform:translate(50%,-50%);background:var(--red);clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);z-index:1}
+.step b{font-size:16px;color:#fff}
+.ans{display:flex;gap:10px;align-items:flex-start;background:transparent;color:#fff;border:2.5px solid var(--yel);border-radius:22px;padding:9px 13px;font:500 15px/1.34 "Rubik",sans-serif}
+.ans .k{flex:none;width:24px;height:24px;border-radius:50%;background:var(--yel);color:#111;display:grid;place-items:center;font:700 13px "Oswald",sans-serif;margin-top:1px}
+.ans.on{background:var(--yel);color:#111;box-shadow:3px 3px 0 #fff}
+.ans.on .k{background:#111;color:var(--yel)}
+.ans.off{opacity:.35}
+.chips{display:flex;gap:6px;align-self:flex-end}
+.chip{font:800 12.5px "Rubik",sans-serif;padding:3px 10px;border-radius:999px;background:var(--ok);color:#111;border:2px solid #111}
+.btn{align-self:stretch;text-align:center;font:700 19px "Oswald",sans-serif;letter-spacing:.06em;text-transform:uppercase;background:var(--red);color:#fff;border:2.5px solid #111;border-radius:999px;padding:11px;box-shadow:4px 4px 0 #fff}
+.btn.ghost{background:transparent;border-color:#fff;box-shadow:none}
+.btns{display:flex;gap:10px}.btns .btn{flex:1;font-size:16px}
+.burst{position:absolute;z-index:9;display:grid;place-items:center;text-align:center;width:136px;height:136px;background:var(--red);color:#fff;font:700 36px/1 "Oswald",sans-serif;clip-path:polygon(50% 0,60% 18%,80% 6%,79% 28%,100% 25%,88% 44%,100% 60%,80% 64%,86% 86%,64% 78%,55% 100%,44% 80%,22% 94%,24% 70%,0 66%,14% 48%,2% 28%,24% 28%,22% 6%,40% 18%);transform:rotate(-9deg)}
+.burst small{display:block;font-size:9.5px;margin-top:2px;letter-spacing:.08em;text-transform:uppercase}
+.link{text-align:center;font-size:13px;color:#cfc8bd;text-decoration:underline;text-underline-offset:3px}
+/* обложка-меню */
+.cover{position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;justify-content:flex-end;gap:12px;padding:16px 16px 18px}
+.cover .series{font:700 12px "Oswald",sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--yel)}
+.cover h2{font:700 46px/.9 "Oswald",sans-serif;text-transform:uppercase;color:#fff;margin:0;text-shadow:4px 4px 0 var(--red),7px 7px 0 #111}
+.cover .play{background:var(--yel);color:#111;border:3px solid #111;border-radius:26px;padding:12px 16px;box-shadow:5px 5px 0 var(--red);display:flex;flex-direction:column;gap:2px}
+.cover .play b{font:700 24px/1 "Oswald",sans-serif;text-transform:uppercase}
+.cover .play span{font:500 14px/1.3 "Rubik",sans-serif}
+.cover .modes2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cover .modes2 div{background:rgba(17,17,17,.82);border:2px solid #fff;border-radius:18px;padding:7px 11px;font:500 12px/1.25 "Rubik",sans-serif;color:#ddd}
+.cover .modes2 b{display:block;font:700 14px/1.1 "Oswald",sans-serif;text-transform:uppercase;color:#fff}
+.cover .rank{display:flex;justify-content:space-between;font:700 13px "Oswald",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff}
+.cover .rank b{color:var(--yel)}
+/* крупный план: два кадра по диагонали */
+.split{position:absolute;inset:0}
+.split .p1,.split .p2{position:absolute;inset:0;overflow:hidden}
+.split .p1{clip-path:polygon(0 0,100% 0,100% 38%,0 54%)}
+.split .p2{clip-path:polygon(0 56%,100% 40%,100% 100%,0 100%)}
+.split img{position:absolute;filter:contrast(1.2) saturate(1.25)}
+.split .seam{position:absolute;inset:0;background:#111;clip-path:polygon(0 54%,100% 38%,100% 40%,0 56%);z-index:3}
+/* итог визита */
+.ticket{background:var(--paper);color:#111;border:3px solid #111;border-radius:22px;padding:14px 16px;display:flex;flex-direction:column;gap:9px;box-shadow:5px 5px 0 var(--red)}
+.ticket .nm{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ticket .nm b{font:700 24px "Oswald",sans-serif;text-transform:uppercase}
+.ticket .stamp{font:700 14px "Oswald",sans-serif;text-transform:uppercase;color:var(--red);border:3px solid var(--red);border-radius:10px;padding:1px 9px;transform:rotate(-6deg)}
+.ticket .ln{display:flex;justify-content:space-between;gap:10px;font:500 14.5px "Rubik",sans-serif;border-top:2px dashed rgba(17,17,17,.3);padding-top:7px}
+.ticket .money{white-space:nowrap;font:700 26px "Oswald",sans-serif;color:#0a8a55}
+</style>
+
+<div class="wrap">
+<header>
+ <div class="eyebrow">Ромашка · редизайн · предварительный макет</div>
+ <h1>Взрослый комикс <em>в чат-облачках</em></h1>
+ <p class="lead">Комиксная подача и полукруглые чат-облачка, которые удобно читать. Шесть экранов первого визита в «Пижоне» в двух компоновках: сцена на полэкрана и сцена на весь экран. Тексты взяты из эталона игры без изменений. Фон и персонажи пока старые: им добавлены только комиксный контраст, растровая точка и виньетка.</p>
+</header>
+
+<section class="rules">
+ <div><b>Говорят — облачко</b><span>Реплики — полукруглые чат-облачка с толстым контуром и хвостиком к говорящему. Клиент — белое слева, Эрик (игрок) — жёлтое справа, Айя — сиреневое во всю ширину с портретом.</span></div>
+ <div><b>Рассказывает — подпись</b><span>Слова рассказчика — прямоугольная подпись, как в комиксе. Так рассказ сразу отличается от речи по форме, а не только по цвету.</span></div>
+ <div><b>Цвета</b><span>Чёрная тушь, жёлтый, красный. Зелёный — только для «хорошо». Сиреневый — только у Айи.</span></div>
+ <div><b>Шрифты</b><span>Узкий Oswald капсом — заголовки, имена и кнопки. Rubik — все реплики: ровный и хорошо читается на телефоне при 16 px.</span></div>
+</section>
+
+<section class="modes">
+ <div><b>Полный экран</b><span>Сюжет: клиент входит, разговор в кресле, крупный план, итог. Сцена на весь экран, облачка идут лентой поверх неё, низ сцены затемнён, чтобы текст читался.</span></div>
+ <div><b>Полэкрана</b><span>Решение: сверху кадр, снизу чат с вариантами ответа. Включается, когда игроку нужно выбрать ответ, и на разборе Айи.</span></div>
+</section>
+
+<section class="screens">
+
+<!-- 1 МЕНЮ -->
+<div class="cell"><div class="ph"><div class="scr"><div class="sbar"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="art vig" style="position:absolute;inset:0"><img class="bg" src="../assets/barber_pijon.webp" alt="" style="object-position:62% 40%"><img class="sp" src="../assets/eric_stand.webp" alt="" style="height:620px;left:50%;bottom:150px;transform:translateX(-50%) scaleX(-1)"><div class="fade" style="height:62%"></div></div>
+ <div class="hud"><span>🔊</span><span>🎵</span><span class="sp1" style="visibility:hidden"></span><span class="y">✂ Без ранга</span></div>
+ <div class="cover">
+  <div class="series">Академия Льва Кравца</div>
+  <h2>Симулятор<br>парикмахера</h2>
+  <div class="play"><b>🏪 Выбор салона</b><span>Выберите героя — Киру или Эрика — и салон, где он будет работать</span></div>
+  <div class="link" style="color:#fff">или пройти сюжет с самого начала: выход из Академии</div>
+  <div class="modes2">
+   <div><b>👋 Тренажёр приветствия</b>5 клиентов, первая минута</div>
+   <div><b>⏱ Нормы времени</b>Сколько минут на услугу</div>
+   <div><b>🎓 Экзамен</b>Кира или Эрик: 80% — новый ранг</div>
+   <div><b>👥 Персонажи</b>С кем вы встретитесь в игре</div>
+  </div>
+  <div class="rank"><span>Ваш ранг:</span><b>Без ранга</b></div>
+ </div>
+</div></div>
+<div class="cap"><div class="t"><span class="n">01</span><b>Главное меню</b><span class="mode full">полный экран</span></div><span class="d">Обложка выпуска: герой во весь рост, название с красной тенью, главная кнопка — жёлтое облачко.</span></div></div>
+
+<!-- 2 КЛИЕНТ ВХОДИТ -->
+<div class="cell"><div class="ph"><div class="scr"><div class="sbar"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="art vig" style="position:absolute;inset:0"><img class="bg" src="../assets/barber_pijon.webp" alt="" style="object-position:14% 40%"><img class="sp" src="../assets/man_artem_stand.webp" alt="" style="height:640px;left:-24px;bottom:-40px"><img class="sp" src="../assets/eric_stand.webp" alt="" style="height:560px;right:-56px;bottom:120px;transform:scaleX(-1);filter:contrast(1.2) saturate(1.2) brightness(.7)"><div class="fade" style="height:46%"></div></div>
+ <div class="hud"><span>🙂 0</span><span>★ 0</span><span>₽ 0</span><span class="sp1" style="visibility:hidden"></span><span>✂ —</span></div>
+ <div class="capt" style="left:150px;right:12px;top:76px"><b>«Пижон»</b>18:40. Дверь распахивается. Массивный парень в чёрном бомбере, над бровью шрам. За окном — чёрная «бэха» с тонировкой.</div>
+ <div class="feed">
+  <div style="font:700 22px/1 Oswald,sans-serif;text-transform:uppercase;color:#fff;text-shadow:2px 2px 0 #111">Артём, 27 — Скажи прямо <span style="font-size:12px;color:var(--yel);letter-spacing:.08em;vertical-align:middle">Клиент 1 из 8</span></div>
+  <div class="bub in tl"><span class="who">Артём</span>Здарова, бро. Мне коротко. Сколько ждать?</div>
+  <div class="link" style="margin-top:6px">Нажмите на сцену или на реплику, чтобы ускорить её.</div>
+ </div>
+</div></div>
+<div class="cap"><div class="t"><span class="n">02</span><b>Клиент входит</b><span class="mode full">полный экран</span></div><span class="d">Клиент крупно на переднем плане, мастер в тени. Рассказ — жёлтая подпись сверху, первая реплика — белое облачко внизу.</span></div></div>
+
+<!-- 3 РЕШЕНИЕ -->
+<div class="cell"><div class="ph"><div class="scr"><div class="sbar"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="art vig" style="height:300px;flex:none"><img class="bg" src="../assets/barber_pijon.webp" alt="" style="object-position:30% 38%"><img class="sp" src="../assets/man_artem_stand.webp" alt="" style="height:440px;left:8px;bottom:-150px"><img class="sp" src="../assets/eric_stand.webp" alt="" style="height:420px;right:6px;bottom:-140px;transform:scaleX(-1)"><div class="fade" style="height:40%"></div>
+  <div class="feed" style="bottom:12px"><div class="bub in tl" style="max-width:80%"><span class="who">Артём</span>Здарова, бро. Мне коротко. Сколько ждать?</div></div></div>
+ <div class="hud"><span>🙂 0</span><span>★ 0</span><span>₽ 0</span><span class="sp1" style="visibility:hidden"></span><span>✂ —</span></div>
+ <div class="edge"></div>
+ <div class="half">
+  <div class="tline"><h3>Артём, 27 — Скажи прямо</h3><small>Клиент 1 из 8</small></div>
+  <div class="step"><span>Решение 1 — первый контакт</span><div class="fuse"><i></i></div><b>⏱ 18</b></div>
+  <div class="ans"><span class="k">A</span>«Добрый вечер! Меня зовут Эрик, я барбер, окончил курсы, мои сильные стороны — фейды…»</div>
+  <div class="ans"><span class="k">B</span>«Видишь, я занят. Сядь, подожди»</div>
+  <div class="ans"><span class="k">C</span>«Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?»</div>
+  <div class="link" style="margin-top:auto">← Сменить мастера или салон</div>
+ </div>
+</div></div>
+<div class="cap"><div class="t"><span class="n">03</span><b>Решение 1</b><span class="mode">полэкрана</span></div><span class="d">Кадр сверху с последней репликой клиента, снизу чат. Варианты — жёлтые контурные облачка, таймер — догорающий фитиль. Всё под большим пальцем.</span></div></div>
+
+<!-- 4 РАЗБОР -->
+<div class="cell"><div class="ph"><div class="scr"><div class="sbar"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="art vig speed" style="height:280px;flex:none"><img class="bg" src="../assets/barber_pijon.webp" alt="" style="object-position:30% 38%"><img class="sp" src="../assets/man_artem_stand.webp" alt="" style="height:420px;left:8px;bottom:-140px"><img class="sp" src="../assets/eric_stand.webp" alt="" style="height:400px;right:6px;bottom:-130px;transform:scaleX(-1)"><div class="fade" style="height:30%"></div>
+  <div class="burst" style="left:14px;top:70px">+12<small>Настроение</small></div></div>
+ <div class="hud"><span class="ok">🙂 +12</span><span class="y">★ 2</span><span>₽ 0</span><span class="sp1" style="visibility:hidden"></span><span>✂ —</span></div>
+ <div class="edge"></div>
+ <div class="half">
+  <div class="bub out tr"><span class="who">Эрик</span>Хай, бро! Нисколько — кресло твоё. Я Эрик. А тебя как?</div>
+  <div class="chips" style="margin-top:4px"><span class="chip">Настроение +12</span><span class="chip">+2 балла</span></div>
+  <div class="bub aya"><img src="../assets/aya_c1.webp" alt=""><div><span class="who">Айя</span>Он сам задал тон: «здарова». В мужском зале можно ответить на его языке — имя и вопрос всё равно на месте.</div></div>
+  <div class="btn" style="margin-top:auto">В кресло</div>
+ </div>
+</div></div>
+<div class="cap"><div class="t"><span class="n">04</span><b>Ответ и разбор Айи</b><span class="mode">полэкрана</span></div><span class="d">Верный ответ — «взрыв» +12 и линии движения на сцене. Ответ Эрика уходит в чат жёлтым облачком, Айя объясняет почему.</span></div></div>
+
+<!-- 5 В КРЕСЛЕ: КРУПНЫЙ ПЛАН -->
+<div class="cell"><div class="ph"><div class="scr"><div class="sbar"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="split">
+  <div class="p1 art"><img class="bg" src="../assets/barber_pijon.webp" alt="" style="object-position:70% 30%"><img src="../assets/man_artem_sit.webp" alt="" style="height:700px;left:-120px;top:20px"></div>
+  <div class="p2 art"><img class="bg" src="../assets/barber_pijon.webp" alt="" style="object-position:20% 50%;filter:contrast(1.2) saturate(1.2) brightness(.75)"><img src="../assets/eric_cut.webp" alt="" style="height:760px;right:-60px;top:260px;transform:scaleX(-1)"></div>
+  <div class="seam"></div>
+ </div>
+ <div class="hud"><span class="ok">🙂 +12</span><span class="y">★ 2</span><span>₽ 0</span></div>
+ <div class="capt" style="left:12px;top:76px;max-width:62%">Артём снимает куртку, Эрик вешает на плечики.</div>
+ <div class="feed" style="bottom:16px;gap:10px">
+  <div class="bub in tl"><span class="who">Артём</span>Тёма. По бокам в ноль, сверху сантиметр. У меня в семь треня</div>
+  <div class="bub out tr"><span class="who">Эрик</span>Успеем. Зачётная бэха, кстати. Твоя? Сам тонировал?</div>
+  <div class="bub in tl"><span class="who">Артём</span>(впервые улыбается) Сам. А шрам — не от тачки, от бокса. Только не задень</div>
+ </div>
+</div></div>
+<div class="cap"><div class="t"><span class="n">05</span><b>Разговор в кресле</b><span class="mode full">полный экран</span></div><span class="d">Крупный план: два кадра по диагонали — клиент в кресле и мастер за работой. Реплики собираются лентой, как в чате: можно перечитать предыдущую.</span></div></div>
+
+<!-- 6 ИТОГ ВИЗИТА -->
+<div class="cell"><div class="ph"><div class="scr"><div class="sbar"><span>9:41</span><span>▮▮▮ 87%</span></div>
+ <div class="art vig" style="position:absolute;inset:0"><img class="bg" src="../assets/barber_pijon.webp" alt="" style="object-position:44% 40%;filter:contrast(1.2) saturate(1.1) brightness(.6)"><img class="sp" src="../assets/man_artem_stand.webp" alt="" style="height:560px;left:50%;top:40px;transform:translateX(-50%);filter:contrast(1.2) brightness(.8)"><div class="fade" style="height:75%"></div></div>
+ <div class="hud"><span class="ok">🙂 +8</span><span class="y">★ 2</span><span class="y">₽ 900</span><span class="sp1" style="visibility:hidden"></span><span>✂ —</span></div>
+ <div class="feed">
+  <div class="nar" style="align-self:stretch;max-width:100%">Артём смотрит в зеркало, кивает без улыбки и молча расплачивается. Вернётся ли — неизвестно.</div>
+  <div class="tline"><h3>Визит окончен</h3><small>Клиент 1 из 8</small></div>
+  <div class="ticket">
+   <div class="nm"><b>Артём</b><span class="stamp">настроение +8</span></div>
+   <div style="font:500 14.5px Rubik,sans-serif">Без восторга, но и без обиды.</div>
+   <div class="ln"><span>Время визита</span><b>31 мин при норме 27</b></div>
+   <div class="ln" style="align-items:center"><span>Стрижка 1 800 ₽, 50% мастеру</span><span class="money">+900 ₽</span></div>
+  </div>
+  <div class="bub aya"><img src="../assets/aya_c3.webp" alt=""><div><span class="who">Айя</span>Прямому клиенту — прямые слова и чёткие цифры. А лёгкая шутка делает из случайного клиента своего</div></div>
+  <div class="btns"><div class="btn ghost">Закончить смену</div><div class="btn">Следующий клиент</div></div>
+ </div>
+</div></div>
+<div class="cap"><div class="t"><span class="n">06</span><b>Итог визита</b><span class="mode full">полный экран</span></div><span class="d">Сцена гаснет, поверх — чек со штампом настроения и деньгами мастера. Айя подводит итог, две кнопки внизу.</span></div></div>
+
+</section>
+
+<section class="next">
+ <b>Что дальше</b>
+ <p>Скажите, что оставить, что поменять: цвета, шрифт реплик, размер облачков, когда включается полный экран. После этого я соберу эту оболочку в копии игры и проверю эталоном, что тексты и механика не изменились. Персонажей в комиксном стиле генерируем по фразе: <i>adult graphic novel, bold ink line art, halftone shading, high contrast, limited palette of black, warm yellow and vermilion red</i>.</p>
+</section>
+</div>
+</html>
