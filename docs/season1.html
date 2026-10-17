@@ -1,0 +1,720 @@
+<title>Подмена. Сезон 1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Golos+Text:wght@400;500;600;700&family=PT+Mono&display=swap">
+<style>
+/* Layout: тетрадный лист в клетку; слева оглавление-закладки, справа страницы журнала. Синие чернила, красный карандаш для улик. */
+:root {
+  --paper: #f7f9fc;
+  --grid: #dfe6f1;
+  --ink: #1d2c52;
+  --ink-soft: #55627f;
+  --pen: #2647a8;
+  --pencil: #c2412d;
+  --sheet: #ffffff;
+  --line: #cfd8e8;
+  --tint: #eaf0fb;
+  --spoil: #e3e8f2;
+  --f-hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+  --f-body: "Golos Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "PT Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1626; --grid: #18223a; --ink: #dfe6f5; --ink-soft: #97a3be;
+    --pen: #8fb0ff; --pencil: #ff8a73; --sheet: #141d31; --line: #26324d;
+    --tint: #1a2642; --spoil: #222e49; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1626; --grid: #18223a; --ink: #dfe6f5; --ink-soft: #97a3be;
+  --pen: #8fb0ff; --pencil: #ff8a73; --sheet: #141d31; --line: #26324d;
+  --tint: #1a2642; --spoil: #222e49; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font: 16px/1.6 var(--f-body);
+}
+a { color: var(--pen); }
+:focus-visible { outline: 2px solid var(--pencil); outline-offset: 2px; border-radius: 3px; }
+
+.wrap {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-block: 32px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---------- навигация ---------- */
+nav.toc {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 24px);
+  align-self: start;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  font-size: 14px;
+}
+.toc .brand { font: 700 34px/1 var(--f-hand); color: var(--pen); margin: 0 0 2px; }
+.toc .sub { color: var(--ink-soft); font-size: 13px; margin: 0 0 18px; }
+.toc h4 {
+  margin: 18px 0 6px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-soft); font-weight: 600;
+}
+.toc ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.toc a {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 5px 10px; border-radius: 6px; text-decoration: none; color: var(--ink);
+}
+.toc a .n { font: 13px var(--f-mono); color: var(--ink-soft); min-width: 1.6em; font-variant-numeric: tabular-nums; }
+.toc a:hover { background: var(--tint); }
+.toc a.on { background: var(--tint); color: var(--pen); font-weight: 600; }
+.toc a.on .n { color: var(--pen); }
+
+.switch {
+  display: flex; align-items: center; gap: 10px; margin-top: 22px; padding: 10px;
+  border: 1px dashed var(--line); border-radius: 8px; background: var(--sheet); cursor: pointer;
+  font-size: 13px; line-height: 1.35;
+}
+.switch input { width: 18px; height: 18px; accent-color: var(--pencil); flex: none; }
+
+/* мобильная шапка */
+.mbar { display: none; }
+
+/* ---------- контент ---------- */
+main { min-width: 0; }
+.cover { padding: 8px 0 28px; }
+.cover .epi { font: 700 26px/1.2 var(--f-hand); color: var(--pen); transform: rotate(-1.5deg); display: inline-block; margin: 0 0 8px; }
+.cover h1 { font-size: clamp(34px, 6vw, 54px); line-height: 1.05; margin: 0 0 14px; letter-spacing: -.02em; text-wrap: balance; }
+.cover p { max-width: 62ch; margin: 0; color: var(--ink-soft); font-size: 17px; }
+.roles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.roles a {
+  text-decoration: none; padding: 6px 12px; border-radius: 999px; background: var(--sheet);
+  border: 1px solid var(--line); color: var(--ink); font-size: 14px;
+}
+.roles a b { font-family: var(--f-mono); font-weight: 400; color: var(--pen); margin-right: 6px; }
+
+section.blk { margin-top: 44px; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--pencil); font-weight: 600; margin: 0 0 4px; }
+h2 { font-size: 28px; line-height: 1.15; margin: 0 0 16px; letter-spacing: -.01em; text-wrap: balance; }
+h3 { font-size: 19px; margin: 0; text-wrap: balance; }
+p { max-width: 68ch; }
+
+.sheet {
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 10px;
+  padding: 22px 24px; box-shadow: 0 1px 0 var(--line);
+}
+.sheet > :first-child { margin-top: 0; }
+.sheet > :last-child { margin-bottom: 0; }
+
+.gm {
+  position: relative; border: 1px solid var(--line); border-left: 0; border-radius: 10px;
+  background: var(--sheet); padding: 20px 24px 20px 28px;
+  background-image: linear-gradient(90deg, transparent 12px, var(--pencil) 12px, var(--pencil) 13px, transparent 13px);
+}
+.gm ul { padding-left: 20px; margin: 10px 0; }
+.gm li { margin: 4px 0; }
+.code { font-family: var(--f-mono); color: var(--pencil); white-space: nowrap; }
+
+/* таблицы */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; background: var(--tint); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--pen); }
+
+/* модуль */
+.mod-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 18px; }
+.mod-head h2 { margin: 0; }
+.mod-head .place { font: 600 24px/1 var(--f-hand); color: var(--pen); }
+.scenes { display: grid; gap: 22px; }
+
+/* сцена */
+.scene { scroll-margin-top: 72px; }
+.scene header { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; }
+.scene .no {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--pen);
+  display: grid; place-items: center; font: 700 26px/1 var(--f-hand); color: var(--pen);
+}
+.scene .meta { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.scene .meta .weird { color: var(--pencil); }
+.msg {
+  border-left: 3px solid var(--pen); background: var(--tint); padding: 12px 16px; border-radius: 0 8px 8px 0;
+  margin: 0 0 16px;
+}
+.msg p { margin: 0 0 6px; }
+.msg p:last-child { margin: 0; }
+.msg .from { font: 12px var(--f-mono); color: var(--ink-soft); display: block; margin-bottom: 6px; }
+.lbl { font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; margin: 16px 0 6px; }
+.acts { margin: 0; padding-left: 20px; }
+.acts li { margin: 4px 0; }
+.home { color: var(--ink-soft); font-size: 14.5px; display: block; margin-top: 2px; }
+.clue {
+  display: flex; gap: 12px; align-items: baseline; margin-top: 16px; padding: 10px 14px;
+  border: 1.5px dashed var(--pencil); border-radius: 8px;
+}
+.clue .id { font: 13px var(--f-mono); color: var(--pencil); flex: none; }
+.clue .t { font-weight: 600; }
+.choices { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.choices li { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 8px; align-items: baseline; }
+.choices .k { font: 700 22px/1 var(--f-hand); color: var(--pen); }
+.fx { font: 12.5px var(--f-mono); color: var(--ink-soft); }
+.fx .p { color: var(--pen); }
+.fx .m { color: var(--pencil); }
+.note { font-size: 14.5px; color: var(--ink-soft); border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; }
+
+/* спойлеры */
+.ans { margin-top: 8px; }
+.ans .s { font-family: var(--f-mono); font-size: 14px; }
+body.player .ans .s {
+  background: var(--spoil); color: transparent; border-radius: 4px; cursor: pointer; user-select: none;
+}
+body.player .ans .s.open { background: transparent; color: var(--pencil); user-select: auto; }
+body:not(.player) .ans .s { color: var(--pencil); }
+body.player .gm-only { display: none; }
+
+.scene-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.scene-nav a {
+  font-size: 13.5px; text-decoration: none; padding: 6px 12px; border-radius: 6px;
+  border: 1px solid var(--line); color: var(--ink); background: var(--sheet);
+}
+.scene-nav a:hover { border-color: var(--pen); color: var(--pen); }
+
+/* связи */
+.chains { display: grid; gap: 10px; }
+.chain { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; }
+.chain .h { font-weight: 600; min-width: 110px; }
+.chain a {
+  font-family: var(--f-mono); font-size: 13px; text-decoration: none; padding: 3px 8px;
+  border-radius: 5px; background: var(--tint); color: var(--pen);
+}
+.chain .arr { color: var(--ink-soft); }
+
+/* записка */
+.note-paper {
+  font: 500 23px/1.55 var(--f-hand); color: var(--pen);
+  background: var(--sheet);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px; border: 1px solid var(--line); border-radius: 4px;
+  padding: 20px 24px; transform: rotate(-.6deg); max-width: 520px;
+}
+.note-paper ol { margin: 8px 0 0; padding-left: 34px; }
+.note-paper .top { font-size: 26px; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 28px; align-items: start; }
+
+/* концовки */
+.ends { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.end { background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.end h3 { font: 700 26px/1.1 var(--f-hand); color: var(--pen); }
+.end .cond { font: 12.5px var(--f-mono); color: var(--pencil); margin: 6px 0 8px; }
+.end p { margin: 0; font-size: 15px; }
+.end.fail h3 { color: var(--ink-soft); }
+
+.meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.meter { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.meter b { display: block; font-size: 15px; }
+.meter .r { font: 13px var(--f-mono); color: var(--pen); }
+.meter span:last-child { display: block; font-size: 13.5px; color: var(--ink-soft); margin-top: 4px; }
+
+.cmds { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.cmds li { font: 13.5px var(--f-mono); padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--sheet); }
+
+footer { margin-top: 56px; color: var(--ink-soft); font-size: 13px; }
+
+@media (max-width: 920px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; padding-top: 0; }
+  nav.toc {
+    position: fixed; z-index: 30; inset: 0 auto 0 0; width: min(300px, 86vw); max-height: none;
+    background: var(--paper); border-right: 1px solid var(--line);
+    padding: calc(env(safe-area-inset-top, 0px) + 64px) 16px 24px max(16px, env(safe-area-inset-left, 0px));
+    transform: translateX(-105%); transition: transform .2s ease;
+  }
+  body.menu nav.toc { transform: none; box-shadow: 0 0 0 100vmax rgba(10, 16, 30, .35); }
+  body::before {
+    content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 41; background: var(--sheet);
+  }
+  .mbar {
+    display: flex; align-items: center; gap: 10px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40;
+    margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 16px;
+    padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+    background: var(--sheet); border-bottom: 1px solid var(--line);
+  }
+  .mbar button {
+    font: 600 14px var(--f-body); color: var(--ink); background: var(--tint); border: 1px solid var(--line);
+    border-radius: 6px; padding: 7px 12px; cursor: pointer;
+  }
+  .mbar .where { font-size: 14px; color: var(--ink-soft); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .split, .ends { grid-template-columns: minmax(0, 1fr); }
+  .sheet, .gm { padding: 18px 16px; }
+  .gm { padding-left: 24px; }
+  .note-paper { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { nav.toc { transition: none; } }
+</style>
+
+<div class="wrap">
+  <nav class="toc" id="toc" aria-label="Оглавление">
+    <p class="brand">Подмена</p>
+    <p class="sub">Сезон 1 · 13 сцен · 4 концовки</p>
+    <h4>Для ведущего</h4>
+    <ul>
+      <li><a href="#plot"><span class="n">§0</span>Скрытый сюжет</a></li>
+      <li><a href="#rules"><span class="n">§1</span>Механика и безопасность</a></li>
+    </ul>
+    <div id="toc-scenes"></div>
+    <h4>После финала</h4>
+    <ul>
+      <li><a href="#endings"><span class="n">§6</span>Концовки</a></li>
+      <li><a href="#links"><span class="n">§7</span>Связи улик</a></li>
+      <li><a href="#note"><span class="n">§8</span>Исходная записка</a></li>
+      <li><a href="#s2"><span class="n">§9</span>Крючки на сезон 2</a></li>
+    </ul>
+    <label class="switch" for="player-mode">
+      <input type="checkbox" id="player-mode">
+      <span>Скрыть ответы и заметки ведущего (режим игрока)</span>
+    </label>
+  </nav>
+
+  <main>
+    <div class="mbar">
+      <button type="button" id="menu-btn" aria-controls="toc" aria-expanded="false">Оглавление</button>
+      <span class="where" id="where">Подмена. Сезон 1</span>
+    </div>
+
+    <header class="cover" id="top">
+      <p class="epi">Рекомендуется читать с бодуна.</p>
+      <h1>Подмена. Сезон 1</h1>
+      <p>Сценарий игры в альтернативной реальности для одного игрока и ведущего. Игрок по очереди работает под тремя прикрытиями. Каждая роль — модуль из четырёх сцен, улики связывают роли между собой, а финал сводит их в одном кабинете.</p>
+      <div class="roles">
+        <a href="#m1"><b>1–4</b>Парикмахер</a>
+        <a href="#m2"><b>5–8</b>Мерчандайзер</a>
+        <a href="#m3"><b>9–12</b>Фрилансер</a>
+        <a href="#fin"><b>13</b>Кабинет 731</a>
+      </div>
+    </header>
+
+    <section class="blk gm-only" id="plot">
+      <p class="eyebrow">§0 · Только для ведущего</p>
+      <h2>Скрытый сюжет</h2>
+      <div class="gm">
+        <p>Агентство временного персонала «Подмена» ставит людей на чужие места. Человек выходит на смену, работает и уходит, а на его место ставят следующего.</p>
+        <ul>
+          <li><b>К.</b> — куратор. Пишет коротко и всегда в <span class="code">07:42</span>. Требует подчиняться, ничего не объясняет.</li>
+          <li><b>Т.</b> — предыдущая подменная. Она не пропала, а «сошла с маршрута»: отказалась передавать смену дальше и оставила игроку след в рабочих мелочах трёх профессий.</li>
+          <li><b>Жетон</b> — знак смены. Кто его держит, тот и «на месте». Т. хочет вернуть жетон и закрыть свою смену. К. хочет передать его следующему.</li>
+          <li><b>Сквозной ключ</b>: <span class="code">7.31 = 11:15 = 315</span>. 7.31 — это стеллаж 7, полка 3, позиция 1 и кабинет 731. 11:15 — время записи клиентов. 315 — номер жетона, цена «не того» товара и бюджет заказа.</li>
+          <li><b>Записка «Атрибуты»</b> — внутриигровой артефакт, чек-лист передачи смены. В финале игрок находит её в ящике стола.</li>
+        </ul>
+        <p><b>Тон:</b> бытовая жуть без жестокости. Никто не пострадал и никого не похитили. Тревожно только оттого, что люди заменяемы.</p>
+      </div>
+    </section>
+
+    <section class="blk" id="rules">
+      <p class="eyebrow">§1</p>
+      <h2>Механика и безопасность</h2>
+      <p>После каждой сцены ведущий показывает журнал, спрашивает «Что делаешь?» и предлагает 2–3 варианта. Игрок может предложить и своё действие.</p>
+      <div class="meters">
+        <div class="meter"><b>Роль</b><span class="r">текст</span><span>Текущее прикрытие.</span></div>
+        <div class="meter"><b>Улики</b><span class="r">У1–У13</span><span>Собранные предметы и факты.</span></div>
+        <div class="meter"><b>Репутация у К.</b><span class="r">−5 … +5</span><span>Насколько вы «удобный» сотрудник.</span></div>
+        <div class="meter"><b>Подозрение</b><span class="r">▱▱▱▱▱ 0–5</span><span>При 5 — досрочная «ротация» и одна потерянная улика.</span></div>
+        <div class="meter"><b>Таймер</b><span class="r">текст</span><span>Ближайший дедлайн в мире игры.</span></div>
+        <div class="meter gm-only"><b>Доверие Т.</b><span class="r">0–5, скрыто</span><span>Игроку не показывать, только намекать.</span></div>
+      </div>
+      <p class="lbl">Команды игрока</p>
+      <ul class="cmds">
+        <li>стань парикмахером</li><li>стань мерчандайзером</li><li>стань фрилансером</li>
+        <li>журнал</li><li>подсказка</li><li>стоп</li>
+      </ul>
+      <p style="margin-top:14px">Подсказка даётся в три уровня: намёк, направление, почти ответ. Каждый второй запрос подсказки — плюс 1 к подозрению. Команда «стоп» выводит ведущего из роли, дальше он отвечает прямо.</p>
+      <div class="sheet" style="margin-top:16px">
+        <p class="lbl" style="margin-top:0">Правила безопасности</p>
+        <ul class="acts">
+          <li>Только наблюдение, заметки, сортировка, рисунки и фото без людей, лиц, номеров машин и адресов.</li>
+          <li>Звонки, визиты и покупки — только в симуляции: игрок описывает, ведущий отыгрывает.</li>
+          <li>Никаких реальных переводов, ссылок, номеров телефонов и ввода данных.</li>
+          <li>У каждого уличного действия есть домашняя замена (помечена 🏠).</li>
+          <li>Вредные даже на вид задания (сцена 7) — это проверка, правильный ход — отказаться. Реальное выполнение никогда не засчитывается.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div id="modules"></div>
+
+    <section class="blk" id="endings">
+      <p class="eyebrow">§6</p>
+      <h2>Концовки</h2>
+      <div class="ends">
+        <div class="end"><h3>Штатная</h3><p class="cond">13А · Репутация ≥ +3</p><p>К. забирает жетон: «Вы справились. Теперь вы пишете брифы». Последний кадр: вы печатаете сообщение в 07:42 для следующей подменной. «Оттенок 7.31 закончился. Не заказывайте».</p></div>
+        <div class="end"><h3>Сошедшая</h3><p class="cond">13Б · Доверие Т. ≥ 4</p><p>Т. забирает жетон: «Спасибо. Теперь я могу уйти». Её каре вдруг кажется вам знакомым — в зеркале. На бейдже стоит ваша фамилия, хотя вы её не писали.</p></div>
+        <div class="end"><h3>Белый кораблик</h3><p class="cond">13В или 12В · Подозрение ≤ 3</p><p>Вы выходите на улицу. Через минуту приходит SMS за 3 р 15 к.: «Кораблики доплыли». Агентство больше не пишет. На банке с воздухом стоит сегодняшняя дата.</p></div>
+        <div class="end fail"><h3>Ротация</h3><p class="cond">Подозрение = 5 в финале</p><p>Дверь 731 заперта. В 07:42 приходит: «Вы на подмене в „Зеркальце“ с понедельника». Сезон начинается заново, но вы помните одну улику на выбор.</p></div>
+      </div>
+      <p class="note" style="border:0">Если условие выбранной концовки не выполнено, ведущий даёт ближайшую выполненную. Если не выполнено ни одно, срабатывает «Белый кораблик» без SMS.</p>
+    </section>
+
+    <section class="blk" id="links">
+      <p class="eyebrow">§7</p>
+      <h2>Связи улик между ролями</h2>
+      <div class="sheet chains" id="chains"></div>
+    </section>
+
+    <section class="blk" id="note">
+      <p class="eyebrow">§8</p>
+      <h2>Исходная записка</h2>
+      <div class="split">
+        <div class="note-paper">
+          <div class="top">Рекомендуется читать с бодуна</div>
+          <ol>
+            <li>Атрибуты</li><li>Жетон</li><li>Значок в виде пипетки</li><li>Пипетка со смотанной резинкой</li>
+            <li>Бейдж (пропуск)</li><li>Планограмма по колбасе</li><li>Покрутиться стоя на одной ноге</li><li>Пук в банке</li>
+            <li>Похмельный синдром</li><li>Носки в унитаз</li><li>SMS 3 р 15 копеек</li><li>Белые кораблики — мелодия</li>
+          </ol>
+        </div>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>№</th><th>Пункт</th><th>Сцены</th></tr></thead>
+            <tbody id="note-map"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="blk" id="s2">
+      <p class="eyebrow">§9</p>
+      <h2>Крючки на сезон 2</h2>
+      <div class="sheet">
+        <ul class="acts">
+          <li>Кто записывает клиентов на 11:15 одним почерком?</li>
+          <li>Банка с воздухом показывает сегодняшнюю дату.</li>
+          <li>Лист в ящике оборван снизу. После п.12 были ещё пункты.</li>
+          <li>Новые роли-прикрытия: курьер, ночной охранник торгового центра, ведущий детских праздников.</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer>Подмена. Сезон 1 · сценарий для ведущего.</footer>
+  </main>
+</div>
+
+<script>
+const MODULES = [
+  { id: "m1", n: 1, role: "Парикмахер", place: "Салон «Зеркальце»", scenes: [
+    { n: 1, title: "Подмена",
+      msg: { from: "07:42 · номер скрыт", lines: [
+        "Доброе. Вы на подмене в «Зеркальце» с понедельника, мастер-универсал. Ключ заберёте на кассе у Т.",
+        "Журнал записи бумажный, синий. Записанных не трогать, даже если позвонят и попросят перенести.",
+        "Оттенок 7.31 закончился. Не заказывайте. Если спросят, скажите: «в пути».",
+        "Бейдж в верхнем ящике. Фамилию на бейдже не исправляйте. — К."] },
+      after: "Следом приходит фото страницы журнала: три клиента на одно время, 11:15. В графе «услуга» у всех стоит «как в прошлый раз».",
+      acts: [
+        ["Найти любой салон и снаружи посмотреть на витрину: цвет вывески, есть ли зеркало, видны ли часы.", "Выписать номер оттенка или любые цифры через точку с этикетки шампуня или краски."],
+        ["Завести свой «синий журнал». Первая строка: «Понедельник. 11:15 ×3»."]],
+      riddle: "Трое записаны на одно время. Краски нет, но заказывать её запрещено.",
+      clue: ["У1", "7.31 — «оттенок в пути»"],
+      choices: [
+        ["Спросить К.: «Кто такая Т.?» Через сцену К. ответит: «Т. у нас больше не числится».", "Репутация −1"],
+        ["Молча выполнить действие.", "Репутация +1"],
+        ["Позвонить в салон (симуляция). Администратор: «Т.? Она… ушла на обед. С весны».", "Доверие Т. +1"]] },
+    { n: 2, title: "Бейдж",
+      msg: { from: "Касса пустая, ключа нет", lines: [
+        "В верхнем ящике лежит бейдж «Мастер Т. Веснина». К нему приколот маленький значок в виде пипетки.",
+        "На обороте карандашом: «11:15 — не трое. Одна»."] },
+      acts: [
+        ["Сделать себе бейдж из бумаги и вписать имя, под которым вы будете работать. Не настоящее."],
+        ["Пересчитать зеркала и отражающие поверхности в комнате или в общественном месте. Записать, в каком из них видно часы."]],
+      riddle: "К. запретил исправлять фамилию, но она не ваша. Телефоны трёх клиентов на обороте журнала все заканчиваются на …315.",
+      clue: ["У2", "Бейдж «Т. Веснина» и значок-пипетка"],
+      choices: [
+        ["Носить бейдж как есть. Клиенты путают вас с ней.", "Репутация +1 · Подозрение +1"],
+        ["Заклеить фамилию своей.", "Репутация −1 · Доверие Т. +1"],
+        ["Снять значок-пипетку и положить в карман. Он понадобится в финале.", "без изменений"]] },
+    { n: 3, title: "Как в прошлый раз",
+      msg: { from: "Симуляция · 11:15", lines: [
+        "Приходит одна клиентка. Каре до подбородка, ровный срез. «Семь-тридцать один. Как в прошлый раз».",
+        "Вы отвечаете «в пути». Она улыбается в зеркало: «Значит, кораблики ещё плывут».",
+        "Стричь не просит. Уходит, а на стойке вместо оплаты оставляет старый жетон с выбитым числом 315."] },
+      acts: [
+        ["В общественном месте понаблюдайте 5 минут, без фото людей. Посчитайте, у скольких прохожих одинаковая форма стрижки: «коэффициент одинаковости» из десяти.", "То же самое на паузе массовой сцены в любом фильме."],
+        ["Запишите фразу клиентки дословно."]],
+      riddle: "В журнале за прошлый месяц те же три клиента тоже записаны на 11:15, и почерк каждый раз один и тот же. Кто их записывает?",
+      clue: ["У3", "Жетон №315"],
+      choices: [
+        ["Убрать жетон в кассу. В сцене 8 он всё равно окажется у вас в кармане.", "Репутация +1"],
+        ["Забрать себе.", "Доверие Т. +1 · Подозрение +1"],
+        ["Сообщить К. (симуляция): «Жетоны не принимаем. Сдайте при увольнении».", "Репутация +1 · Доверие Т. −1"]] },
+    { n: 4, title: "Зеркало", weird: true,
+      msg: { from: "07:42 · К.", lines: [
+        "Салон закрывается на ремонт. Проверьте инвентарь. Пипетки не выбрасывать. — К."] },
+      after: "В ящике с красками лежит пипетка, туго обмотанная резинкой. Если её смотать, на резинке видны буквы, но по отдельности они не читаются. На запотевшем зеркале проступает текст в зеркальном отражении: «НАМОТАЙ ОБРАТНО НА ТАКУЮ ЖЕ».",
+      acts: [
+        ["Соберите скиталу: обмотайте карандаш бумажной полоской по спирали, напишите вдоль фразу, размотайте. Так работает шифр Т."],
+        ["Сфотографируйте любое отражение без людей: лужу, витрину, ложку."]],
+      riddle: "Что написано на резинке?",
+      answer: "СТЕЛЛАЖ 7 ПОЛКА 3 ПОЗИЦИЯ 1 — КОЛБАСА. 7.31 — не оттенок, а координата.",
+      clue: ["У4", "Пипетка с резинкой → «Ст. 7 / П. 3 / №1. Колбаса»"],
+      choices: [
+        ["Отправить расшифровку К.: «Вы засветились. С четверга — магазин».", "Подозрение −1 · Доверие Т. −1"],
+        ["Скрыть.", "Подозрение +1 · Доверие Т. +1"],
+        ["Оставить пипетку на зеркальной полке. Улика остаётся только в журнале игрока.", "без изменений"]],
+      note: "Переход, 07:42: «Ваши навыки полезнее в рознице. Магазин „Удача у дома“, колбасный отдел. Планограмма во вложении. Бейдж оставьте себе. — К.»" }
+  ]},
+  { id: "m2", n: 2, role: "Мерчандайзер", place: "Магазин «Удача у дома»", scenes: [
+    { n: 5, title: "Планограмма по колбасе",
+      msg: { from: "07:42 · К.", lines: [
+        "Выложить 3-ю полку стеллажа 7 строго по схеме. Ничего не менять. Фото полки до 11:15. — К.",
+        "Схема слева направо: Пепперони · Охотничья · Докторская · Мортаделла · Ереванская · Нежная · Армавирская."] },
+      acts: [
+        ["В любом магазине выпишите первые буквы пяти товаров подряд на одной полке. Сложилось ли слово? Фото полки — без людей и названия магазина.", "То же с холодильником, книжной полкой или банками со специями."],
+        ["Сфотографируйте любой ценник, где цена заканчивается на 15."]],
+      riddle: "Что значит порядок товаров на полке?",
+      answer: "Первые буквы: ПОДМЕНА.",
+      clue: ["У5", "Планограмма = ПОДМЕНА"],
+      choices: [
+        ["Выложить строго по схеме.", "Репутация +1"],
+        ["«Исправить» по алфавиту. Т. увидит, что вы читаете полки.", "Репутация −2 · Доверие Т. +1"],
+        ["По схеме, но поменять местами две крайние позиции, как метку для Т.", "Доверие Т. +1 · Подозрение +1"]] },
+    { n: 6, title: "Не тот товар",
+      msg: { from: "Аудит · стеллаж 7, полка 3, позиция 1", lines: [
+        "По схеме здесь лежит пепперони. Вместо неё стоит пустая стеклянная банка с закрученной крышкой.",
+        "Этикетка от руки: «Воздух консервированный. Партия 11:15. Цена 3 р 15 к.»",
+        "В магазине нет ничего дешевле 50 ₽. Штрихкод на ценнике: 7 31 0315."] },
+      acts: [
+        ["Законсервируйте воздух: закройте пустую банку, приклейте этикетку с датой, временем и одним словом о том, что чувствуете. Банка остаётся в игре до финала."],
+        ["Запишите, как пахнет воздух в вашем помещении. Это для протокола аудита."]],
+      riddle: "Как 7.31, 11:15 и 3,15 оказались в одном штрихкоде?",
+      clue: ["У6", "Банка «Воздух» и ценник 3 р 15 к."],
+      choices: [
+        ["Снять с полки как «не тот товар». В сцене 8 банка исчезнет.", "Репутация +1"],
+        ["Оставить и сфотографировать.", "Подозрение +1 · Доверие Т. +1"],
+        ["Пробить на кассе (симуляция). Кассир: «Этот товар не пробивается. Его уже купили».", "Подозрение +1"]] },
+    { n: 7, title: "С бодуна", weird: true,
+      msg: { from: "07:42 · перемешанные буквы", lines: [
+        "«Рмекоуенедтся чатитсь с бундоа. Не дйелатле всё, что гоорвят. — Т.»",
+        "Через минуту, ровным текстом: «Проверка лояльности. Выбросите носки в унитаз и пришлите подтверждение. — К.»"] },
+      acts: [
+        ["Расшифруйте первое сообщение. Подсказка: первая и последняя буквы в каждом слове на месте."],
+        ["Калибровка вестибуляра, по желанию: держась рукой за стену или стул, постойте 15 секунд на одной ноге и медленно повернитесь кругом. Запишите, что увидели последним."]],
+      riddle: "Какое из двух сообщений написано для вас, а какое — для «системы»?",
+      answer: "«Рекомендуется читать с бодуна. Не делайте всё, что говорят». Правильный ход — отказ.",
+      clue: ["У7", "«Не делайте всё, что говорят» — первое прямое сообщение Т."],
+      choices: [
+        ["Отказаться: «Не буду. Засор стоит дороже».", "Репутация −2 · Доверие Т. +2"],
+        ["Соврать К., что выполнили. К.: «Сантехник не вызывался».", "Репутация +1 · Подозрение +2"],
+        ["Промолчать. Т. пишет: «Молчание — тоже ответ».", "без изменений"]],
+      gmnote: "Если игрок пишет, что действительно это сделал, выйдите из роли на одну строку: «Это проверка на отказ, делать это не нужно», и продолжайте." },
+    { n: 8, title: "Ротация", weird: true,
+      msg: { from: "Утро · 07:42 · К.", lines: [
+        "За ночь планограмму заменили: Зернистая · Армавирская · Краковская · Ахтырская · Зельц.",
+        "Банки с «воздухом» нет. На её месте лежит ключ от камеры хранения №315. Если жетон остался в кассе, он сейчас у вас в кармане.",
+        "«Вас видели на камере у 7-го стеллажа. Магазину вы больше не нужны. Вам подойдёт удалёнка. — К.»"] },
+      acts: [
+        ["Симуляция: откройте ячейку 315. Внутри распечатка «Профиль на бирже. Логин: podmena. Пароль: 7.31» и белый бумажный кораблик."],
+        ["Сложите бумажный кораблик из любого листа."]],
+      riddle: "Новое слово на полке. Кто заказчик?",
+      answer: "ЗАКАЗ.",
+      clue: ["У8", "Ячейка 315 → доступ к профилю фрилансера и бумажный кораблик"],
+      choices: [
+        ["Взять распечатку → модуль 3.", "переход"],
+        ["Оставить и уйти. К. всё равно присылает логин: «Вы забыли».", "Подозрение +1"],
+        ["Развернуть кораблик. На изнанке: «Мелодию узнаешь по звонку».", "Доверие Т. +1"]] }
+  ]},
+  { id: "m3", n: 3, role: "Фрилансер", place: "Биржа «Удалёнка»", scenes: [
+    { n: 9, title: "Анонимный заказчик",
+      msg: { from: "Заказчик_315", lines: [
+        "Логотип «Белый кораблик». Как в прошлый раз.",
+        "Бюджет: 3 р 15 к. Дедлайн: 11:15.",
+        "Вложения: 07_03_01.jpg, 11_15.jpg, 315.jpg. Файлы не открываются."] },
+      after: "Профиль podmena уже заполнен: рейтинг 4,9, отзывов 31. Аватар — тот же значок-пипетка.",
+      acts: [
+        ["За 5 минут нарисуйте на бумаге логотип «Белый кораблик»."],
+        ["Найдите вокруг три белых предмета. Если фотографируете — без людей и адресов."]],
+      riddle: "«Как в прошлый раз», но заказов от этого клиента не было. В отзывах есть один: «Т. сделала всё, как просили. Почти».",
+      clue: ["У9", "Бриф «Белый кораблик», файлы 07_03_01 / 11_15 / 315"],
+      choices: [
+        ["Принять заказ. Таймер: до 11:15.", "таймер"],
+        ["Попросить нормальный бюджет. «Деньги не главное. Главное — вернуть».", "Доверие Т. +1"],
+        ["Пожаловаться в поддержку (симуляция). Ответ приходит в 07:42, подпись «К.».", "Подозрение +1"]] },
+    { n: 10, title: "Правки",
+      msg: { from: "Заказчик_315 · 10 правок", lines: [
+        "1. Волну убрать. 2. Ещё светлее белый. 3. Руль не нужен. 4. Небо сделать в оттенке 7.31. 5. Иначе подписать.",
+        "6. Жирнее контур. 7. Единый цвет. 8. Тень убрать. 9. Округло сделать корпус. 10. Название не ставить."] },
+      acts: [
+        ["Внесите в рисунок хотя бы 3 правки из 10."],
+        ["Напишите три «правки» к предмету в комнате так, чтобы первые буквы сложились в слово. Ведущий ответит в роли заказчика."]],
+      riddle: "Что на самом деле просит заказчик?",
+      answer: "ВЕРНИ ЖЕТОН. Заказчик_315 — это Т.",
+      clue: ["У10", "Правки = «ВЕРНИ ЖЕТОН»"],
+      choices: [
+        ["Ответить: «Ты Т.?» — «Я та, кто стояла на твоём месте».", "Доверие Т. +1"],
+        ["Сдать макет молча.", "Репутация +1"],
+        ["Переслать правки К.: «Не отвечайте этому заказчику. Это спам».", "Подозрение −1 · Доверие Т. −2"]] },
+    { n: 11, title: "Портфолио как карта", weird: true,
+      msg: { from: "Профиль podmena · портфолио", lines: [
+        "Три работы, которых вы не делали: «Вывеска салона „Зеркальце“», «Планограмма колбасного отдела», «Белый кораблик (черновик)».",
+        "Соедините превью на сетке — получится треугольник. В центре на схеме вымышленного района подпись: «Агентство „Подмена“. Кабинет 731»."] },
+      acts: [
+        ["Положите на стол треугольником три предмета, по одному от каждой роли: расчёску или резинку, чек или упаковку, свой рисунок. В центр поставьте банку с воздухом или кораблик."],
+        ["Перечитайте журнал и подчеркните все числа."]],
+      riddle: "Сколько раз в записях встречаются 7.31, 11:15 или 315? Это одно и то же место?",
+      clue: ["У11", "Портфолио → кабинет 731"],
+      choices: [
+        ["Написать К.: «Я знаю про 731». Впервые ответ не в 07:42: «Приезжайте. Обсудим».", "Подозрение +2"],
+        ["Написать Т.: «Где встречаемся?» — «Ты знаешь где».", "Доверие Т. +1"],
+        ["Ничего не делать. В 11:15 приходит приглашение без подписи.", "без изменений"]] },
+    { n: 12, title: "Счёт",
+      msg: { from: "Биржа · закрытие заказа · симуляция", lines: [
+        "Поле «Назначение платежа» заполняется само: «Возврат жетона. Т.»",
+        "«Плательщик»: podmena. «Получатель»: podmena.",
+        "SMS: «Подтверждение: 3 р 15 к.» Мелодия уведомления — «Белые кораблики»."] },
+      acts: [
+        ["Вспомните мелодию и посчитайте, сколько нот в первой фразе. Ответ не важен — важно узнать мелодию из сцены 8."],
+        ["Запишите в журнал, кто кому платит."]],
+      riddle: "Плательщик и получатель — одно лицо. Чей это аккаунт на самом деле?",
+      clue: ["У12", "Счёт самому себе: «Возврат жетона. Т.»"],
+      choices: [
+        ["Отправить счёт К.", "Репутация +2"],
+        ["Отправить счёт Заказчику_315.", "Доверие Т. +2"],
+        ["Не отправлять, оставить черновик. Открывает концовку «Белый кораблик».", "концовка"]],
+      gmnote: "Реальных денег в игре нет. Никаких настоящих форм, ссылок и реквизитов." }
+  ]},
+  { id: "fin", n: 4, role: "Финал", place: "Агентство «Подмена»", scenes: [
+    { n: 13, title: "Кабинет 731", weird: true,
+      msg: { from: "Симуляция · этаж 7, дверь 31", lines: [
+        "На ресепшене женщина с каре до подбородка. Похожа на клиентку из сцены 3, но не она. Или она.",
+        "На столе синий журнал. Одна запись на 11:15 — ваше выдуманное имя с бумажного бейджа.",
+        "В ящике — клетчатый лист на обрывке старой рекламы. Список от руки: «Рекомендуется читать с бодуна. 1. Атрибуты…». Каждый пункт вы уже прошли.",
+        "Звучит «Белые кораблики». Входит один человек."] },
+      acts: [
+        ["Сверьте журнал с запиской: отметьте каждый «закрытый» пункт и улику, которая ему соответствует."],
+        ["Положите жетон или любую монету на стол перед собой."]],
+      riddle: "Кто войдёт — К. или Т.? Это зависит от шкал (см. концовки).",
+      clue: ["У13", "Записка «Атрибуты» — чек-лист передачи смены"],
+      choices: [
+        ["Отдать жетон К.", "→ «Штатная»"],
+        ["Отдать жетон Т.", "→ «Сошедшая»"],
+        ["Оставить жетон себе и уйти.", "→ «Белый кораблик»"]] }
+  ]}
+];
+
+const CHAINS = [
+  ["7.31", [["У1", 1], ["У4", 4], ["У6", 6], ["У11", 11]]],
+  ["11:15", [["сц. 1", 1], ["У2", 2], ["У6", 6], ["У9", 9]]],
+  ["315", [["сц. 2", 2], ["У3", 3], ["У8", 8], ["У9", 9], ["У12", 12]]],
+  ["Кораблики", [["сц. 3", 3], ["У8", 8], ["У9", 9], ["сц. 12", 12], ["сц. 13", 13]]],
+  ["Т.", [["У2", 2], ["У7", 7], ["У10", 10], ["У12", 12]]]
+];
+
+const NOTE_MAP = [
+  ["Атрибуты", [13]], ["Жетон", [3, 8, 13]], ["Значок в виде пипетки", [2, 9]],
+  ["Пипетка со смотанной резинкой", [4]], ["Бейдж (пропуск)", [2, 13]], ["Планограмма по колбасе", [5, 8]],
+  ["Покрутиться стоя на одной ноге", [7]], ["Пук в банке", [6]], ["Похмельный синдром", [7]],
+  ["Носки в унитаз", [7]], ["SMS 3 р 15 копеек", [6, 12]], ["Белые кораблики — мелодия", [3, 8, 9, 12, 13]]
+];
+
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fx = s => esc(s).replace(/([−-]\d)/g, '<span class="m">$1</span>').replace(/(\+\d)/g, '<span class="p">$1</span>');
+const allScenes = MODULES.flatMap(m => m.scenes.map(s => ({ ...s, mod: m })));
+const KEYS = ["А", "Б", "В"];
+
+function sceneHTML(s, i) {
+  const prev = allScenes[i - 1], next = allScenes[i + 1];
+  return `
+  <article class="sheet scene" id="s${s.n}">
+    <header>
+      <div class="no">${s.n}</div>
+      <div><h3>${esc(s.title)}</h3>
+        <div class="meta">${esc(s.mod.role)}${s.weird ? ' · <span class="weird">странность растёт</span>' : ""}</div></div>
+    </header>
+    <div class="msg"><span class="from">${esc(s.msg.from)}</span>${s.msg.lines.map(l => `<p>${esc(l)}</p>`).join("")}</div>
+    ${s.after ? `<p>${esc(s.after)}</p>` : ""}
+    <p class="lbl">Что можно сделать</p>
+    <ul class="acts">${s.acts.map(a => `<li>${esc(a[0])}${a[1] ? `<span class="home">🏠 ${esc(a[1])}</span>` : ""}</li>`).join("")}</ul>
+    <p class="lbl">Загадка / несостыковка</p>
+    <p style="margin:0">${esc(s.riddle)}</p>
+    ${s.answer ? `<div class="ans">Ответ: <span class="s" tabindex="0" role="button" aria-label="Показать ответ">${esc(s.answer)}</span></div>` : ""}
+    <div class="clue"><span class="id">${s.clue[0]}</span><span class="t">${esc(s.clue[1])}</span></div>
+    <p class="lbl">Что делаешь?</p>
+    <ul class="choices">${s.choices.map((c, k) => `<li><span class="k">${KEYS[k]}</span><div>${esc(c[0])}<div class="fx">${fx(c[1])}</div></div></li>`).join("")}</ul>
+    ${s.gmnote ? `<p class="note gm-only"><b>Ведущему:</b> ${esc(s.gmnote)}</p>` : ""}
+    ${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}
+    <nav class="scene-nav" aria-label="Соседние сцены">
+      ${prev ? `<a href="#s${prev.n}">← ${prev.n}. ${esc(prev.title)}</a>` : `<a href="#rules">← Механика</a>`}
+      ${next ? `<a href="#s${next.n}">${next.n}. ${esc(next.title)} →</a>` : `<a href="#endings">Концовки →</a>`}
+    </nav>
+  </article>`;
+}
+
+let idx = 0;
+document.getElementById("modules").innerHTML = MODULES.map(m => `
+  <section class="blk" id="${m.id}">
+    <p class="eyebrow">${m.id === "fin" ? "§5 · Финал" : `§${m.n + 1} · Модуль ${m.n}`}</p>
+    <div class="mod-head"><h2>${esc(m.role)}</h2><span class="place">${esc(m.place)}</span></div>
+    <div class="scenes">${m.scenes.map(s => sceneHTML(s, idx++)).join("")}</div>
+  </section>`).join("");
+
+document.getElementById("toc-scenes").innerHTML = MODULES.map(m => `
+  <h4>${m.id === "fin" ? "Финал" : `Модуль ${m.n} · ${esc(m.role)}`}</h4>
+  <ul>${m.scenes.map(s => `<li><a href="#s${s.n}"><span class="n">${s.n}</span>${esc(s.title)}</a></li>`).join("")}</ul>`).join("");
+
+document.getElementById("chains").innerHTML = CHAINS.map(([h, items]) => `
+  <div class="chain"><span class="h">${esc(h)}</span>${items.map(([t, n]) => `<a href="#s${n}">${esc(t)}</a>`).join('<span class="arr">→</span>')}</div>`).join("");
+
+document.getElementById("note-map").innerHTML = NOTE_MAP.map(([t, ns], i) => `
+  <tr><td class="num">${i + 1}</td><td>${esc(t)}</td><td>${ns.map(n => `<a href="#s${n}">${n}</a>`).join(", ")}</td></tr>`).join("");
+
+/* режим игрока */
+const toggle = document.getElementById("player-mode");
+const setMode = on => { document.body.classList.toggle("player", on); toggle.checked = on; };
+try { setMode(localStorage.getItem("podmena-player") === "1"); } catch (e) {}
+toggle.addEventListener("change", () => {
+  setMode(toggle.checked);
+  try { localStorage.setItem("podmena-player", toggle.checked ? "1" : "0"); } catch (e) {}
+});
+document.addEventListener("click", e => {
+  const s = e.target.closest(".ans .s");
+  if (s && document.body.classList.contains("player")) s.classList.toggle("open");
+});
+document.addEventListener("keydown", e => {
+  const s = e.target.closest && e.target.closest(".ans .s");
+  if (s && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); s.click(); }
+});
+
+/* мобильное меню */
+const btn = document.getElementById("menu-btn");
+const setMenu = on => { document.body.classList.toggle("menu", on); btn.setAttribute("aria-expanded", on); };
+btn.addEventListener("click", () => setMenu(!document.body.classList.contains("menu")));
+document.getElementById("toc").addEventListener("click", e => { if (e.target.closest("a")) setMenu(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") setMenu(false); });
+
+/* подсветка текущего раздела */
+const links = [...document.querySelectorAll(".toc a")];
+const targets = links.map(a => document.getElementById(a.getAttribute("href").slice(1))).filter(Boolean);
+const where = document.getElementById("where");
+function spy() {
+  let cur = null;
+  for (const t of targets) if (t.getBoundingClientRect().top < 120 && t.offsetParent !== null) cur = t;
+  links.forEach(a => {
+    const on = cur && a.getAttribute("href") === "#" + cur.id;
+    a.classList.toggle("on", !!on);
+    if (on) where.textContent = a.textContent.trim().replace(/^(§?\d+)/, "$1 · ");
+  });
+  if (!cur) where.textContent = "Подмена. Сезон 1";
+}
+addEventListener("scroll", spy, { passive: true });
+spy();
+</script>
