@@ -287,6 +287,7 @@ footer { margin-top: 56px; color: var(--ink-soft); font-size: 13px; }
       <input type="checkbox" id="player-mode">
       <span>Скрыть ответы и заметки ведущего (режим игрока)</span>
     </label>
+    <p class="sub" style="margin-top:16px"><a href="https://claude.ai/artifact/TXp8AG1thjusAZRbR4Ahh3">Сезон 2 «Смена» →</a></p>
   </nav>
 
   <main>
@@ -402,8 +403,9 @@ footer { margin-top: 56px; color: var(--ink-soft); font-size: 13px; }
           <li>Кто записывает клиентов на 11:15 одним почерком?</li>
           <li>Банка с воздухом показывает сегодняшнюю дату.</li>
           <li>Лист в ящике оборван снизу. После п.12 были ещё пункты.</li>
-          <li>Новые роли-прикрытия: курьер, ночной охранник торгового центра, ведущий детских праздников.</li>
+          <li>Новые роли-прикрытия: курьер, ночной охранник торгового центра, ведущий праздника.</li>
         </ul>
+        <p class="note"><a href="https://claude.ai/artifact/TXp8AG1thjusAZRbR4Ahh3">Читать сезон 2 «Смена» →</a></p>
       </div>
     </section>
 
@@ -702,7 +704,7 @@ document.getElementById("toc").addEventListener("click", e => { if (e.target.clo
 document.addEventListener("keydown", e => { if (e.key === "Escape") setMenu(false); });
 
 /* подсветка текущего раздела */
-const links = [...document.querySelectorAll(".toc a")];
+const links = [...document.querySelectorAll(".toc a")].filter(a => a.getAttribute("href").startsWith("#"));
 const targets = links.map(a => document.getElementById(a.getAttribute("href").slice(1))).filter(Boolean);
 const where = document.getElementById("where");
 function spy() {
