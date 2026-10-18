@@ -670,57 +670,110 @@ const PAINTS = [
 ];
 function makeVaz2108() {
   const g = new T.Group();
-  const paint = mat(PAINTS[0].c, { roughness: .38, metalness: .25 });
+  const paint = mat(PAINTS[0].c, { roughness: .38, metalness: .25, side: T.DoubleSide, flatShading: true });
   const black = mat(0x15171d, { roughness: .7 });
-  const glassM = mat(0x1a2230, { roughness: .08, metalness: .7 });
-  const box = (w, h, d, m, x, y, z, rz = 0) => { const b = new T.Mesh(new T.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.rotation.z = rz; g.add(b); return b; };
-  const extrude = (shape, depth, m, bevel = 0) => {
-    const geo = new T.ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2 });
-    geo.translate(0, 0, -depth / 2); const mesh = new T.Mesh(geo, m); g.add(mesh); return mesh;
+  const glassM = mat(0x1a2230, { roughness: .08, metalness: .7, side: T.DoubleSide, flatShading: true });
+  const lerpTab = (tab, x) => {
+    if (x <= tab[0][0]) return tab[0][1];
+    for (let i = 1; i < tab.length; i++) if (x <= tab[i][0]) { const [x0, y0] = tab[i - 1], [x1, y1] = tab[i]; return y0 + (y1 - y0) * (x - x0) / (x1 - x0); }
+    return tab[tab.length - 1][1];
   };
-  // кузов: профиль сбоку с арками колёс
-  const WB = 1.23, AR = .38, a0 = Math.asin(.06 / AR);
-  const s = new T.Shape();
-  s.moveTo(-2.0, -.42); s.lineTo(-WB - AR, -.42);
-  s.absarc(-WB, -.36, AR, Math.PI + a0, -a0, true);
-  s.lineTo(WB - AR, -.42);
-  s.absarc(WB, -.36, AR, Math.PI + a0, -a0, true);
-  s.lineTo(2.0, -.42); s.lineTo(2.02, -.05); s.lineTo(1.95, .03);
-  s.lineTo(.78, .17); s.lineTo(-1.55, .24); s.lineTo(-1.98, .14); s.lineTo(-2.02, -.05); s.closePath();
-  extrude(s, 1.52, paint, .06);
-  // остеклённая «теплица» уже кузова
-  const gh = new T.Shape();
-  gh.moveTo(.80, .15); gh.lineTo(-.02, .71); gh.lineTo(-1.02, .745); gh.lineTo(-1.93, .17); gh.closePath();
-  extrude(gh, 1.36, glassM);
-  // крыша, стойки
-  box(1.02, .035, 1.3, paint, -.52, .755, 0, -.03);
-  const aLen = Math.hypot(.82, .56), aAng = Math.atan2(.56, -.82);
+  // поперечные сечения кузова: каркас снят с фото «восьмёрки»
+  const WB = 1.23, AR = .38;
+  const yTop = x => lerpTab([[-2.02, .10], [-1.97, .16], [-1.9, .2], [-1.6, .245], [.8, .17], [1.86, .045], [2.03, .02]], x);
+  const halfW = x => lerpTab([[-2.02, .74], [-1.9, .8], [-1.5, .82], [1.6, .82], [1.86, .8], [2.03, .68]], x);
+  const yBot = x => {
+    let y = -.39;
+    for (const c of [WB, -WB]) { const d = Math.abs(x - c); if (d < AR) y = Math.max(y, -.36 + Math.sqrt(AR * AR - d * d)); }
+    return y;
+  };
+  const yRoof = x => lerpTab([[-1.93, .18], [-1.0, .75], [-.05, .74], [.8, .17]], x);
+  const glassB = x => halfW(x) - .08, glassT = .6;
+  // лофт по сечениям: каждое сечение — половина контура от низа по центру до верха по центру
+  function loft(xs, section, m) {
+    const rings = xs.map(x => {
+      const half = section(x), ring = half.map(([z, y]) => [x, y, z]);
+      for (let i = half.length - 2; i >= 1; i--) ring.push([x, half[i][1], -half[i][0]]);
+      return ring;
+    });
+    const pos = [], tri = (a, b, c) => pos.push(...a, ...b, ...c);
+    for (let k = 0; k < rings.length - 1; k++) {
+      const A = rings[k], B = rings[k + 1], n = A.length;
+      for (let i = 0; i < n; i++) { const j = (i + 1) % n; tri(A[i], B[i], B[j]); tri(A[i], B[j], A[j]); }
+    }
+    [rings[0], rings[rings.length - 1]].forEach(R => {
+      const c = R.reduce((a, p) => [a[0] + p[0] / R.length, a[1] + p[1] / R.length, a[2] + p[2] / R.length], [0, 0, 0]);
+      for (let i = 0; i < R.length; i++) tri(c, R[i], R[(i + 1) % R.length]);
+    });
+    const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); geo.computeVertexNormals();
+    const mesh = new T.Mesh(geo, m); g.add(mesh); return mesh;
+  }
+  const span = (a, b, n) => Array.from({ length: n + 1 }, (_, i) => a + (b - a) * i / n);
+  // нижняя часть кузова: пороги, плечевая линия, капот, задняя панель
+  loft(span(-2.02, 2.03, 90), x => {
+    const yb = yBot(x), yt = yTop(x), w = halfW(x);
+    const ySh = Math.min(Math.max(yt - .07, yb + .08), yt - .015);
+    return [[0, yb], [w - .05, yb], [w, yb + .05], [w + .006, ySh], [w - .05, yt], [0, yt]];
+  }, paint);
+  // стекло: заваленные внутрь борта, наклонное лобовое и длинное стекло двери багажника
+  loft(span(-1.93, .8, 40), x => {
+    const yb = yTop(x) - .03, yr = Math.max(yRoof(x), yb + .005);
+    return [[0, yb], [glassB(x), yb], [glassT, yr], [0, yr]];
+  }, glassM);
+  // крыша с водостоками
+  loft(span(-1.0, -.07, 8), x => { const yr = yRoof(x); return [[0, yr - .02], [glassT + .02, yr - .05], [glassT + .02, yr + .015], [0, yr + .015]]; }, paint);
+  const beam = (a, b, t, m) => {
+    const A = new T.Vector3(...a), B = new T.Vector3(...b), d = B.clone().sub(A);
+    const bm = new T.Mesh(new T.BoxGeometry(t, d.length(), t), m);
+    bm.position.copy(A).addScaledVector(d, .5); bm.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()); g.add(bm);
+  };
+  const sideZ = (x, y) => { const yb = yTop(x) - .03, yr = yRoof(x); return glassB(x) + (glassT - glassB(x)) * Math.max(0, Math.min(1, (y - yb) / Math.max(.01, yr - yb))); };
+  const box = (w, h, d, m, x, y, z, ry = 0) => { const b = new T.Mesh(new T.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.rotation.y = ry; g.add(b); return b; };
   [-1, 1].forEach(sd => {
-    box(aLen, .06, .06, paint, .39, .43, sd * .66, aAng);
-    box(.07, .52, .03, black, -.6, .47, sd * .685, .08);                     // стойка B
-    const c = new T.Shape(); c.moveTo(-1.36, .21); c.lineTo(-1.04, .74); c.lineTo(-1.9, .18); c.closePath();
-    const cp = new T.Mesh(new T.ShapeGeometry(c), paint); cp.position.z = sd * .685;   // стойка C
-    if (sd < 0) { cp.rotation.y = Math.PI; cp.scale.x = -1; }                 // зеркалим, чтобы лицевая сторона смотрела наружу
-    g.add(cp);
-    box(2.5, .07, .02, black, -.05, -.33, sd * .825);                        // молдинг порога
-    box(.11, .03, .015, black, -.32, .1, sd * .828);                         // ручка двери
-    box(.1, .09, .13, black, .7, .24, sd * .87);                             // зеркало
+    beam([.8, yTop(.8), sd * (glassB(.8) + .01)], [-.06, .745, sd * (glassT + .015)], .07, paint);            // стойка A
+    beam([-.56, yTop(-.56) - .02, sd * (glassB(-.56) + .008)], [-.64, .745, sd * (glassT + .012)], .07, black); // стойка B
+    beam([.78, yTop(.78) - .015, sd * (glassB(.78) + .01)], [-1.32, yTop(-1.32) - .015, sd * (glassB(-1.32) + .01)], .035, black); // уплотнитель окон
+    // стойка C: широкая, в цвет кузова, между задней форточкой и стеклом двери багажника
+    // треугольник разбит сеткой, каждая точка посажена на изогнутый борт стекла
+    const C = [[-1.32, yTop(-1.32) - .03], [-1.0, .745], [-1.92, yRoof(-1.92) + .01]], N = 10, pt = (i, j) => {
+      const a = i / N, b = j / N, c = 1 - a - b;
+      const x = C[0][0] * c + C[1][0] * a + C[2][0] * b, y = C[0][1] * c + C[1][1] * a + C[2][1] * b;
+      return [x, y, sd * (sideZ(x, y) + .02)];
+    };
+    const P = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < N - i; j++) {
+      P.push(...pt(i, j), ...pt(i + 1, j), ...pt(i, j + 1));
+      if (j < N - i - 1) P.push(...pt(i + 1, j), ...pt(i + 1, j + 1), ...pt(i, j + 1));
+    }
+    const cg = new T.BufferGeometry(); cg.setAttribute("position", new T.Float32BufferAttribute(P, 3)); cg.computeVertexNormals();
+    g.add(new T.Mesh(cg, paint));
+    // двери, молдинг, ручка, зеркало
+    [.7, -.58].forEach(x => box(.008, yTop(x) - .02 - (-.33), .004, black, x, (yTop(x) - .02 - .33) / 2, sd * (halfW(x) + .008)));
+    box(3.05, .05, .012, black, -.08, -.2, sd * .834);
+    box(.12, .03, .015, black, -.42, .12, sd * .834);
+    box(.13, .09, .15, black, .68, .28, sd * .87);
+    box(.04, .03, .08, black, .7, .24, sd * .8);
   });
-  // перед
-  box(.18, .21, 1.68, black, 2.05, -.33, 0);                                 // бампер
-  box(.02, .11, .5, mat(0xf2f2f2), 2.15, -.33, 0);                           // номер
+  // перед: фары, поворотники на скосах, решётка, бампер с заходом на крылья
   const headM = new T.MeshStandardMaterial({ color: 0xfff6dc, emissive: 0xfff1c8, emissiveIntensity: .9, roughness: .2 });
   const amberM = new T.MeshStandardMaterial({ color: 0xff9a2a, emissive: 0xff8a1a, emissiveIntensity: .5 });
-  [-1, 1].forEach(sd => { box(.04, .17, .4, headM, 2.09, -.08, sd * .47); box(.04, .17, .1, amberM, 2.085, -.08, sd * .74); });
-  box(.03, .17, .52, black, 2.09, -.08, 0);                                   // решётка
-  [-.04, -.11].forEach(y => box(.035, .024, .52, paint, 2.1, y, 0));
-  box(.02, .05, .05, mat(0x8fb0ff, { metalness: .8, roughness: .2 }), 2.115, -.075, 0); // значок
-  // зад
   const redM = new T.MeshStandardMaterial({ color: 0xb01020, emissive: 0xff2030, emissiveIntensity: .45 });
-  [-1, 1].forEach(sd => { box(.04, .16, .5, redM, -2.1, -.02, sd * .52); box(.042, .16, .14, amberM, -2.1, -.02, sd * .2); });
-  box(.18, .21, 1.68, black, -2.05, -.33, 0);
-  box(.02, .11, .5, mat(0xf2f2f2), -2.15, -.33, 0);
-  box(.02, .05, 1.2, black, -1.95, .165, 0, .2);                              // кромка двери багажника
+  [-1, 1].forEach(sd => {
+    box(.04, .15, .4, headM, 2.04, -.06, sd * .42);
+    box(.03, .15, .18, amberM, 1.95, -.06, sd * .745, -sd * .96);
+    box(.44, .19, .07, black, 1.84, -.29, sd * .83);                         // бампер на крыле
+    box(.44, .19, .07, black, -1.84, -.29, sd * .83);
+    box(.042, .16, .5, redM, -2.04, -.04, sd * .47);                         // фонари
+    box(.044, .16, .1, amberM, -2.04, -.04, sd * .26);
+    box(.02, .015, .46, black, .76, yTop(.76) + .02, sd * .1 - .22, .18);      // дворники
+  });
+  box(.03, .15, .38, black, 2.045, -.06, 0);
+  [-.02, -.1].forEach(y => box(.035, .022, .38, paint, 2.05, y, 0));
+  box(.02, .05, .05, mat(0x8fb0ff, { metalness: .8, roughness: .2 }), 2.07, -.06, 0);
+  box(.14, .19, 1.62, black, 2.06, -.29, 0);
+  box(.02, .11, .52, mat(0xf2f2f2), 2.14, -.29, 0);
+  box(.14, .19, 1.62, black, -2.06, -.29, 0);
+  box(.02, .11, .4, mat(0xf2f2f2), -2.045, -.04, 0);
   // колёса: штампованные диски
   const tireM = mat(0x0b0e17), rimM = mat(0xc9ccd2, { metalness: .6, roughness: .35 }), hubM = mat(0x2a2d36);
   [[WB, .7], [WB, -.7], [-WB, .7], [-WB, -.7]].forEach(([x, z]) => {
@@ -730,8 +783,8 @@ function makeVaz2108() {
   });
   // сопла снизу — это всё-таки испытательная «восьмёрка»
   const glowM = new T.MeshBasicMaterial({ color: 0x9fe3ff });
-  [[1.55, .45], [1.55, -.45], [-1.55, .45], [-1.55, -.45]].forEach(([x, z]) => { const n = new T.Mesh(new T.CylinderGeometry(.11, .11, .05, 10), glowM); n.position.set(x, -.44, z); g.add(n); });
-  box(3.4, .05, 1.4, mat(0x22252e), 0, -.43, 0);
+  [[1.55, .45], [1.55, -.45], [-1.55, .45], [-1.55, -.45]].forEach(([x, z]) => { const n = new T.Mesh(new T.CylinderGeometry(.11, .11, .05, 10), glowM); n.position.set(x, -.43, z); g.add(n); });
+  box(3.4, .05, 1.4, mat(0x22252e), 0, -.41, 0);
   g.userData.paint = paint;
   return g;
 }
