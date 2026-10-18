@@ -1,0 +1,891 @@
+<title>Восьмёрка Баклан</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=JetBrains+Mono:wght@400;700&family=Golos+Text:wght@400;600&display=swap">
+<style>
+/* Layout: пульт дистанционного пилота на полигоне в сумерках. Один экран игры, под ним короткая памятка. Единый тёмный вид. */
+:root {
+  --night: #0d1220;
+  --panel: #151c2e;
+  --line: #2a3550;
+  --text: #e8ecf5;
+  --dim: #8d98b3;
+  --amber: #ffb347;
+  --gas: #9fe3ff;
+  --ok: #6fdc8c;
+  --bad: #ff6b5e;
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Golos Text", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--night); color: var(--text); font: 15px/1.55 var(--f-body); }
+.page {
+  max-width: 1100px; margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+h1 { font: 800 clamp(24px, 4.4vw, 38px)/1.05 var(--f-display); margin: 0; letter-spacing: -.01em; }
+h1 span { color: var(--amber); }
+.callsign { font: 12px var(--f-mono); color: var(--dim); letter-spacing: .06em; text-transform: uppercase; }
+
+.stage { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; width: 100%; height: clamp(360px, 66vh, 620px); }
+
+.ov {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; z-index: 5;
+  background: rgba(10, 14, 26, .72); backdrop-filter: blur(2px);
+}
+.card {
+  width: min(540px, 100%); max-height: 100%; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+}
+.card h2 { font: 800 22px/1.15 var(--f-display); margin: 0 0 6px; }
+.card p { margin: 0 0 12px; color: var(--dim); }
+.levels { display: grid; gap: 8px; margin: 14px 0 4px; }
+.lvl {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  width: 100%; text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+}
+.lvl:hover:not(:disabled) { border-color: var(--amber); }
+.lvl:disabled { opacity: .45; cursor: not-allowed; }
+.lvl.train { border-color: var(--gas); background: rgba(159, 227, 255, .07); }
+.lvl .no { font: 800 16px var(--f-display); color: var(--amber); }
+.lvl.train .no { color: var(--gas); }
+.lvl .nm { font-weight: 600; }
+.lvl .ds { display: block; font-size: 13px; color: var(--dim); }
+.lvl .best { font: 12px var(--f-mono); color: var(--gas); white-space: nowrap; }
+
+.res { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; margin: 12px 0 16px; font-size: 14px; }
+.res dt { color: var(--dim); }
+.res dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.res .total { font-weight: 700; color: var(--amber); font-size: 16px; }
+.verdict-ok { color: var(--ok); }
+.verdict-bad { color: var(--bad); }
+.verdict-mid { color: var(--amber); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+  font: 600 14px var(--f-body); cursor: pointer; border-radius: 8px; padding: 10px 16px;
+  background: var(--night); color: var(--text); border: 1px solid var(--line);
+}
+.btn.primary { background: var(--amber); color: #201300; border-color: var(--amber); }
+.btn.small { padding: 6px 10px; font-size: 12.5px; }
+.btn:hover { filter: brightness(1.1); }
+:focus-visible { outline: 2px solid var(--gas); outline-offset: 2px; }
+
+/* урок полигона */
+.lesson {
+  position: absolute; z-index: 3; top: 8px; left: 50%; transform: translateX(-50%);
+  width: min(440px, calc(100% - 16px)); padding: 8px 10px;
+  background: rgba(13, 18, 32, .85); border: 1px solid var(--gas); border-radius: 10px;
+}
+.lesson .hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.lesson .step { font: 11px var(--f-mono); color: var(--gas); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+.lesson h3 { font: 800 14px/1.2 var(--f-display); margin: 0; }
+.lesson p { margin: 4px 0 0; font-size: 13px; line-height: 1.35; color: var(--text); }
+.lesson .bar { margin-top: 6px; }
+.brief-step { font: 12px var(--f-mono); color: var(--gas); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 4px; }
+.card .brief-text { color: var(--text); font-size: 15px; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); margin-top: 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .1s linear; }
+.lesson .msg { margin-top: 4px; font-size: 12.5px; line-height: 1.3; color: var(--amber); }
+.lesson .msg:empty { display: none; }
+
+/* подсказка тренера */
+.coach {
+  position: absolute; z-index: 2; left: 50%; bottom: 96px; transform: translateX(-50%);
+  padding: 8px 14px; border-radius: 999px; background: rgba(13, 18, 32, .85);
+  font: 600 15px var(--f-body); white-space: nowrap; border: 1px solid var(--amber); color: var(--amber);
+}
+
+.pad {
+  position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px;
+  padding: 10px max(12px, env(safe-area-inset-right, 0px)) 12px max(12px, env(safe-area-inset-left, 0px)); pointer-events: none;
+}
+.pad .grp { display: flex; gap: 10px; }
+.tb {
+  pointer-events: auto; min-width: 72px; height: 68px; border-radius: 14px; padding: 4px 10px;
+  background: rgba(21, 28, 46, .82); border: 1.5px solid var(--line); color: var(--text);
+  display: grid; place-items: center; align-content: center; gap: 0; cursor: pointer; touch-action: none;
+}
+.tb b { font: 700 24px/1 var(--f-mono); }
+.tb small { font: 600 11px/1.2 var(--f-body); color: var(--dim); letter-spacing: .03em; }
+.tb.wide { min-width: 120px; border-color: var(--gas); }
+.tb.wide b { font: 800 16px/1 var(--f-display); color: var(--gas); }
+.tb.on { background: rgba(159, 227, 255, .25); }
+.tb.hint { border-color: var(--amber); box-shadow: 0 0 0 0 rgba(255, 179, 71, .7); animation: pulse 1.1s infinite; }
+.tb.hint small { color: var(--amber); }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 179, 71, .6); } 70% { box-shadow: 0 0 0 14px rgba(255, 179, 71, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 179, 71, 0); } }
+@media (prefers-reduced-motion: reduce) { .tb.hint { animation: none; box-shadow: 0 0 0 3px var(--amber); } }
+
+.help { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 24px; margin-top: 18px; }
+.help h3 { font: 500 13px var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--amber); margin: 0 0 6px; }
+.help p, .help ul { margin: 0; color: var(--dim); font-size: 14px; }
+.help ul { padding-left: 18px; }
+kbd { font: 12px var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--text); background: var(--panel); }
+footer { margin-top: 22px; font-size: 12.5px; color: var(--dim); max-width: 75ch; }
+@media (max-width: 640px) {
+  .page { padding-block: 8px 32px; }
+  header.top { margin-bottom: 8px; }
+  h1 { font-size: 20px; }
+  .callsign { display: none; }
+  canvas { height: max(380px, calc(100svh - 120px)); }
+  .stage { border-radius: 10px; }
+}
+@media (max-width: 520px) {
+  .tb { min-width: 62px; height: 56px; }
+  .tb.wide { min-width: 100px; }
+  .coach { bottom: 86px; font-size: 13.5px; }
+}
+</style>
+
+<div class="page">
+  <header class="top">
+    <h1>Восьмёрка <span>Баклан</span></h1>
+    <span class="callsign">Полигон · дистанционный пилот №742</span>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="Игровое поле: разгон, рампа и прыжок родстера"></canvas>
+
+    <div class="lesson" id="lesson" hidden>
+      <div class="hd">
+        <h3 id="ls-title">Газ</h3>
+        <span class="step" id="ls-step">1 / 5</span>
+        <button class="btn small" id="ls-skip" type="button">Дальше</button>
+      </div>
+      <p id="ls-text"></p>
+      <div class="bar"><i id="ls-bar"></i></div>
+      <div class="msg" id="ls-msg"></div>
+    </div>
+
+    <div class="coach" id="coach" hidden></div>
+
+    <div class="pad" id="pad">
+      <div class="grp">
+        <button class="tb" id="b-left" type="button" aria-label="Крутить против часовой"><b>⟲</b><small>крутить</small></button>
+        <button class="tb" id="b-right" type="button" aria-label="Крутить по часовой"><b>⟳</b><small>крутить</small></button>
+      </div>
+      <div class="grp">
+        <button class="tb wide" id="b-thrust" type="button" aria-label="Газ и сопла"><b>ГАЗ</b><small id="thrust-sub">держать</small></button>
+      </div>
+    </div>
+
+    <div class="ov" id="ov-menu">
+      <div class="card">
+        <h2>Испытательный прыжок</h2>
+        <p>Родстер «Баклан» без водителя. Вы ведёте его с пульта: разгон, закрученная рампа, переворот в воздухе и посадка на колёса за рядом машин. Если играете впервые, начните с полигона.</p>
+        <div class="levels" id="levels"></div>
+      </div>
+    </div>
+
+    <div class="ov" id="ov-brief" hidden>
+      <div class="card">
+        <div class="brief-step" id="br-step">Урок 1 из 5</div>
+        <h2 id="br-title">Газ</h2>
+        <p class="brief-text" id="br-text"></p>
+        <div class="row">
+          <button class="btn primary" id="br-go" type="button">Понятно, начать</button>
+          <button class="btn" id="br-menu" type="button">Меню</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ov" id="ov-res" hidden>
+      <div class="card">
+        <h2 id="r-title">Чисто</h2>
+        <p id="r-reason"></p>
+        <dl class="res" id="r-list"></dl>
+        <div class="row">
+          <button class="btn primary" id="r-next" type="button">Следующий уровень</button>
+          <button class="btn" id="r-again" type="button">Ещё раз</button>
+          <button class="btn" id="r-menu" type="button">Уровни</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="help">
+    <div>
+      <h3>Три кнопки</h3>
+      <ul>
+        <li><b>ГАЗ</b> на земле — разгон. В воздухе та же кнопка включает нижние сопла: машину толкает вверх.</li>
+        <li><b>⟲ ⟳</b> — боковые сопла. Ускоряют или тормозят переворот.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Прыжок</h3>
+      <p>Рампа переворачивает машину колёсами вверх, и в воздухе она сама докручивается обратно. Ваша задача — поправить крен по подсказке на круглом индикаторе и у самой земли нажать ГАЗ, чтобы сесть мягче.</p>
+    </div>
+    <div>
+      <h3>Клавиатура</h3>
+      <p><kbd>↑</kbd> или <kbd>Пробел</kbd> — газ и сопла, <kbd>←</kbd> <kbd>→</kbd> — вращение, <kbd>R</kbd> — заново, <kbd>Enter</kbd> — дальше, <kbd>Esc</kbd> — меню.</p>
+    </div>
+  </section>
+
+  <footer>Прототип по мотивам показа летающего родстера 15 октября 2026 года: закрученная рампа, переворот на 180° в воздухе, посадка на колёса и прыжок через ряд машин на холодногазовых соплах. Машина, компания и все названия вымышленные.</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const DEG = Math.PI / 180;
+const G = 14, ACC = 8, DRAG = 2, VMAX = 30, THRUST = 24;
+const RS = 70, RL = 12, RH = 5, RX = RS + RL;      // рампа: начало, длина, высота, край
+const ROW0 = RX + 8, GAP = 0.8, HALF = 2.2;
+const AIR_SLOW = 0.8;                                // замедление времени в воздухе
+const CLEAN_ROLL = 20, CLEAN_V = 16, HARD_ROLL = 45, HARD_V = 24;
+
+const MODELS = [
+  { n: "седан", len: 4.7, h: 1.45, c: "#7f8fa8" },
+  { n: "кроссовер", len: 4.75, h: 1.7, c: "#a7b2c4" },
+  { n: "пикап", len: 5.6, h: 1.95, c: "#9aa1a8" },
+  { n: "тягач", len: 6.2, h: 3.4, c: "#5d6b85" },
+  { n: "робо-такси", len: 4.2, h: 1.5, c: "#c9cfdb" }
+];
+
+const LEVELS = [
+  { name: "Первый прыжок", desc: "Три машины. Тренер подсказывает, что нажать.", cars: 3, coach: true },
+  { name: "Весь ряд", desc: "Шесть машин, включая тягач. Тренер ещё помогает.", cars: 6, coach: true },
+  { name: "Встречный ветер", desc: "Порывы тормозят машину. Без подсказок.", cars: 6, wind: -3, gust: true },
+  { name: "С бодуна", desc: "Боковые сопла перепутаны местами, горизонт плывёт.", cars: 5, invert: true, sway: true },
+  { name: "На точку", desc: "Семь машин и посадка точно на площадку у трибуны.", cars: 7, pad: { off: 7, w: 10 } }
+];
+
+/* ---------- уроки полигона ---------- */
+const DRILLS = [
+  { title: "Газ", key: "thrust", short: "Держите ГАЗ до 60 км/ч.",
+    text: "Зажмите и держите кнопку ГАЗ (или стрелку ↑). Разгонитесь до 60 км/ч.",
+    setup() { base(); phase = "run"; },
+    check() { return Math.min(1, car.v / 16.7); } },
+  { title: "Нижние сопла", key: "thrust", short: "Жмите ГАЗ, держите машину между линиями 3 с.",
+    text: "Машина висит в воздухе и падает. Нажимайте ГАЗ короткими нажатиями, чтобы удержать её между двумя линиями. Нужно продержаться 3 секунды.",
+    setup() { base(); phase = "drill"; car.y = 6; car.vx = 0; this.t = 0; band = [3, 9]; },
+    tick(dt) { if (car.y >= band[0] && car.y <= band[1]) this.t += dt; return Math.min(1, this.t / 3); },
+    ground() { car.y = 6; car.vy = 0; flash("Упала. Жмите ГАЗ чаще, когда машина опускается."); this.t = 0; } },
+  { title: "Переворот", key: "rl", short: "⟲ ⟳ — колёсами вниз, индикатор зелёный.",
+    text: "Машина вверх колёсами и не падает. Кнопками ⟲ и ⟳ поверните её колёсами вниз и остановите. Круглый индикатор справа станет зелёным.",
+    setup() { base(); phase = "drill"; car.y = 7; car.vx = 0; car.roll = 180; car.om = 0; this.t = 0; this.noGrav = true; },
+    tick(dt) {
+      const e = Math.abs(rollErr(car.roll));
+      if (e <= 15 && Math.abs(car.om) < 60) this.t += dt; else this.t = Math.max(0, this.t - dt);
+      return Math.min(1, this.t / 1.5);
+    },
+    hint() { const e = rollErr(car.roll); return Math.abs(car.om) > 120 ? (car.om > 0 ? "rl" : "rr") : e > 0 ? "rl" : "rr"; } },
+  { title: "Мягкая посадка", key: "thrust", short: "Ниже 6 м зажмите ГАЗ. Касание до 16 м/с.",
+    text: "Машина падает с 12 метров. Ждите, а у самой земли (ниже 6 м) зажмите ГАЗ, чтобы затормозить. Скорость касания должна быть меньше 16 м/с.",
+    setup() { base(); phase = "drill"; car.y = 12; car.vx = 3; },
+    tick() { return 0; },
+    ground() {
+      const v = -car.vy;
+      if (v <= CLEAN_V) { this.done = true; puff(car.x, .1, 0, 3, 14, .9, .6); car.y = 0; car.vy = 0; return; }
+      flash(`Слишком жёстко: ${v.toFixed(1)} м/с. Нажмите ГАЗ раньше, на высоте 5–6 м.`);
+      car.y = 12; car.vy = 0;
+    } },
+  { title: "Полный прыжок", key: "thrust", short: "ГАЗ до рампы, дальше слушайте тренера.",
+    text: "Всё вместе. Держите ГАЗ до рампы. В воздухе слушайте тренера внизу экрана. Перелетите две машины и сядьте на колёса.",
+    setup() { base(); row = buildRow(2); L = { name: "Полигон", cars: 2, coach: true, i: -1 }; phase = "run"; },
+    check() { return 0; } }
+];
+
+/* ---------- сохранение ---------- */
+let save = { unlocked: 1, best: {}, trained: false };
+try { const s = JSON.parse(localStorage.getItem("strizh-v1")); if (s && s.unlocked) save = Object.assign(save, s); } catch (e) {}
+const persist = () => { try { localStorage.setItem("strizh-v1", JSON.stringify(save)); } catch (e) {} };
+
+/* ---------- холст ---------- */
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let W = 0, H = 0, DPR = 1, PPM = 10, S = 10, GY = 0, zoom = 1.2;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect();
+  W = r.width; H = r.height;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  PPM = Math.min(H / 24, W / (W < 640 ? 28 : 42));
+  GY = H * 0.8;
+}
+addEventListener("resize", resize);
+
+/* ---------- состояние ---------- */
+let mode = "level", L, row, car, gas, phase, tPhase, parts, landing, cam, totalRoll, time = 0, result;
+let di = 0, band = null, flashT = 0, flashMsg = "", briefPhase = "run";
+const input = { thrust: false, rl: false, rr: false };
+
+function buildRow(n) {
+  const out = []; let x = ROW0;
+  for (let i = 0; i < n; i++) {
+    const m = MODELS[i % MODELS.length];
+    out.push({ ...m, x0: x, x1: x + m.len }); x += m.len + GAP;
+  }
+  return out;
+}
+function base() {
+  car = { x: 0, y: 0, v: 0, vx: 0, vy: 0, roll: 0, om: 0, pitch: 0, spin: 0, floor: 0 };
+  gas = 100; tPhase = 0; parts = []; landing = null; totalRoll = 0; result = null; band = null;
+  cam = { x: -8, y: 0 };
+}
+function reset(li) {
+  L = LEVELS[li]; L.i = li;
+  row = buildRow(L.cars);
+  const end = row[row.length - 1].x1;
+  L.padX = L.pad ? end + L.pad.off : null;
+  base(); phase = "run";
+}
+
+/* ---------- частицы ---------- */
+function puff(x, y, vx, vy, n, life, size) {
+  if (parts.length > 400) return;
+  for (let i = 0; i < n; i++) parts.push({
+    x, y, vx: vx + (Math.random() - .5) * 3, vy: vy + (Math.random() - .5) * 3,
+    t: 0, life: life * (0.7 + Math.random() * 0.6), s: size * (0.6 + Math.random() * 0.8)
+  });
+}
+
+/* ---------- физика ---------- */
+const rollErr = r => ((r % 360) + 540) % 360 - 180;
+const timeToGround = () => (car.vy + Math.sqrt(Math.max(0, car.vy * car.vy + 2 * G * Math.max(0, car.y)))) / G;
+
+function airControls(dt, invert) {
+  if (input.thrust && gas > 0) {
+    car.vy += THRUST * dt; gas -= 22 * dt;
+    puff(car.x, car.y + 0.1, car.vx * .3, -9, 1, .5, .22);
+  }
+  let r = (input.rr ? 1 : 0) - (input.rl ? 1 : 0);
+  if (invert) r = -r;
+  if (r && gas > 0) {
+    car.om += r * 300 * dt; gas -= 6 * dt;
+    puff(car.x + 2.2 * r, car.y + 0.7, car.vx * .5, r * 4, 1, .35, .3);
+  }
+  gas = Math.max(0, gas);
+  car.roll += car.om * dt; totalRoll += Math.abs(car.om * dt);
+}
+
+function step(dt) {
+  time += dt; tPhase += dt; flashT = Math.max(0, flashT - dt);
+  if (mode === "train") gas = 100;
+  if (phase === "run") {
+    car.v += (input.thrust ? ACC : -DRAG) * dt;
+    car.v = Math.max(0, Math.min(VMAX, car.v));
+    car.x += car.v * dt; car.y = 0; car.pitch = 0;
+    if (input.thrust && car.v > 1 && Math.random() < .5) puff(car.x - 2.3, 0.2, -car.v * .2, .5, 1, .5, .25);
+    if (car.x >= RS) { phase = "ramp"; tPhase = 0; }
+  } else if (phase === "ramp") {
+    const t = (car.x - RS) / RL;
+    const ang = Math.atan(2 * RH * t / RL);
+    car.v -= G * Math.sin(ang) * dt;
+    if (car.v <= 0.5) return crash("Не хватило скорости, чтобы выехать с рампы. Держите ГАЗ до самой рампы.");
+    car.x += car.v * Math.cos(ang) * dt;
+    const t2 = Math.min(1, (car.x - RS) / RL);
+    car.y = RH * t2 * t2; car.pitch = ang;
+    car.roll = 180 * t2 * t2 * (3 - 2 * t2);
+    if (car.x >= RX) {
+      const a = Math.atan(2 * RH / RL);
+      car.vx = car.v * Math.cos(a); car.vy = car.v * Math.sin(a);
+      car.roll = 180;
+      car.om = 180 / timeToGround();          // без вмешательства машина сама сядет на колёса
+      phase = "air"; tPhase = 0;
+    }
+  } else if (phase === "air") {
+    let w = L.wind || 0;
+    if (L.gust) w *= 0.6 + 0.4 * Math.sin(time * 1.7) + 0.3 * Math.sin(time * 4.3);
+    car.vx = Math.max(2, car.vx + w * dt);
+    car.vy -= G * dt;
+    airControls(dt, L.invert);
+    car.x += car.vx * dt; car.y += car.vy * dt;
+    car.pitch += (Math.atan2(car.vy, car.vx) * .4 - car.pitch) * Math.min(1, dt * 4);
+    for (const c of row) {
+      if (car.x + HALF > c.x0 && car.x - HALF < c.x1 && car.y <= c.h) {
+        return crash(`Посадка на крышу машины в ряду (${c.n}). Разгонитесь сильнее или дайте ГАЗ в воздухе, чтобы лететь дальше.`);
+      }
+    }
+    if (car.y <= 0) land();
+  } else if (phase === "drill") {
+    const d = DRILLS[di];
+    if (!d.noGrav) car.vy -= G * dt; else car.vy = 0;
+    airControls(dt, false);
+    car.x += car.vx * dt; car.y += car.vy * dt;
+    if (d.noGrav) car.om *= Math.pow(0.85, dt);
+    if (car.y <= 0) d.ground?.call(d);
+    if (d.tick) d.p = d.tick.call(d, dt);
+  } else if (phase === "roll") {
+    car.vx = Math.max(0, car.vx - 9 * dt);
+    car.x += car.vx * dt;
+    if (car.vx > 3 && Math.random() < .4) puff(car.x - 2, 0.1, -2, 1, 1, .6, .35);
+    if (car.vx <= 0) finish();
+  } else if (phase === "crash") {
+    car.vx *= Math.pow(0.2, dt); car.vy -= G * dt;
+    car.x += car.vx * dt; car.y = Math.max(car.floor, car.y + car.vy * dt);
+    if (car.y === car.floor) car.vy = Math.abs(car.vy) * 0.3;
+    car.roll += car.spin * dt; car.spin *= Math.pow(0.4, dt);
+    if (tPhase > 1.4 && !result) showResult();
+  }
+  for (const p of parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97; p.vy *= .97; }
+  parts = parts.filter(p => p.t < p.life);
+}
+
+function land() {
+  const err = Math.abs(rollErr(car.roll)), vImp = -car.vy;
+  if (car.x < row[0].x0) return crash("Недолёт: машина села перед рядом. Держите ГАЗ на разгоне до самой рампы.");
+  let q = null;
+  if (err <= CLEAN_ROLL && vImp <= CLEAN_V) q = "clean";
+  else if (err <= HARD_ROLL && vImp <= HARD_V) q = "hard";
+  if (!q) {
+    let why = err > 110 ? "Посадка на крышу." : err > HARD_ROLL ? "Посадка на бок." : `Слишком жёстко: ${vImp.toFixed(1)} м/с по вертикали.`;
+    if (err > HARD_ROLL) why += ` Крен при касании ${Math.round(err)}°. Следите за круглым индикатором: стрелка должна смотреть вниз.`;
+    else why += " Нажмите ГАЗ у самой земли.";
+    return crash(why);
+  }
+  puff(car.x, 0.1, 0, 3, 14, .9, .6);
+  landing = { x: car.x, err, vImp, q };
+  car.y = 0; car.vy = 0; car.roll = 0; car.om = 0; car.pitch = 0;
+  phase = "roll"; tPhase = 0;
+}
+function crash(reason) {
+  phase = "crash"; tPhase = 0;
+  const on = row.find(c => car.x + HALF > c.x0 && car.x - HALF < c.x1);
+  car.floor = car.y > 0 && on ? on.h : 0;
+  car.vy = Math.abs(car.vy || 4) * 0.25; car.spin = 420 * (Math.random() < .5 ? -1 : 1);
+  puff(car.x, car.y + .4, 0, 4, 26, 1.2, .8);
+  result = null; landing = { fail: reason };
+}
+function finish() { phase = "done"; showResult(); }
+
+/* ---------- тренер ---------- */
+function coachHint() {
+  if (phase === "run") return car.x < RS - 2 ? { t: "Держите ГАЗ до рампы", k: "thrust" } : null;
+  if (phase !== "air") return null;
+  const pe = rollErr(car.roll + car.om * timeToGround());
+  if (Math.abs(pe) > 15) return pe > 0 ? { t: "Перекручивает — жмите ⟲", k: "rl" } : { t: "Недокручивает — жмите ⟳", k: "rr" };
+  if (car.y < 7 && -car.vy > CLEAN_V - 2) return { t: "Земля близко — жмите ГАЗ", k: "thrust" };
+  if (car.vy > 0) return { t: "Крен в норме, ждите", k: null };
+  return null;
+}
+
+/* ---------- результат ---------- */
+const $ = id => document.getElementById(id);
+function showResult() {
+  if (mode === "train") return trainJumpResult();
+  const ok = !landing.fail;
+  const dist = ok ? Math.max(0, landing.x - RX) : 0;
+  const extraTurns = Math.max(0, Math.floor((totalRoll - 180 + 30) / 360));
+  let score = 0, rows = [], padOk = null;
+  if (ok) {
+    const sDist = Math.round(dist * 10);
+    const sLand = landing.q === "clean" ? 500 : 150;
+    const sGas = Math.round(gas * 5);
+    const sStyle = extraTurns * 400;
+    score = sDist + sLand + sGas + sStyle;
+    rows.push(["Дальность", `${dist.toFixed(1)} м`, sDist]);
+    rows.push(["Посадка", landing.q === "clean" ? `чистая, крен ${Math.round(landing.err)}°` : `жёсткая, ${landing.vImp.toFixed(1)} м/с`, sLand]);
+    rows.push(["Газ в баллонах", `${Math.round(gas)}%`, sGas]);
+    rows.push(["Лишние обороты", `${extraTurns}`, sStyle]);
+    if (L.padX != null) {
+      padOk = landing.x >= L.padX && landing.x <= L.padX + L.pad.w;
+      const sPad = padOk ? 800 : 0;
+      score += sPad;
+      rows.push(["Площадка", padOk ? "в точку" : "мимо", sPad]);
+    }
+  }
+  const passed = ok && padOk !== false;
+  const prev = save.best[L.i] || 0;
+  if (passed) {
+    if (score > prev) save.best[L.i] = score;
+    save.unlocked = Math.max(save.unlocked, Math.min(LEVELS.length, L.i + 2));
+    persist();
+  }
+  result = { ok, passed, score };
+  const t = $("r-title");
+  t.textContent = !ok ? "Авария" : !passed ? "Мимо площадки" : landing.q === "clean" ? "Чисто" : "Жёстко, но на колёсах";
+  t.className = !ok ? "verdict-bad" : passed && landing.q === "clean" ? "verdict-ok" : "verdict-mid";
+  $("r-reason").textContent = !ok ? landing.fail
+    : !passed ? "Машина цела, но села не на площадку. Уровень не засчитан."
+    : `Уровень «${L.name}» пройден.${score > prev ? " Новый рекорд." : ""}`;
+  $("r-list").innerHTML = ok
+    ? rows.map(([a, b, s]) => `<dt>${a}: ${b}</dt><dd>+${s}</dd>`).join("") +
+      `<dt class="total">Итого</dt><dd class="total">${score}</dd><dt>Рекорд уровня</dt><dd>${Math.max(prev, passed ? score : 0)}</dd>`
+    : "";
+  $("r-next").hidden = !(passed && L.i < LEVELS.length - 1);
+  $("r-next").textContent = "Следующий уровень";
+  $("r-again").textContent = "Ещё раз";
+  showOverlay();
+}
+function showOverlay() {
+  $("lesson").hidden = true; $("coach").hidden = true;
+  $("ov-res").hidden = false;
+  ($("r-next").hidden ? $("r-again") : $("r-next")).focus({ preventScroll: true });
+}
+
+/* ---------- полигон ---------- */
+function startTraining(i = 0) {
+  mode = "train"; di = i;
+  $("ov-menu").hidden = true; $("ov-res").hidden = true;
+  const d = DRILLS[di]; d.done = false; d.t = 0; d.p = 0;
+  if (!L || L.i !== -1) { L = { name: "Полигон", cars: 0, i: -1 }; }
+  row = []; L.padX = null;
+  d.setup.call(d);
+  $("lesson").hidden = false;
+  $("ls-step").textContent = `${di + 1} / ${DRILLS.length}`;
+  $("ls-title").textContent = d.title;
+  $("ls-text").textContent = d.short;
+  $("ls-bar").style.width = "0";
+  $("ls-msg").textContent = "";
+  briefPhase = phase; phase = "brief";
+  $("br-step").textContent = `Урок ${di + 1} из ${DRILLS.length}`;
+  $("br-title").textContent = d.title;
+  $("br-text").textContent = d.text;
+  $("ov-brief").hidden = false;
+  $("br-go").focus({ preventScroll: true });
+}
+function trainTick() {
+  const d = DRILLS[di];
+  if (phase === "run" && di === 0) car.x = Math.min(car.x, RS - 20);
+  const p = d.done ? 1 : d.tick ? (d.p || 0) : d.check.call(d);
+  $("ls-bar").style.width = `${Math.round(p * 100)}%`;
+  $("ls-msg").textContent = flashT > 0 ? flashMsg : "";
+  if (p >= 1 && phase !== "lesson-done") {
+    phase = "lesson-done"; tPhase = 0;
+    $("ls-msg").textContent = "Готово!";
+    const from = di;
+    setTimeout(() => { if (mode === "train" && phase === "lesson-done" && di === from) startTraining(from + 1); }, 900);
+  }
+}
+function flash(m) { flashMsg = m; flashT = 3; }
+function trainJumpResult() {
+  const ok = !landing.fail;
+  const t = $("r-title");
+  if (ok) {
+    save.trained = true; persist();
+    t.textContent = "Полигон пройден"; t.className = "verdict-ok";
+    $("r-reason").textContent = "Вы умеете разгоняться, крутить машину и мягко садиться. Пора на первый уровень.";
+    $("r-next").hidden = false; $("r-next").textContent = "К первому уровню";
+  } else {
+    t.textContent = "Почти"; t.className = "verdict-mid";
+    $("r-reason").textContent = landing.fail + " Попробуйте ещё раз.";
+    $("r-next").hidden = true;
+  }
+  $("r-again").textContent = "Повторить прыжок";
+  $("r-list").innerHTML = "";
+  result = { ok };
+  showOverlay();
+}
+
+/* ---------- меню ---------- */
+function renderMenu() {
+  const train = `
+    <button class="lvl train" type="button" data-i="train">
+      <span class="no">◎</span>
+      <span><span class="nm">Полигон управления</span><span class="ds">Пять коротких уроков: газ, сопла, переворот, посадка, прыжок.</span></span>
+      <span class="best">${save.trained ? "пройден" : "начните здесь"}</span>
+    </button>`;
+  $("levels").innerHTML = train + LEVELS.map((l, i) => `
+    <button class="lvl" type="button" data-i="${i}" ${i + 1 > save.unlocked ? "disabled" : ""}>
+      <span class="no">${i + 1}</span>
+      <span><span class="nm">${l.name}</span><span class="ds">${i + 1 > save.unlocked ? "Откроется после уровня " + i : l.desc}</span></span>
+      <span class="best">${save.best[i] ? "рекорд " + save.best[i] : ""}</span>
+    </button>`).join("");
+}
+$("levels").addEventListener("click", e => {
+  const b = e.target.closest(".lvl"); if (!b || b.disabled) return;
+  b.dataset.i === "train" ? startTraining(0) : start(+b.dataset.i);
+});
+function start(i) { mode = "level"; reset(i); $("ov-menu").hidden = true; $("ov-res").hidden = true; $("lesson").hidden = true; }
+function toMenu() {
+  renderMenu(); $("ov-res").hidden = true; $("lesson").hidden = true; $("coach").hidden = true; $("ov-menu").hidden = false;
+  mode = "level"; reset(Math.min(save.unlocked, LEVELS.length) - 1); phase = "idle"; car.x = 40;
+}
+$("r-again").onclick = () => mode === "train" ? startTraining(DRILLS.length - 1) : start(L.i);
+$("r-next").onclick = () => mode === "train" ? start(0) : start(L.i + 1);
+$("r-menu").onclick = toMenu;
+$("br-go").onclick = () => { $("ov-brief").hidden = true; phase = briefPhase; };
+$("br-menu").onclick = () => { $("ov-brief").hidden = true; toMenu(); };
+$("ls-skip").onclick = () => di + 1 < DRILLS.length ? startTraining(di + 1) : toMenu();
+
+/* ---------- управление ---------- */
+const KEYS = { ArrowUp: "thrust", " ": "thrust", w: "thrust", "ц": "thrust", ArrowLeft: "rl", a: "rl", "ф": "rl", ArrowRight: "rr", d: "rr", "в": "rr" };
+const keyOf = e => KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+addEventListener("keydown", e => {
+  const k = keyOf(e);
+  if (k) { input[k] = true; e.preventDefault(); return; }
+  if (e.key === "r" || e.key === "R" || e.key === "к") { if (phase !== "idle") mode === "train" ? startTraining(di) : start(L.i); }
+  if (e.key === "Escape") { $("ov-brief").hidden = true; toMenu(); }
+  if (e.key === "Enter" && !$("ov-res").hidden && !$("r-next").hidden) { e.preventDefault(); $("r-next").click(); }
+});
+addEventListener("keyup", e => { const k = keyOf(e); if (k) input[k] = false; });
+addEventListener("blur", () => { input.thrust = input.rl = input.rr = false; });
+function hold(id, key) {
+  const el = $(id);
+  const on = e => { e.preventDefault(); input[key] = true; el.classList.add("on"); el.setPointerCapture?.(e.pointerId); };
+  const off = () => { input[key] = false; el.classList.remove("on"); };
+  el.addEventListener("pointerdown", on);
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => el.addEventListener(ev, off));
+  el.addEventListener("contextmenu", e => e.preventDefault());
+}
+hold("b-thrust", "thrust"); hold("b-left", "rl"); hold("b-right", "rr");
+
+/* подсветка нужной кнопки и подпись под ГАЗ */
+const btnFor = { thrust: $("b-thrust"), rl: $("b-left"), rr: $("b-right") };
+let lastHint = "", lastCoach = "";
+function uiTick() {
+  const onGround = phase === "run" || phase === "idle";
+  $("thrust-sub").textContent = onGround ? "разгон" : "сопла вверх";
+  let hintKey = null, coachText = "";
+  if (mode === "train" && $("ov-res").hidden) {
+    const d = DRILLS[di];
+    if (di === DRILLS.length - 1) { const c = coachHint(); if (c) { coachText = c.t; hintKey = c.k; } }
+    else hintKey = d.hint ? d.hint() : d.key;
+    if (di === 3 && car.y > 6) hintKey = null;
+    if (phase === "lesson-done" || phase === "brief") hintKey = null;
+  } else if (mode === "level" && L && L.coach && phase !== "idle") {
+    const c = coachHint(); if (c) { coachText = c.t; hintKey = c.k; }
+  }
+  if (hintKey !== lastHint) {
+    Object.entries(btnFor).forEach(([k, el]) => el.classList.toggle("hint", k === hintKey));
+    lastHint = hintKey;
+  }
+  if (coachText !== lastCoach) {
+    $("coach").textContent = coachText; $("coach").hidden = !coachText; lastCoach = coachText;
+  }
+}
+
+/* ---------- отрисовка ---------- */
+const X = x => (x - cam.x) * S;
+const Y = y => GY - (y - cam.y) * S;
+
+function sky() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#141b33"); g.addColorStop(.5, "#3a3557"); g.addColorStop(.75, "#b4675a"); g.addColorStop(.9, "#f0a35e");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const hz = Y(0);
+  ctx.fillStyle = "rgba(255, 196, 120, .9)";
+  ctx.beginPath(); ctx.arc(W * .78, hz - 22, Math.max(14, PPM * 2.2), 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#5b3f4f";
+  const off = cam.x * PPM * .08;
+  ctx.beginPath(); ctx.moveTo(0, hz);
+  for (let i = -1; i < 9; i++) {
+    const bx = i * 260 - (off % 260);
+    ctx.lineTo(bx, hz - 30); ctx.lineTo(bx + 30, hz - 58); ctx.lineTo(bx + 120, hz - 58); ctx.lineTo(bx + 150, hz - 34); ctx.lineTo(bx + 260, hz - 26);
+  }
+  ctx.lineTo(W, hz); ctx.closePath(); ctx.fill();
+  const tx = W * .2 + ((150 - cam.x) * PPM * .35) % (W * 1.5);
+  ctx.fillStyle = "#2b2438"; ctx.fillRect(tx, hz - PPM * 14, PPM * 1.2, PPM * 14);
+  ctx.fillStyle = "#ff5a4a"; ctx.fillRect(tx + PPM * .4, hz - PPM * 14.6, PPM * .4, PPM * .5);
+}
+
+function ground() {
+  const gy = Y(0);
+  if (gy > H) return;
+  ctx.fillStyle = "#3b2f2c"; ctx.fillRect(0, gy, W, H - gy);
+  ctx.fillStyle = "#26232b"; ctx.fillRect(0, gy, W, Math.max(6, S * .6));
+  ctx.fillStyle = "rgba(255,255,255,.35)";
+  for (let x = Math.floor(cam.x / 6) * 6; x < cam.x + W / S + 6; x += 6) ctx.fillRect(X(x), gy + 2, S * 2.5, Math.max(1.5, S * .12));
+  ctx.fillStyle = "rgba(232,236,245,.55)"; ctx.font = `${Math.max(10, Math.min(16, S * .8))}px JetBrains Mono, monospace`; ctx.textAlign = "center";
+  for (let m = 10; m < 160; m += 10) {
+    const x = X(RX + m); if (x < -40 || x > W + 40) continue;
+    ctx.fillRect(x - 1, gy, 2, S * 1.2);
+    ctx.fillText(`${m} м`, x, gy + S * 2.2);
+  }
+  if (L && L.padX != null) {
+    const a = X(L.padX), b = X(L.padX + L.pad.w);
+    ctx.fillStyle = "rgba(255,179,71,.85)"; ctx.fillRect(a, gy - 2, b - a, Math.max(5, S * .5));
+    ctx.fillStyle = "#201300";
+    for (let x = a; x < b; x += S * 1.2) ctx.fillRect(x, gy - 2, S * .5, Math.max(5, S * .5));
+    const sx = X(L.padX + L.pad.w + 4);
+    ctx.fillStyle = "#1c2033"; ctx.fillRect(sx, gy - S * 4, S * 12, S * 4);
+    ctx.fillStyle = "rgba(255,220,180,.55)";
+    for (let i = 0; i < 40; i++) ctx.fillRect(sx + (i % 20) * S * .6 + S * .2, gy - S * (3.2 - Math.floor(i / 20) * 1.2), 2, 2);
+  }
+}
+
+function ramp() {
+  if (X(RX) < -50 || X(RS) > W + 50) return;
+  const pts = [];
+  for (let i = 0; i <= 24; i++) { const t = i / 24; pts.push([RS + RL * t, RH * t * t, t]); }
+  ctx.strokeStyle = "#454a63"; ctx.lineWidth = Math.max(1, S * .15);
+  for (let i = 3; i < pts.length; i += 3) { const [x, y] = pts[i]; ctx.beginPath(); ctx.moveTo(X(x), Y(0)); ctx.lineTo(X(x), Y(y)); ctx.stroke(); }
+  ctx.fillStyle = "#2c3045";
+  ctx.beginPath(); ctx.moveTo(X(RS), Y(0));
+  pts.forEach(([x, y]) => ctx.lineTo(X(x), Y(y)));
+  ctx.lineTo(X(RX), Y(RH - .6)); ctx.lineTo(X(RX - 1), Y(0)); ctx.closePath(); ctx.fill();
+  [1, -1].forEach(s => {
+    ctx.strokeStyle = s > 0 ? "#ffb347" : "#9fe3ff"; ctx.lineWidth = Math.max(1.5, S * .22);
+    ctx.beginPath();
+    pts.forEach(([x, y, t], i) => { const yy = y + .35 + s * .3 * Math.cos(Math.PI * t); i ? ctx.lineTo(X(x), Y(yy)) : ctx.moveTo(X(x), Y(yy)); });
+    ctx.stroke();
+  });
+}
+
+function parked(c) {
+  const x0 = X(c.x0), x1 = X(c.x1), gy = Y(0), h = c.h * S, len = x1 - x0;
+  if (x1 < -20 || x0 > W + 20) return;
+  ctx.fillStyle = c.c;
+  ctx.beginPath();
+  if (c.n === "тягач") {
+    ctx.rect(x0, gy - h, len * .7, h - S * .5);
+    ctx.rect(x0 + len * .72, gy - h * .75, len * .28, h * .75 - S * .5);
+  } else if (c.n === "пикап") {
+    ctx.moveTo(x0, gy - S * .5); ctx.lineTo(x0, gy - h * .62); ctx.lineTo(x0 + len * .45, gy - h * .62);
+    ctx.lineTo(x0 + len * .52, gy - h); ctx.lineTo(x0 + len * .8, gy - h); ctx.lineTo(x1, gy - h * .55); ctx.lineTo(x1, gy - S * .5);
+  } else {
+    ctx.moveTo(x0, gy - S * .5); ctx.lineTo(x0 + len * .04, gy - h * .55); ctx.lineTo(x0 + len * .28, gy - h);
+    ctx.lineTo(x0 + len * .7, gy - h); ctx.lineTo(x1 - len * .04, gy - h * .55); ctx.lineTo(x1, gy - S * .5);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#11141f";
+  [.2, .8].forEach(f => { ctx.beginPath(); ctx.arc(x0 + len * f, gy - S * .35, S * .35, 0, Math.PI * 2); ctx.fill(); });
+}
+
+function bandLines() {
+  if (!band) return;
+  ctx.setLineDash([8, 6]); ctx.strokeStyle = "rgba(111,220,140,.8)"; ctx.lineWidth = 2;
+  band.forEach(y => { ctx.beginPath(); ctx.moveTo(0, Y(y)); ctx.lineTo(W, Y(y)); ctx.stroke(); });
+  ctx.setLineDash([]);
+}
+
+function roadster() {
+  const c = Math.cos(car.roll * DEG);
+  const cs = Math.sign(c || 1) * Math.max(.1, Math.abs(c));
+  ctx.save();
+  ctx.translate(X(car.x), Y(car.y + .6));
+  ctx.rotate(-car.pitch);
+  ctx.scale(S, S * cs);
+  const under = c < 0;
+  ctx.fillStyle = under ? "#5a1a22" : "#d23a45";
+  ctx.beginPath();
+  ctx.moveTo(2.3, .28); ctx.lineTo(2.32, .02); ctx.quadraticCurveTo(1.6, -.18, .55, -.26);
+  ctx.lineTo(-.15, -.56); ctx.lineTo(-.95, -.56); ctx.quadraticCurveTo(-1.9, -.4, -2.28, -.12);
+  ctx.lineTo(-2.3, .28); ctx.closePath(); ctx.fill();
+  if (!under) {
+    ctx.fillStyle = "#1b2236";
+    ctx.beginPath(); ctx.moveTo(.42, -.27); ctx.lineTo(-.18, -.5); ctx.lineTo(-.85, -.5); ctx.lineTo(-1.1, -.3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(-1.8, -.02, 3.6, .04);
+  } else {
+    ctx.fillStyle = "#2a2f42"; ctx.fillRect(-1.9, -.05, 3.8, .3);
+    ctx.fillStyle = "#9fe3ff"; [-1.6, 1.6].forEach(x => ctx.fillRect(x - .12, -.1, .24, .1));
+  }
+  ctx.fillStyle = "#0b0e17";
+  [-1.45, 1.45].forEach(x => { ctx.beginPath(); ctx.arc(x, .32, .33, 0, Math.PI * 2); ctx.fill(); });
+  ctx.fillStyle = "#8d98b3";
+  [-1.45, 1.45].forEach(x => { ctx.beginPath(); ctx.arc(x, .32, .13, 0, Math.PI * 2); ctx.fill(); });
+  ctx.restore();
+}
+
+function particles() {
+  for (const p of parts) {
+    const a = 1 - p.t / p.life;
+    ctx.fillStyle = `rgba(220,240,255,${(a * .4).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), Math.max(1, p.s * S * (1 + p.t)), 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function dial(cx, cy, r, f) {
+  ctx.fillStyle = "rgba(13,18,32,.7)"; ctx.beginPath(); ctx.arc(cx, cy, r + 6, 0, Math.PI * 2); ctx.fill();
+  const err = rollErr(car.roll);
+  const col = Math.abs(err) <= CLEAN_ROLL ? "#6fdc8c" : Math.abs(err) <= HARD_ROLL ? "#ffb347" : "#ff6b5e";
+  // зелёный сектор «колёса вниз»
+  ctx.strokeStyle = "rgba(111,220,140,.35)"; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI / 2 - CLEAN_ROLL * DEG, Math.PI / 2 + CLEAN_ROLL * DEG); ctx.stroke();
+  // прогноз крена при касании
+  if (phase === "air") {
+    const pe = rollErr(car.roll + car.om * timeToGround());
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(pe * DEG);
+    ctx.strokeStyle = "rgba(232,236,245,.45)"; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, r * .9); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+  }
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(err * DEG);
+  ctx.strokeStyle = col; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-r * .75, 0); ctx.lineTo(r * .75, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, r * .7); ctx.stroke();
+  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, r * .7, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = "#e8ecf5"; ctx.textAlign = "center"; ctx.font = `${f * .8}px JetBrains Mono, monospace`;
+  ctx.fillText("колёса", cx, cy + r + f * 1.2);
+  ctx.textAlign = "left";
+}
+
+function hud() {
+  const pad = 12, f = Math.max(11, Math.min(14, W / 50));
+  const lessonUp = !$("lesson").hidden;
+  const lessonH = lessonUp ? $("lesson").offsetHeight + 16 : 0;
+  const top = lessonUp && W < 760 ? lessonH : pad;
+  ctx.textAlign = "left"; ctx.font = `700 ${f}px JetBrains Mono, monospace`;
+  ctx.fillStyle = "rgba(13,18,32,.6)"; ctx.fillRect(pad - 6, top - 4, f * 12, f * 4.6);
+  ctx.fillStyle = "#ffb347"; ctx.fillText(mode === "train" ? "Полигон" : `${L.i + 1}. ${L.name}`, pad, top + f);
+  ctx.fillStyle = "#e8ecf5";
+  const speed = phase === "run" || phase === "ramp" ? car.v : Math.hypot(car.vx, car.vy);
+  ctx.fillText(`${String(Math.round(speed * 3.6)).padStart(3, " ")} км/ч`, pad, top + f * 2.3);
+  ctx.fillText(`высота ${Math.max(0, car.y).toFixed(1)} м`, pad, top + f * 3.6);
+  if (mode !== "train") {
+    const gw = Math.min(160, W * .26), gx = W - gw - pad;
+    ctx.fillStyle = "rgba(13,18,32,.6)"; ctx.fillRect(gx - 6, pad - 4, gw + 12, f * 3.4);
+    ctx.fillStyle = "#8d98b3"; ctx.fillText("ГАЗ В БАЛЛОНАХ", gx, pad + f);
+    ctx.strokeStyle = "#2a3550"; ctx.lineWidth = 1; ctx.strokeRect(gx, pad + f * 1.5, gw, f * .9);
+    ctx.fillStyle = gas > 25 ? "#9fe3ff" : "#ff6b5e"; ctx.fillRect(gx, pad + f * 1.5, gw * gas / 100, f * .9);
+  }
+  const airborne = phase === "air" || phase === "ramp" || (phase === "drill");
+  if (airborne) {
+    const r = Math.max(26, f * 2.4), cx = W - pad - r - 6, cy = (lessonUp && W < 760 ? lessonH + f * 3.2 : pad + f * 3.6) + r + 14;
+    dial(cx, cy, r, f);
+    const vs = -car.vy;
+    ctx.font = `700 ${f}px JetBrains Mono, monospace`; ctx.textAlign = "right";
+    ctx.fillStyle = vs > HARD_V ? "#ff6b5e" : vs > CLEAN_V ? "#ffb347" : "#6fdc8c";
+    ctx.fillText(`падение ${Math.max(0, vs).toFixed(0)} м/с`, W - pad, cy + r + f * 2.6);
+    ctx.textAlign = "left";
+    if (Y(0) > H) {
+      ctx.fillStyle = "rgba(232,236,245,.7)"; ctx.textAlign = "center";
+      ctx.fillText(`земля ↓ ${car.y.toFixed(0)} м`, W / 2, H - 100); ctx.textAlign = "left";
+    }
+  }
+}
+
+function draw(dt) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const airborne = phase === "air" || phase === "drill" || (phase === "crash" && car.y > .5) || phase === "lesson-done" && car.y > .5;
+  const zt = airborne ? 1.9 : phase === "idle" ? 1.1 : 1.35;
+  zoom += (zt - zoom) * Math.min(1, dt * 2.5);
+  S = PPM * zoom;
+  const viewW = W / S, viewH = GY / S;
+  const tx = car.x - viewW * (phase === "run" ? .3 : .42);
+  cam.x += (tx - cam.x) * Math.min(1, dt * 6);
+  const ty = Math.max(0, car.y - viewH * .45);
+  cam.y += (ty - cam.y) * Math.min(1, dt * 6);
+  if (L && L.sway && mode === "level") {
+    ctx.translate(W / 2, H / 2); ctx.rotate(Math.sin(time * .9) * .035); ctx.translate(-W / 2, -H / 2);
+  }
+  sky(); ground(); ramp();
+  row.forEach(parked);
+  bandLines();
+  particles(); roadster();
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  hud();
+}
+
+/* ---------- цикл ---------- */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (phase !== "idle" && phase !== "done" && phase !== "lesson-done" && phase !== "brief") {
+    const sim = dt * (phase === "air" ? AIR_SLOW : 1);
+    const n = Math.ceil(sim / (1 / 120));
+    for (let i = 0; i < n; i++) { step(sim / n); if (phase === "idle") break; }
+  } else time += dt;
+  if (phase === "idle") car.x = 40 + Math.sin(time * .3) * 2;
+  if (mode === "train" && $("ov-res").hidden && DRILLS[di] && di < DRILLS.length - 1) trainTick();
+  uiTick();
+  draw(dt);
+  requestAnimationFrame(frame);
+}
+
+resize();
+renderMenu();
+reset(Math.min(save.unlocked, LEVELS.length) - 1);
+phase = "idle"; car.x = 40;
+requestAnimationFrame(frame);
+})();
+</script>
