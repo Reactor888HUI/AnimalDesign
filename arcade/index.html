@@ -1,4 +1,4 @@
-<title>Прыжок Стрижа</title>
+<title>Восьмёрка Баклан</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,17 +81,21 @@ canvas { display: block; width: 100%; height: clamp(360px, 66vh, 620px); }
 
 /* урок полигона */
 .lesson {
-  position: absolute; z-index: 3; top: 10px; left: 50%; transform: translateX(-50%);
-  width: min(460px, calc(100% - 24px)); padding: 12px 14px;
-  background: rgba(13, 18, 32, .88); border: 1px solid var(--gas); border-radius: 10px;
+  position: absolute; z-index: 3; top: 8px; left: 50%; transform: translateX(-50%);
+  width: min(440px, calc(100% - 16px)); padding: 8px 10px;
+  background: rgba(13, 18, 32, .85); border: 1px solid var(--gas); border-radius: 10px;
 }
-.lesson .hd { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.lesson .step { font: 12px var(--f-mono); color: var(--gas); letter-spacing: .05em; text-transform: uppercase; }
-.lesson h3 { font: 800 17px/1.2 var(--f-display); margin: 4px 0; }
-.lesson p { margin: 0; font-size: 14px; color: var(--text); }
+.lesson .hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.lesson .step { font: 11px var(--f-mono); color: var(--gas); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+.lesson h3 { font: 800 14px/1.2 var(--f-display); margin: 0; }
+.lesson p { margin: 4px 0 0; font-size: 13px; line-height: 1.35; color: var(--text); }
+.lesson .bar { margin-top: 6px; }
+.brief-step { font: 12px var(--f-mono); color: var(--gas); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 4px; }
+.card .brief-text { color: var(--text); font-size: 15px; }
 .bar { height: 6px; border-radius: 3px; background: var(--line); margin-top: 10px; overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .1s linear; }
-.lesson .msg { margin-top: 8px; font-size: 13.5px; color: var(--amber); min-height: 1.2em; }
+.lesson .msg { margin-top: 4px; font-size: 12.5px; line-height: 1.3; color: var(--amber); }
+.lesson .msg:empty { display: none; }
 
 /* подсказка тренера */
 .coach {
@@ -126,8 +130,16 @@ canvas { display: block; width: 100%; height: clamp(360px, 66vh, 620px); }
 .help ul { padding-left: 18px; }
 kbd { font: 12px var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--text); background: var(--panel); }
 footer { margin-top: 22px; font-size: 12.5px; color: var(--dim); max-width: 75ch; }
+@media (max-width: 640px) {
+  .page { padding-block: 8px 32px; }
+  header.top { margin-bottom: 8px; }
+  h1 { font-size: 20px; }
+  .callsign { display: none; }
+  canvas { height: max(380px, calc(100svh - 120px)); }
+  .stage { border-radius: 10px; }
+}
 @media (max-width: 520px) {
-  .tb { min-width: 62px; height: 62px; }
+  .tb { min-width: 62px; height: 56px; }
   .tb.wide { min-width: 100px; }
   .coach { bottom: 86px; font-size: 13.5px; }
 }
@@ -135,7 +147,7 @@ footer { margin-top: 22px; font-size: 12.5px; color: var(--dim); max-width: 75ch
 
 <div class="page">
   <header class="top">
-    <h1>Прыжок <span>Стрижа</span></h1>
+    <h1>Восьмёрка <span>Баклан</span></h1>
     <span class="callsign">Полигон · дистанционный пилот №742</span>
   </header>
 
@@ -144,10 +156,10 @@ footer { margin-top: 22px; font-size: 12.5px; color: var(--dim); max-width: 75ch
 
     <div class="lesson" id="lesson" hidden>
       <div class="hd">
-        <span class="step" id="ls-step">Урок 1 из 5</span>
-        <button class="btn small" id="ls-skip" type="button">Пропустить урок</button>
+        <h3 id="ls-title">Газ</h3>
+        <span class="step" id="ls-step">1 / 5</span>
+        <button class="btn small" id="ls-skip" type="button">Дальше</button>
       </div>
-      <h3 id="ls-title">Газ</h3>
       <p id="ls-text"></p>
       <div class="bar"><i id="ls-bar"></i></div>
       <div class="msg" id="ls-msg"></div>
@@ -168,8 +180,20 @@ footer { margin-top: 22px; font-size: 12.5px; color: var(--dim); max-width: 75ch
     <div class="ov" id="ov-menu">
       <div class="card">
         <h2>Испытательный прыжок</h2>
-        <p>Родстер «Стриж» без водителя. Вы ведёте его с пульта: разгон, закрученная рампа, переворот в воздухе и посадка на колёса за рядом машин. Если играете впервые, начните с полигона.</p>
+        <p>Родстер «Баклан» без водителя. Вы ведёте его с пульта: разгон, закрученная рампа, переворот в воздухе и посадка на колёса за рядом машин. Если играете впервые, начните с полигона.</p>
         <div class="levels" id="levels"></div>
+      </div>
+    </div>
+
+    <div class="ov" id="ov-brief" hidden>
+      <div class="card">
+        <div class="brief-step" id="br-step">Урок 1 из 5</div>
+        <h2 id="br-title">Газ</h2>
+        <p class="brief-text" id="br-text"></p>
+        <div class="row">
+          <button class="btn primary" id="br-go" type="button">Понятно, начать</button>
+          <button class="btn" id="br-menu" type="button">Меню</button>
+        </div>
       </div>
     </div>
 
@@ -236,16 +260,16 @@ const LEVELS = [
 
 /* ---------- уроки полигона ---------- */
 const DRILLS = [
-  { title: "Газ", key: "thrust",
+  { title: "Газ", key: "thrust", short: "Держите ГАЗ до 60 км/ч.",
     text: "Зажмите и держите кнопку ГАЗ (или стрелку ↑). Разгонитесь до 60 км/ч.",
     setup() { base(); phase = "run"; },
     check() { return Math.min(1, car.v / 16.7); } },
-  { title: "Нижние сопла", key: "thrust",
+  { title: "Нижние сопла", key: "thrust", short: "Жмите ГАЗ, держите машину между линиями 3 с.",
     text: "Машина висит в воздухе и падает. Нажимайте ГАЗ короткими нажатиями, чтобы удержать её между двумя линиями. Нужно продержаться 3 секунды.",
     setup() { base(); phase = "drill"; car.y = 6; car.vx = 0; this.t = 0; band = [3, 9]; },
     tick(dt) { if (car.y >= band[0] && car.y <= band[1]) this.t += dt; return Math.min(1, this.t / 3); },
     ground() { car.y = 6; car.vy = 0; flash("Упала. Жмите ГАЗ чаще, когда машина опускается."); this.t = 0; } },
-  { title: "Переворот", key: "rl",
+  { title: "Переворот", key: "rl", short: "⟲ ⟳ — колёсами вниз, индикатор зелёный.",
     text: "Машина вверх колёсами и не падает. Кнопками ⟲ и ⟳ поверните её колёсами вниз и остановите. Круглый индикатор справа станет зелёным.",
     setup() { base(); phase = "drill"; car.y = 7; car.vx = 0; car.roll = 180; car.om = 0; this.t = 0; this.noGrav = true; },
     tick(dt) {
@@ -254,7 +278,7 @@ const DRILLS = [
       return Math.min(1, this.t / 1.5);
     },
     hint() { const e = rollErr(car.roll); return Math.abs(car.om) > 120 ? (car.om > 0 ? "rl" : "rr") : e > 0 ? "rl" : "rr"; } },
-  { title: "Мягкая посадка", key: "thrust",
+  { title: "Мягкая посадка", key: "thrust", short: "Ниже 6 м зажмите ГАЗ. Касание до 16 м/с.",
     text: "Машина падает с 12 метров. Ждите, а у самой земли (ниже 6 м) зажмите ГАЗ, чтобы затормозить. Скорость касания должна быть меньше 16 м/с.",
     setup() { base(); phase = "drill"; car.y = 12; car.vx = 3; },
     tick() { return 0; },
@@ -264,7 +288,7 @@ const DRILLS = [
       flash(`Слишком жёстко: ${v.toFixed(1)} м/с. Нажмите ГАЗ раньше, на высоте 5–6 м.`);
       car.y = 12; car.vy = 0;
     } },
-  { title: "Полный прыжок", key: "thrust",
+  { title: "Полный прыжок", key: "thrust", short: "ГАЗ до рампы, дальше слушайте тренера.",
     text: "Всё вместе. Держите ГАЗ до рампы. В воздухе слушайте тренера внизу экрана. Перелетите две машины и сядьте на колёса.",
     setup() { base(); row = buildRow(2); L = { name: "Полигон", cars: 2, coach: true, i: -1 }; phase = "run"; },
     check() { return 0; } }
@@ -283,14 +307,14 @@ function resize() {
   const r = cv.getBoundingClientRect();
   W = r.width; H = r.height;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-  PPM = Math.min(H / 24, W / 42);
+  PPM = Math.min(H / 24, W / (W < 640 ? 28 : 42));
   GY = H * 0.8;
 }
 addEventListener("resize", resize);
 
 /* ---------- состояние ---------- */
 let mode = "level", L, row, car, gas, phase, tPhase, parts, landing, cam, totalRoll, time = 0, result;
-let di = 0, band = null, flashT = 0, flashMsg = "";
+let di = 0, band = null, flashT = 0, flashMsg = "", briefPhase = "run";
 const input = { thrust: false, rl: false, rr: false };
 
 function buildRow(n) {
@@ -506,11 +530,17 @@ function startTraining(i = 0) {
   row = []; L.padX = null;
   d.setup.call(d);
   $("lesson").hidden = false;
-  $("ls-step").textContent = `Урок ${di + 1} из ${DRILLS.length}`;
+  $("ls-step").textContent = `${di + 1} / ${DRILLS.length}`;
   $("ls-title").textContent = d.title;
-  $("ls-text").textContent = d.text;
+  $("ls-text").textContent = d.short;
   $("ls-bar").style.width = "0";
   $("ls-msg").textContent = "";
+  briefPhase = phase; phase = "brief";
+  $("br-step").textContent = `Урок ${di + 1} из ${DRILLS.length}`;
+  $("br-title").textContent = d.title;
+  $("br-text").textContent = d.text;
+  $("ov-brief").hidden = false;
+  $("br-go").focus({ preventScroll: true });
 }
 function trainTick() {
   const d = DRILLS[di];
@@ -572,6 +602,8 @@ function toMenu() {
 $("r-again").onclick = () => mode === "train" ? startTraining(DRILLS.length - 1) : start(L.i);
 $("r-next").onclick = () => mode === "train" ? start(0) : start(L.i + 1);
 $("r-menu").onclick = toMenu;
+$("br-go").onclick = () => { $("ov-brief").hidden = true; phase = briefPhase; };
+$("br-menu").onclick = () => { $("ov-brief").hidden = true; toMenu(); };
 $("ls-skip").onclick = () => di + 1 < DRILLS.length ? startTraining(di + 1) : toMenu();
 
 /* ---------- управление ---------- */
@@ -581,7 +613,7 @@ addEventListener("keydown", e => {
   const k = keyOf(e);
   if (k) { input[k] = true; e.preventDefault(); return; }
   if (e.key === "r" || e.key === "R" || e.key === "к") { if (phase !== "idle") mode === "train" ? startTraining(di) : start(L.i); }
-  if (e.key === "Escape") toMenu();
+  if (e.key === "Escape") { $("ov-brief").hidden = true; toMenu(); }
   if (e.key === "Enter" && !$("ov-res").hidden && !$("r-next").hidden) { e.preventDefault(); $("r-next").click(); }
 });
 addEventListener("keyup", e => { const k = keyOf(e); if (k) input[k] = false; });
@@ -608,7 +640,7 @@ function uiTick() {
     if (di === DRILLS.length - 1) { const c = coachHint(); if (c) { coachText = c.t; hintKey = c.k; } }
     else hintKey = d.hint ? d.hint() : d.key;
     if (di === 3 && car.y > 6) hintKey = null;
-    if (phase === "lesson-done") hintKey = null;
+    if (phase === "lesson-done" || phase === "brief") hintKey = null;
   } else if (mode === "level" && L && L.coach && phase !== "idle") {
     const c = coachHint(); if (c) { coachText = c.t; hintKey = c.k; }
   }
@@ -780,7 +812,8 @@ function dial(cx, cy, r, f) {
 function hud() {
   const pad = 12, f = Math.max(11, Math.min(14, W / 50));
   const lessonUp = !$("lesson").hidden;
-  const top = lessonUp ? (W < 640 ? 150 : pad) : pad;
+  const lessonH = lessonUp ? $("lesson").offsetHeight + 16 : 0;
+  const top = lessonUp && W < 760 ? lessonH : pad;
   ctx.textAlign = "left"; ctx.font = `700 ${f}px JetBrains Mono, monospace`;
   ctx.fillStyle = "rgba(13,18,32,.6)"; ctx.fillRect(pad - 6, top - 4, f * 12, f * 4.6);
   ctx.fillStyle = "#ffb347"; ctx.fillText(mode === "train" ? "Полигон" : `${L.i + 1}. ${L.name}`, pad, top + f);
@@ -797,7 +830,7 @@ function hud() {
   }
   const airborne = phase === "air" || phase === "ramp" || (phase === "drill");
   if (airborne) {
-    const r = Math.max(26, f * 2.4), cx = W - pad - r - 6, cy = (mode === "train" && W < 640 ? 160 : pad + f * 3.6) + r + 14;
+    const r = Math.max(26, f * 2.4), cx = W - pad - r - 6, cy = (lessonUp && W < 760 ? lessonH + f * 3.2 : pad + f * 3.6) + r + 14;
     dial(cx, cy, r, f);
     const vs = -car.vy;
     ctx.font = `700 ${f}px JetBrains Mono, monospace`; ctx.textAlign = "right";
@@ -837,7 +870,7 @@ function draw(dt) {
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
-  if (phase !== "idle" && phase !== "done" && phase !== "lesson-done") {
+  if (phase !== "idle" && phase !== "done" && phase !== "lesson-done" && phase !== "brief") {
     const sim = dt * (phase === "air" ? AIR_SLOW : 1);
     const n = Math.ceil(sim / (1 / 120));
     for (let i = 0; i < n; i++) { step(sim / n); if (phase === "idle") break; }
