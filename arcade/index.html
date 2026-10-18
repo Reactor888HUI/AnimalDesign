@@ -1,0 +1,639 @@
+<title>Прыжок Стрижа</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=JetBrains+Mono:wght@400;700&family=Golos+Text:wght@400;600&display=swap">
+<style>
+/* Layout: пульт дистанционного пилота на полигоне в сумерках. Один экран игры, под ним короткая памятка. Единый тёмный вид. */
+:root {
+  --night: #0d1220;
+  --panel: #151c2e;
+  --line: #2a3550;
+  --text: #e8ecf5;
+  --dim: #8d98b3;
+  --amber: #ffb347;
+  --gas: #9fe3ff;
+  --ok: #6fdc8c;
+  --bad: #ff6b5e;
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Golos Text", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--night); color: var(--text); font: 15px/1.55 var(--f-body); }
+.page {
+  max-width: 1100px; margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+h1 { font: 800 clamp(24px, 4.4vw, 38px)/1.05 var(--f-display); margin: 0; letter-spacing: -.01em; }
+h1 span { color: var(--amber); }
+.callsign { font: 12px var(--f-mono); color: var(--dim); letter-spacing: .06em; text-transform: uppercase; }
+
+.stage { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; width: 100%; height: clamp(320px, 62vh, 600px); }
+
+.ov {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 16px;
+  background: rgba(10, 14, 26, .72); backdrop-filter: blur(2px);
+}
+.card {
+  width: min(520px, 100%); max-height: 100%; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+}
+.card h2 { font: 800 22px/1.15 var(--f-display); margin: 0 0 6px; }
+.card p { margin: 0 0 12px; color: var(--dim); }
+.levels { display: grid; gap: 8px; margin: 14px 0 4px; }
+.lvl {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  width: 100%; text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+}
+.lvl:hover:not(:disabled) { border-color: var(--amber); }
+.lvl:disabled { opacity: .45; cursor: not-allowed; }
+.lvl .no { font: 800 16px var(--f-display); color: var(--amber); }
+.lvl .nm { font-weight: 600; }
+.lvl .ds { display: block; font-size: 13px; color: var(--dim); }
+.lvl .best { font: 12px var(--f-mono); color: var(--gas); white-space: nowrap; }
+
+.res { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; margin: 12px 0 16px; font-size: 14px; }
+.res dt { color: var(--dim); }
+.res dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.res .total { font-weight: 700; color: var(--amber); font-size: 16px; }
+.verdict-ok { color: var(--ok); }
+.verdict-bad { color: var(--bad); }
+.verdict-mid { color: var(--amber); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+  font: 600 14px var(--f-body); cursor: pointer; border-radius: 8px; padding: 10px 16px;
+  background: var(--night); color: var(--text); border: 1px solid var(--line);
+}
+.btn.primary { background: var(--amber); color: #201300; border-color: var(--amber); }
+.btn:hover { filter: brightness(1.1); }
+:focus-visible { outline: 2px solid var(--gas); outline-offset: 2px; }
+
+.pad {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; gap: 10px;
+  padding: 10px max(12px, env(safe-area-inset-left, 0px)) 12px; pointer-events: none;
+}
+.pad .grp { display: flex; gap: 10px; }
+.tb {
+  pointer-events: auto; width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(21, 28, 46, .78); border: 1.5px solid var(--line); color: var(--text);
+  font: 700 22px var(--f-mono); display: grid; place-items: center; cursor: pointer; touch-action: none;
+}
+.tb.wide { width: auto; padding: 0 22px; border-radius: 32px; font: 700 14px var(--f-body); letter-spacing: .04em; color: var(--gas); border-color: var(--gas); }
+.tb.on { background: rgba(159, 227, 255, .22); }
+
+.help { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 24px; margin-top: 18px; }
+.help h3 { font: 500 13px var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--amber); margin: 0 0 6px; }
+.help p, .help ul { margin: 0; color: var(--dim); font-size: 14px; }
+.help ul { padding-left: 18px; }
+kbd { font: 12px var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--text); background: var(--panel); }
+footer { margin-top: 22px; font-size: 12.5px; color: var(--dim); max-width: 75ch; }
+@media (max-width: 520px) { .tb { width: 56px; height: 56px; } }
+</style>
+
+<div class="page">
+  <header class="top">
+    <h1>Прыжок <span>Стрижа</span></h1>
+    <span class="callsign" id="callsign">Полигон · дистанционный пилот №742</span>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="Игровое поле: разгон, рампа и прыжок родстера"></canvas>
+
+    <div class="pad" id="pad">
+      <div class="grp">
+        <button class="tb" id="b-left" type="button" aria-label="Вращение против часовой">⟲</button>
+        <button class="tb" id="b-right" type="button" aria-label="Вращение по часовой">⟳</button>
+      </div>
+      <div class="grp">
+        <button class="tb wide" id="b-thrust" type="button" aria-label="Газ и сопла">ГАЗ · СОПЛА</button>
+      </div>
+    </div>
+
+    <div class="ov" id="ov-menu">
+      <div class="card">
+        <h2>Испытательный прыжок</h2>
+        <p>Родстер «Стриж» без водителя. Вы ведёте его с пульта: разгон, закрученная рампа, переворот в воздухе и посадка на колёса за рядом машин. В соплах холодный газ, запас ограничен.</p>
+        <div class="levels" id="levels"></div>
+      </div>
+    </div>
+
+    <div class="ov" id="ov-res" hidden>
+      <div class="card">
+        <h2 id="r-title">Чисто</h2>
+        <p id="r-reason"></p>
+        <dl class="res" id="r-list"></dl>
+        <div class="row">
+          <button class="btn primary" id="r-next" type="button">Следующий уровень</button>
+          <button class="btn" id="r-again" type="button">Ещё раз</button>
+          <button class="btn" id="r-menu" type="button">Уровни</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="help">
+    <div>
+      <h3>Как лететь</h3>
+      <ul>
+        <li>На земле держите <b>Газ</b>, чтобы разогнаться перед рампой.</li>
+        <li>Рампа переворачивает машину вверх колёсами. В воздухе она сама докручивается обратно.</li>
+        <li><b>⟲ ⟳</b> — боковые сопла: ускоряют или тормозят вращение.</li>
+        <li><b>Сопла</b> в воздухе толкают вверх: продлевают прыжок и смягчают посадку.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Посадка</h3>
+      <p>Чистая посадка — крен не больше 20° и вертикальная скорость до 16 м/с. До 45° и 22 м/с машина уцелеет, но очков будет меньше. Сесть на крышу, на бок или на чужую машину — авария.</p>
+    </div>
+    <div>
+      <h3>Клавиатура</h3>
+      <p><kbd>↑</kbd> или <kbd>Пробел</kbd> — газ и сопла, <kbd>←</kbd> <kbd>→</kbd> — вращение, <kbd>R</kbd> — заново, <kbd>Enter</kbd> — дальше, <kbd>Esc</kbd> — уровни.</p>
+    </div>
+  </section>
+
+  <footer>Прототип по мотивам показа летающего родстера 15 октября 2026 года: закрученная рампа, переворот на 180° в воздухе, посадка на колёса и прыжок через ряд машин на холодногазовых соплах. Машина, компания и все названия вымышленные.</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const DEG = Math.PI / 180;
+const G = 14, ACC = 8, DRAG = 2, VMAX = 33, THRUST = 22;
+const RS = 70, RL = 12, RH = 6, RX = RS + RL;     // рампа: начало, длина, высота, край
+const ROW0 = RX + 8, GAP = 0.8, HALF = 2.2;
+
+const MODELS = [
+  { n: "седан", len: 4.7, h: 1.45, c: "#7f8fa8" },
+  { n: "кроссовер", len: 4.75, h: 1.7, c: "#a7b2c4" },
+  { n: "пикап", len: 5.6, h: 1.95, c: "#9aa1a8" },
+  { n: "тягач", len: 6.2, h: 3.4, c: "#5d6b85" },
+  { n: "робо-такси", len: 4.2, h: 1.5, c: "#c9cfdb" }
+];
+
+const LEVELS = [
+  { name: "Первый прыжок", desc: "Три машины в ряд. Просто сядьте на колёса.", cars: 3 },
+  { name: "Весь ряд", desc: "Шесть машин, включая тягач.", cars: 6 },
+  { name: "Встречный ветер", desc: "Порывы тормозят машину в воздухе.", cars: 6, wind: -3, gust: true },
+  { name: "С бодуна", desc: "Боковые сопла перепутаны местами, горизонт плывёт.", cars: 5, invert: true, sway: true },
+  { name: "На точку", desc: "Семь машин и посадка точно на площадку у трибуны.", cars: 7, pad: { off: 7, w: 10 } }
+];
+
+/* ---------- сохранение ---------- */
+let save = { unlocked: 1, best: {} };
+try { const s = JSON.parse(localStorage.getItem("strizh-v1")); if (s && s.unlocked) save = s; } catch (e) {}
+const persist = () => { try { localStorage.setItem("strizh-v1", JSON.stringify(save)); } catch (e) {} };
+
+/* ---------- холст ---------- */
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let W = 0, H = 0, DPR = 1, PPM = 10, GY = 0;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect();
+  W = r.width; H = r.height;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  PPM = Math.min(H / 24, W / 42);
+  GY = H * 0.8;
+}
+addEventListener("resize", resize);
+
+/* ---------- состояние ---------- */
+let L, row, car, gas, phase, tPhase, parts, landing, cam, totalRoll, time = 0, result;
+const input = { thrust: false, rl: false, rr: false };
+
+function buildRow(n) {
+  const out = []; let x = ROW0;
+  for (let i = 0; i < n; i++) {
+    const m = MODELS[i % MODELS.length];
+    out.push({ ...m, x0: x, x1: x + m.len }); x += m.len + GAP;
+  }
+  return out;
+}
+function reset(li) {
+  L = LEVELS[li]; L.i = li;
+  row = buildRow(L.cars);
+  const end = row[row.length - 1].x1;
+  L.padX = L.pad ? end + L.pad.off : null;
+  car = { x: 0, y: 0, v: 0, vx: 0, vy: 0, roll: 0, om: 0, pitch: 0, spin: 0 };
+  gas = 100; phase = "run"; tPhase = 0; parts = []; landing = null; totalRoll = 0; result = null;
+  cam = { x: -6, y: 0 };
+}
+
+/* ---------- частицы ---------- */
+function puff(x, y, vx, vy, n, life, size) {
+  if (parts.length > 400) return;
+  for (let i = 0; i < n; i++) parts.push({
+    x, y, vx: vx + (Math.random() - .5) * 3, vy: vy + (Math.random() - .5) * 3,
+    t: 0, life: life * (0.7 + Math.random() * 0.6), s: size * (0.6 + Math.random() * 0.8)
+  });
+}
+
+/* ---------- физика ---------- */
+function step(dt) {
+  time += dt; tPhase += dt;
+  if (phase === "run") {
+    car.v += (input.thrust ? ACC : -DRAG) * dt;
+    car.v = Math.max(0, Math.min(VMAX, car.v));
+    car.x += car.v * dt; car.y = 0; car.pitch = 0;
+    if (input.thrust && car.v > 1 && Math.random() < .5) puff(car.x - 2.3, 0.2, -car.v * .2, .5, 1, .5, .25);
+    if (car.x >= RS) { phase = "ramp"; tPhase = 0; }
+  } else if (phase === "ramp") {
+    const t = (car.x - RS) / RL;
+    const ang = Math.atan(2 * RH * t / RL);
+    car.v -= G * Math.sin(ang) * dt;
+    if (car.v <= 0.5) return crash("Не хватило скорости, чтобы выехать с рампы. Держите газ дольше.");
+    car.x += car.v * Math.cos(ang) * dt;
+    const t2 = Math.min(1, (car.x - RS) / RL);
+    car.y = RH * t2 * t2; car.pitch = ang;
+    car.roll = 180 * t2 * t2 * (3 - 2 * t2);
+    if (car.x >= RX) {
+      const a = Math.atan(2 * RH / RL);
+      car.vx = car.v * Math.cos(a); car.vy = car.v * Math.sin(a);
+      car.roll = 180; car.om = Math.max(40, 90 + (car.v - 25) * 6);
+      phase = "air"; tPhase = 0;
+    }
+  } else if (phase === "air") {
+    let w = L.wind || 0;
+    if (L.gust) w *= 0.6 + 0.4 * Math.sin(time * 1.7) + 0.3 * Math.sin(time * 4.3);
+    car.vx = Math.max(2, car.vx + w * dt);
+    car.vy -= G * dt;
+    if (input.thrust && gas > 0) {
+      car.vy += THRUST * dt; car.vx += 1.5 * dt; gas -= 30 * dt;
+      puff(car.x, car.y + 0.1, car.vx * .3, -9, 2, .6, .45);
+    }
+    let r = (input.rr ? 1 : 0) - (input.rl ? 1 : 0);
+    if (L.invert) r = -r;
+    if (r && gas > 0) {
+      car.om += r * 300 * dt; gas -= 8 * dt;
+      puff(car.x + 2.2 * r, car.y + 0.7, car.vx * .5, r * 4, 1, .35, .3);
+    }
+    gas = Math.max(0, gas);
+    car.roll += car.om * dt; totalRoll += Math.abs(car.om * dt);
+    car.x += car.vx * dt; car.y += car.vy * dt;
+    car.pitch += (Math.atan2(car.vy, car.vx) * .45 - car.pitch) * Math.min(1, dt * 4);
+    for (const c of row) {
+      if (car.x + HALF > c.x0 && car.x - HALF < c.x1 && car.y <= c.h) {
+        return crash(`Посадка на крышу машины в ряду (${c.n}). Нужно лететь дальше или выше.`);
+      }
+    }
+    if (car.y <= 0) land();
+  } else if (phase === "roll") {
+    car.vx = Math.max(0, car.vx - 9 * dt);
+    car.x += car.vx * dt;
+    if (car.vx > 3 && Math.random() < .4) puff(car.x - 2, 0.1, -2, 1, 1, .6, .35);
+    if (car.vx <= 0) finish();
+  } else if (phase === "crash") {
+    car.vx *= Math.pow(0.2, dt); car.vy -= G * dt;
+    car.x += car.vx * dt; car.y = Math.max(car.floor, car.y + car.vy * dt);
+    if (car.y === car.floor) car.vy = Math.abs(car.vy) * 0.3;
+    car.roll += car.spin * dt; car.spin *= Math.pow(0.4, dt);
+    if (tPhase > 1.4 && !result) showResult();
+  }
+  for (const p of parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .97; p.vy *= .97; }
+  parts = parts.filter(p => p.t < p.life);
+}
+
+const rollErr = r => ((r % 360) + 540) % 360 - 180;
+
+function land() {
+  const err = Math.abs(rollErr(car.roll)), vImp = -car.vy;
+  if (car.x < row[0].x0) return crash("Недолёт: машина села перед рядом. Разгонитесь сильнее или дайте сопла в воздухе.");
+  let q = null;
+  if (err <= 20 && vImp <= 16 && Math.abs(car.om) <= 220) q = "clean";
+  else if (err <= 45 && vImp <= 22) q = "hard";
+  if (!q) {
+    let why = err > 110 ? "Посадка на крышу." : err > 45 ? "Посадка на бок." : `Слишком жёстко: ${vImp.toFixed(1)} м/с по вертикали.`;
+    if (err > 45) why += ` Крен при касании ${Math.round(err)}°.`;
+    else why += " Дайте сопла перед землёй.";
+    return crash(why);
+  }
+  puff(car.x, 0.1, 0, 3, 14, .9, .6);
+  landing = { x: car.x, err, vImp, q };
+  car.y = 0; car.vy = 0; car.roll = 0; car.om = 0; car.pitch = 0;
+  phase = "roll"; tPhase = 0;
+}
+function crash(reason) {
+  phase = "crash"; tPhase = 0;
+  car.floor = Math.max(0, car.y > 0 ? (row.find(c => car.x + HALF > c.x0 && car.x - HALF < c.x1)?.h ?? 0) : 0);
+  car.vy = Math.abs(car.vy || 4) * 0.25; car.spin = 420 * (Math.random() < .5 ? -1 : 1);
+  puff(car.x, car.y + .4, 0, 4, 26, 1.2, .8);
+  result = null; landing = { fail: reason };
+}
+function finish() { phase = "done"; showResult(); }
+
+/* ---------- результат ---------- */
+const $ = id => document.getElementById(id);
+function showResult() {
+  const ok = !landing.fail;
+  const dist = ok ? Math.max(0, landing.x - RX) : 0;
+  const extraTurns = Math.max(0, Math.floor((totalRoll - 180 + 30) / 360));
+  let score = 0, rows = [];
+  let padOk = null;
+  if (ok) {
+    const sDist = Math.round(dist * 10);
+    const sLand = landing.q === "clean" ? 500 : 150;
+    const sGas = Math.round(gas * 5);
+    const sStyle = extraTurns * 400;
+    score = sDist + sLand + sGas + sStyle;
+    rows.push(["Дальность", `${dist.toFixed(1)} м`, sDist]);
+    rows.push(["Посадка", landing.q === "clean" ? `чистая, крен ${Math.round(landing.err)}°` : `жёсткая, ${landing.vImp.toFixed(1)} м/с`, sLand]);
+    rows.push(["Газ в баллонах", `${Math.round(gas)}%`, sGas]);
+    rows.push(["Лишние обороты", `${extraTurns}`, sStyle]);
+    if (L.padX != null) {
+      padOk = landing.x >= L.padX && landing.x <= L.padX + L.pad.w;
+      const sPad = padOk ? 800 : 0;
+      score += sPad;
+      rows.push(["Площадка", padOk ? "в точку" : "мимо", sPad]);
+    }
+  }
+  const passed = ok && (padOk !== false);
+  const prev = save.best[L.i] || 0;
+  if (passed) {
+    if (score > prev) save.best[L.i] = score;
+    save.unlocked = Math.max(save.unlocked, Math.min(LEVELS.length, L.i + 2));
+    persist();
+  }
+  result = { ok, passed, score };
+  const t = $("r-title");
+  t.textContent = !ok ? "Авария" : !passed ? "Мимо площадки" : landing.q === "clean" ? "Чисто" : "Жёстко, но на колёсах";
+  t.className = !ok ? "verdict-bad" : passed && landing.q === "clean" ? "verdict-ok" : "verdict-mid";
+  $("r-reason").textContent = !ok ? landing.fail
+    : !passed ? "Машина цела, но села не на площадку. Уровень не засчитан."
+    : `Уровень «${L.name}» пройден.${score > prev ? " Новый рекорд." : ""}`;
+  $("r-list").innerHTML = ok
+    ? rows.map(([a, b, s]) => `<dt>${a}: ${b}</dt><dd>+${s}</dd>`).join("") +
+      `<dt class="total">Итого</dt><dd class="total">${score}</dd><dt>Рекорд уровня</dt><dd>${Math.max(prev, passed ? score : 0)}</dd>`
+    : `<dt>Скорость на рампе</dt><dd>${Math.round(car.v * 3.6)} км/ч</dd><dt>Газ в баллонах</dt><dd>${Math.round(gas)}%</dd>`;
+  $("r-next").hidden = !(passed && L.i < LEVELS.length - 1);
+  $("ov-res").hidden = false;
+  ($("r-next").hidden ? $("r-again") : $("r-next")).focus({ preventScroll: true });
+}
+
+/* ---------- меню ---------- */
+function renderMenu() {
+  $("levels").innerHTML = LEVELS.map((l, i) => `
+    <button class="lvl" type="button" data-i="${i}" ${i + 1 > save.unlocked ? "disabled" : ""}>
+      <span class="no">${i + 1}</span>
+      <span><span class="nm">${l.name}</span><span class="ds">${i + 1 > save.unlocked ? "Откроется после уровня " + i : l.desc}</span></span>
+      <span class="best">${save.best[i] ? "рекорд " + save.best[i] : ""}</span>
+    </button>`).join("");
+}
+$("levels").addEventListener("click", e => {
+  const b = e.target.closest(".lvl"); if (!b || b.disabled) return;
+  start(+b.dataset.i);
+});
+function start(i) { reset(i); $("ov-menu").hidden = true; $("ov-res").hidden = true; }
+function toMenu() { renderMenu(); $("ov-res").hidden = true; $("ov-menu").hidden = false; reset(Math.min(save.unlocked, LEVELS.length) - 1); phase = "idle"; }
+$("r-again").onclick = () => start(L.i);
+$("r-next").onclick = () => start(L.i + 1);
+$("r-menu").onclick = toMenu;
+
+/* ---------- управление ---------- */
+const KEYS = { ArrowUp: "thrust", " ": "thrust", w: "thrust", "ц": "thrust", ArrowLeft: "rl", a: "rl", "ф": "rl", ArrowRight: "rr", d: "rr", "в": "rr" };
+addEventListener("keydown", e => {
+  const k = KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+  if (k) { input[k] = true; e.preventDefault(); return; }
+  if (e.key === "r" || e.key === "к" || e.key === "R") { if (L && phase !== "idle") start(L.i); }
+  if (e.key === "Escape") toMenu();
+  if (e.key === "Enter" && !$("ov-res").hidden && !$("r-next").hidden) { e.preventDefault(); start(L.i + 1); }
+});
+addEventListener("keyup", e => { const k = KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key]; if (k) input[k] = false; });
+addEventListener("blur", () => { input.thrust = input.rl = input.rr = false; });
+function hold(id, key) {
+  const el = $(id);
+  const on = e => { e.preventDefault(); input[key] = true; el.classList.add("on"); el.setPointerCapture?.(e.pointerId); };
+  const off = () => { input[key] = false; el.classList.remove("on"); };
+  el.addEventListener("pointerdown", on);
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => el.addEventListener(ev, off));
+  el.addEventListener("contextmenu", e => e.preventDefault());
+}
+hold("b-thrust", "thrust"); hold("b-left", "rl"); hold("b-right", "rr");
+
+/* ---------- отрисовка ---------- */
+const X = x => (x - cam.x) * PPM;
+const Y = y => GY - (y - cam.y) * PPM;
+
+function sky() {
+  const g = ctx.createLinearGradient(0, 0, 0, GY);
+  g.addColorStop(0, "#141b33"); g.addColorStop(.55, "#3a3557"); g.addColorStop(.85, "#b4675a"); g.addColorStop(1, "#f0a35e");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // солнце
+  ctx.fillStyle = "rgba(255, 196, 120, .9)";
+  ctx.beginPath(); ctx.arc(W * .78 - cam.x * PPM * .02, GY - 18 + cam.y * PPM * .1, Math.max(14, PPM * 2.2), 0, Math.PI * 2); ctx.fill();
+  // столовые горы
+  ctx.fillStyle = "#5b3f4f";
+  const off = cam.x * PPM * .08;
+  ctx.beginPath(); ctx.moveTo(0, GY);
+  for (let i = -1; i < 9; i++) {
+    const bx = i * 260 - (off % 260);
+    ctx.lineTo(bx, GY - 30); ctx.lineTo(bx + 30, GY - 58); ctx.lineTo(bx + 120, GY - 58); ctx.lineTo(bx + 150, GY - 34); ctx.lineTo(bx + 260, GY - 26);
+  }
+  ctx.lineTo(W, GY); ctx.closePath(); ctx.fill();
+  // башня полигона
+  const tx = 150 * PPM * .35 - cam.x * PPM * .35 + W * .2;
+  ctx.fillStyle = "#2b2438"; ctx.fillRect(tx, GY - PPM * 14, PPM * 1.2, PPM * 14);
+  ctx.strokeStyle = "#2b2438"; ctx.lineWidth = 1;
+  for (let i = 0; i < 7; i++) { ctx.beginPath(); ctx.moveTo(tx, GY - PPM * 2 * i); ctx.lineTo(tx + PPM * 1.2, GY - PPM * 2 * (i + 1)); ctx.stroke(); }
+  ctx.fillStyle = "#ff5a4a"; ctx.fillRect(tx + PPM * .4, GY - PPM * 14.6, PPM * .4, PPM * .5);
+}
+
+function ground() {
+  const gy = Y(0);
+  ctx.fillStyle = "#3b2f2c"; ctx.fillRect(0, gy, W, H - gy);
+  ctx.fillStyle = "#26232b"; ctx.fillRect(0, gy, W, Math.max(6, PPM * .6));
+  // разметка
+  ctx.fillStyle = "rgba(255,255,255,.35)";
+  for (let x = Math.floor(cam.x / 6) * 6; x < cam.x + W / PPM + 6; x += 6) ctx.fillRect(X(x), gy + 2, PPM * 2.5, Math.max(1.5, PPM * .12));
+  // метры от края рампы
+  ctx.fillStyle = "rgba(232,236,245,.55)"; ctx.font = `${Math.max(10, PPM * .9)}px JetBrains Mono, monospace`; ctx.textAlign = "center";
+  for (let m = 10; m < 160; m += 10) {
+    const x = X(RX + m); if (x < -40 || x > W + 40) continue;
+    ctx.fillRect(x - 1, gy, 2, PPM * 1.2);
+    ctx.fillText(`${m} м`, x, gy + PPM * 2.4);
+  }
+  // площадка
+  if (L && L.padX != null) {
+    const a = X(L.padX), b = X(L.padX + L.pad.w);
+    ctx.fillStyle = "rgba(255,179,71,.85)"; ctx.fillRect(a, gy - 2, b - a, Math.max(5, PPM * .5));
+    ctx.fillStyle = "#201300";
+    for (let x = a; x < b; x += PPM * 1.2) ctx.fillRect(x, gy - 2, PPM * .5, Math.max(5, PPM * .5));
+    // трибуна
+    const sx = X(L.padX + L.pad.w + 4);
+    ctx.fillStyle = "#1c2033"; ctx.fillRect(sx, gy - PPM * 4, PPM * 12, PPM * 4);
+    ctx.fillStyle = "rgba(255,220,180,.55)";
+    for (let i = 0; i < 40; i++) ctx.fillRect(sx + (i % 20) * PPM * .6 + PPM * .2, gy - PPM * (3.2 - Math.floor(i / 20) * 1.2), 2, 2);
+  }
+}
+
+function ramp() {
+  const pts = [];
+  for (let i = 0; i <= 24; i++) { const t = i / 24; pts.push([RS + RL * t, RH * t * t, t]); }
+  // опоры
+  ctx.strokeStyle = "#454a63"; ctx.lineWidth = Math.max(1, PPM * .15);
+  for (let i = 3; i < pts.length; i += 3) { const [x, y] = pts[i]; ctx.beginPath(); ctx.moveTo(X(x), Y(0)); ctx.lineTo(X(x), Y(y)); ctx.stroke(); }
+  // полотно
+  ctx.fillStyle = "#2c3045";
+  ctx.beginPath(); ctx.moveTo(X(RS), Y(0));
+  pts.forEach(([x, y]) => ctx.lineTo(X(x), Y(y)));
+  ctx.lineTo(X(RX), Y(RH - .6)); ctx.lineTo(X(RX - 1), Y(0)); ctx.closePath(); ctx.fill();
+  // закрученные рельсы
+  [1, -1].forEach(s => {
+    ctx.strokeStyle = s > 0 ? "#ffb347" : "#9fe3ff"; ctx.lineWidth = Math.max(1.5, PPM * .22);
+    ctx.beginPath();
+    pts.forEach(([x, y, t], i) => { const yy = y + .35 + s * .3 * Math.cos(Math.PI * t); i ? ctx.lineTo(X(x), Y(yy)) : ctx.moveTo(X(x), Y(yy)); });
+    ctx.stroke();
+  });
+}
+
+function parked(c) {
+  const x0 = X(c.x0), x1 = X(c.x1), gy = Y(0), h = c.h * PPM, len = x1 - x0;
+  ctx.fillStyle = c.c;
+  ctx.beginPath();
+  if (c.n === "тягач") {
+    ctx.rect(x0, gy - h, len * .7, h - PPM * .5);
+    ctx.rect(x0 + len * .72, gy - h * .75, len * .28, h * .75 - PPM * .5);
+  } else if (c.n === "пикап") {
+    ctx.moveTo(x0, gy - PPM * .5); ctx.lineTo(x0, gy - h * .62); ctx.lineTo(x0 + len * .45, gy - h * .62);
+    ctx.lineTo(x0 + len * .52, gy - h); ctx.lineTo(x0 + len * .8, gy - h); ctx.lineTo(x1, gy - h * .55); ctx.lineTo(x1, gy - PPM * .5);
+  } else {
+    ctx.moveTo(x0, gy - PPM * .5); ctx.lineTo(x0 + len * .04, gy - h * .55); ctx.lineTo(x0 + len * .28, gy - h);
+    ctx.lineTo(x0 + len * .7, gy - h); ctx.lineTo(x1 - len * .04, gy - h * .55); ctx.lineTo(x1, gy - PPM * .5);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#11141f";
+  [.2, .8].forEach(f => { ctx.beginPath(); ctx.arc(x0 + len * f, gy - PPM * .35, PPM * .35, 0, Math.PI * 2); ctx.fill(); });
+}
+
+function roadster() {
+  const c = Math.cos(car.roll * DEG);
+  const cs = Math.sign(c || 1) * Math.max(.08, Math.abs(c));
+  ctx.save();
+  ctx.translate(X(car.x), Y(car.y + .6));
+  ctx.rotate(-car.pitch);
+  ctx.scale(PPM, PPM * cs);
+  const under = c < 0;
+  // кузов
+  ctx.fillStyle = under ? "#5a1a22" : "#d23a45";
+  ctx.beginPath();
+  ctx.moveTo(2.3, .28); ctx.lineTo(2.32, .02); ctx.quadraticCurveTo(1.6, -.18, .55, -.26);
+  ctx.lineTo(-.15, -.56); ctx.lineTo(-.95, -.56); ctx.quadraticCurveTo(-1.9, -.4, -2.28, -.12);
+  ctx.lineTo(-2.3, .28); ctx.closePath(); ctx.fill();
+  if (!under) {
+    ctx.fillStyle = "#1b2236";
+    ctx.beginPath(); ctx.moveTo(.42, -.27); ctx.lineTo(-.18, -.5); ctx.lineTo(-.85, -.5); ctx.lineTo(-1.1, -.3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(-1.8, -.02, 3.6, .04);
+  } else {
+    ctx.fillStyle = "#2a2f42"; ctx.fillRect(-1.9, -.05, 3.8, .3);
+    ctx.fillStyle = "#9fe3ff"; [-1.6, 1.6].forEach(x => ctx.fillRect(x - .12, -.1, .24, .1));
+  }
+  // колёса
+  ctx.fillStyle = "#0b0e17";
+  [-1.45, 1.45].forEach(x => { ctx.beginPath(); ctx.arc(x, .32, .33, 0, Math.PI * 2); ctx.fill(); });
+  ctx.fillStyle = "#8d98b3";
+  [-1.45, 1.45].forEach(x => { ctx.beginPath(); ctx.arc(x, .32, .13, 0, Math.PI * 2); ctx.fill(); });
+  ctx.restore();
+}
+
+function particles() {
+  for (const p of parts) {
+    const a = 1 - p.t / p.life;
+    ctx.fillStyle = `rgba(220,240,255,${(a * .55).toFixed(3)})`;
+    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), Math.max(1, p.s * PPM * (1 + p.t)), 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function hud() {
+  const pad = 12, f = Math.max(11, Math.min(14, W / 50));
+  ctx.textAlign = "left"; ctx.font = `700 ${f}px JetBrains Mono, monospace`;
+  ctx.fillStyle = "rgba(13,18,32,.6)"; ctx.fillRect(pad - 6, pad - 4, f * 16, f * 4.6);
+  ctx.fillStyle = "#ffb347"; ctx.fillText(`${L.i + 1}. ${L.name}`, pad, pad + f);
+  ctx.fillStyle = "#e8ecf5";
+  const speed = phase === "air" || phase === "roll" || phase === "crash" ? Math.hypot(car.vx, phase === "air" ? car.vy : 0) : car.v;
+  ctx.fillText(`${String(Math.round(speed * 3.6)).padStart(3, " ")} км/ч`, pad, pad + f * 2.3);
+  ctx.fillText(`высота ${Math.max(0, car.y).toFixed(1)} м`, pad, pad + f * 3.6);
+  // газ
+  const gw = Math.min(180, W * .3), gx = W - gw - pad;
+  ctx.fillStyle = "rgba(13,18,32,.6)"; ctx.fillRect(gx - 6, pad - 4, gw + 12, f * 4.6);
+  ctx.fillStyle = "#8d98b3"; ctx.fillText("ГАЗ", gx, pad + f);
+  ctx.strokeStyle = "#2a3550"; ctx.lineWidth = 1; ctx.strokeRect(gx, pad + f * 1.4, gw, f * .9);
+  ctx.fillStyle = gas > 25 ? "#9fe3ff" : "#ff6b5e"; ctx.fillRect(gx, pad + f * 1.4, gw * gas / 100, f * .9);
+  // вертикальная скорость
+  if (phase === "air") {
+    const vs = -car.vy;
+    ctx.fillStyle = vs > 22 ? "#ff6b5e" : vs > 16 ? "#ffb347" : "#6fdc8c";
+    ctx.fillText(`↓ ${Math.max(0, vs).toFixed(1)} м/с`, gx, pad + f * 3.6);
+  }
+  // авиагоризонт крена
+  if (phase === "air" || phase === "ramp") {
+    const r = Math.max(22, f * 2.2), cx = W - pad - r, cy = pad + f * 4.6 + r + 8;
+    ctx.fillStyle = "rgba(13,18,32,.6)"; ctx.beginPath(); ctx.arc(cx, cy, r + 4, 0, Math.PI * 2); ctx.fill();
+    const err = rollErr(car.roll);
+    ctx.strokeStyle = Math.abs(err) <= 20 ? "#6fdc8c" : Math.abs(err) <= 45 ? "#ffb347" : "#ff6b5e"; ctx.lineWidth = 3;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(err * DEG);
+    ctx.beginPath(); ctx.moveTo(-r * .8, 0); ctx.lineTo(r * .8, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, r * .6); ctx.stroke();
+    ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(0, r * .6, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#e8ecf5"; ctx.textAlign = "center"; ctx.font = `${f * .85}px JetBrains Mono, monospace`;
+    ctx.fillText(`${Math.round(err)}°`, cx, cy + r + f * 1.3); ctx.textAlign = "left";
+  }
+  if (phase === "run" && car.v < 1 && tPhase < 4) {
+    ctx.textAlign = "center"; ctx.font = `600 ${f * 1.15}px Golos Text, sans-serif`; ctx.fillStyle = "#e8ecf5";
+    ctx.fillText("Держите «Газ», чтобы разогнаться", W / 2, H * .38); ctx.textAlign = "left";
+  }
+  if (L.i === 0 && phase === "air" && tPhase < 2.5) {
+    ctx.textAlign = "center"; ctx.font = `600 ${f}px Golos Text, sans-serif`; ctx.fillStyle = "#9fe3ff";
+    ctx.fillText("⟲ ⟳ — выровняйте крен к нулю, «Сопла» — мягче сесть", W / 2, H * .3); ctx.textAlign = "left";
+  }
+  if (L.invert && phase === "air") {
+    ctx.textAlign = "center"; ctx.font = `600 ${f}px Golos Text, sans-serif`; ctx.fillStyle = "#ffb347";
+    ctx.fillText("Боковые сопла перепутаны", W / 2, H * .3); ctx.textAlign = "left";
+  }
+}
+
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  // камера
+  const viewW = W / PPM;
+  const tx = car.x - viewW * (phase === "air" ? .32 : .3);
+  cam.x += (tx - cam.x) * .12;
+  const ty = Math.max(0, car.y - 10);
+  cam.y += (ty - cam.y) * .2;
+  if (L.sway) {
+    ctx.translate(W / 2, H / 2); ctx.rotate(Math.sin(time * .9) * .035); ctx.translate(-W / 2, -H / 2);
+  }
+  sky(); ground(); ramp();
+  row.forEach(parked);
+  particles(); roadster();
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  hud();
+}
+
+/* ---------- цикл ---------- */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (phase !== "idle" && phase !== "done") {
+    const n = Math.ceil(dt / (1 / 120));
+    for (let i = 0; i < n; i++) step(dt / n);
+  } else time += dt;
+  if (phase === "idle") { car.x = 40 + Math.sin(time * .3) * 2; }
+  draw();
+  requestAnimationFrame(frame);
+}
+
+resize();
+renderMenu();
+reset(Math.min(save.unlocked, LEVELS.length) - 1);
+phase = "idle"; car.x = 40;
+cam.x = car.x - (W / PPM) * .3;
+requestAnimationFrame(frame);
+})();
+</script>
