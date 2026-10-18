@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=JetBrains+Mono:wght@400;700&family=Golos+Text:wght@400;600&display=swap">
 <style>
-/* Layout: 3D-полигон на весь блок, поверх него приборы пульта и три кнопки. Единый тёмный вид. */
+/* Layout: 3D-мир на весь блок. Поверх только скорость, очки, «⋯» и кнопки; остальное появляется на 3 секунды и прячется. */
 :root {
   --night: #0d1220;
   --panel: #151c2e;
@@ -15,6 +15,7 @@
   --gas: #9fe3ff;
   --ok: #6fdc8c;
   --bad: #ff6b5e;
+  --glass: rgba(13, 18, 32, .72);
   --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
   --f-body: "Golos Text", "Segoe UI", system-ui, sans-serif;
   --f-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -24,63 +25,119 @@
 [hidden] { display: none !important; }
 body { background: var(--night); color: var(--text); font: 15px/1.55 var(--f-body); }
 .page {
-  max-width: 1100px; margin: 0 auto;
-  padding-block: 16px 40px;
+  max-width: 1200px; margin: 0 auto;
+  padding-block: 12px 40px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; margin-bottom: 12px; }
-h1 { font: 800 clamp(20px, 4.4vw, 36px)/1.05 var(--f-display); margin: 0; letter-spacing: -.01em; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; margin-bottom: 10px; }
+h1 { font: 800 clamp(20px, 4vw, 32px)/1.05 var(--f-display); margin: 0; letter-spacing: -.01em; }
 h1 span { color: var(--amber); }
 .callsign { font: 12px var(--f-mono); color: var(--dim); letter-spacing: .06em; text-transform: uppercase; }
 
 .stage {
   position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #2a2440;
-  height: clamp(380px, 68vh, 640px); touch-action: none; user-select: none; -webkit-user-select: none;
+  height: clamp(400px, 74vh, 720px); touch-action: none; user-select: none; -webkit-user-select: none;
 }
-.stage canvas { display: block; width: 100%; height: 100%; }
+.stage canvas.gl { display: block; width: 100%; height: 100%; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); font: 14px var(--f-mono); }
 
-/* приборы */
-.hud { position: absolute; z-index: 2; font: 700 13px/1.45 var(--f-mono); pointer-events: none; }
-.hud.tl { top: 10px; left: 10px; background: rgba(13,18,32,.66); border-radius: 8px; padding: 7px 10px; }
-.hud.tl .lv { color: var(--amber); }
+/* постоянные приборы: только самое нужное */
+.hud { position: absolute; z-index: 2; pointer-events: none; font: 700 13px/1.3 var(--f-mono); }
+.hud.tl { top: 10px; left: 10px; background: var(--glass); border-radius: 10px; padding: 6px 10px; min-width: 92px; }
+.hud.tl .sp { font: 800 20px/1 var(--f-display); }
+.hud.tl .u { font-size: 11px; color: var(--dim); margin-left: 4px; }
+.hud.tl .alt { font-size: 11.5px; color: var(--dim); display: block; margin-top: 2px; }
+.hud.tl .alt:empty { display: none; }
+.mgas { display: block; height: 4px; border-radius: 2px; background: var(--line); margin-top: 5px; overflow: hidden; }
+.mgas b { display: block; height: 100%; width: 100%; background: var(--gas); }
+.hud.top { top: 10px; left: 50%; transform: translateX(-50%); background: var(--glass); border-radius: 999px; padding: 6px 14px; white-space: nowrap; color: var(--amber); }
+.hud.top:empty { display: none; }
+
+/* прибор крена: только в воздухе */
 .hud.tr {
-  top: 10px; right: 10px; width: 132px; background: rgba(13,18,32,.66); border-radius: 10px; padding: 8px;
-  display: grid; gap: 6px; justify-items: center;
+  top: 54px; right: 10px; width: 120px; background: var(--glass); border-radius: 10px; padding: 6px;
+  display: grid; gap: 2px; justify-items: center; transition: opacity .2s, transform .2s;
 }
-.gasbar { width: 100%; }
-.gasbar span { display: block; font-size: 10.5px; color: var(--dim); letter-spacing: .05em; }
-.gasbar i { display: block; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 3px; }
-.gasbar b { display: block; height: 100%; width: 100%; background: var(--gas); }
-.dial svg { display: block; width: 104px; height: 104px; }
-.dial .cap { font-size: 11px; color: var(--dim); text-align: center; margin-top: -2px; }
-.fall { font-size: 12px; }
-.camtoggle {
-  position: absolute; z-index: 3; top: 10px; left: 50%; transform: translateX(-50%);
-  font: 600 12.5px var(--f-body); color: var(--text); background: rgba(13,18,32,.75);
-  border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer;
+.hud.tr.off { opacity: 0; transform: translateY(-8px); }
+.dial svg { display: block; width: 100px; height: 100px; }
+.dial .cap { font-size: 11px; text-align: center; }
+.fall { font-size: 12px; min-height: 1.2em; }
+
+/* «⋯» */
+.dock { position: absolute; z-index: 7; top: 10px; right: 10px; }
+.dock-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--glass);
+  color: var(--text); font: 800 18px/1 var(--f-body); cursor: pointer; letter-spacing: 1px;
 }
+.dock-panel {
+  position: absolute; top: 46px; right: 0; width: 240px; padding: 10px; display: grid; gap: 6px;
+  background: rgba(21, 28, 46, .96); border: 1px solid var(--line); border-radius: 12px;
+}
+.dock-panel button {
+  text-align: left; font: 600 13.5px var(--f-body); color: var(--text); background: var(--night);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer;
+}
+.dock-panel button:hover { border-color: var(--amber); }
+.dock-panel canvas { width: 100%; height: auto; border-radius: 8px; background: #1a1626; display: block; }
+.dock-panel .stat { font: 12px var(--f-mono); color: var(--dim); }
+
+/* тосты и подсказки */
+.toast {
+  position: absolute; z-index: 3; top: 50px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 120px);
+  padding: 7px 14px; border-radius: 16px; background: rgba(13,18,32,.85); border: 1px solid var(--amber);
+  font: 700 14px/1.35 var(--f-body); color: var(--amber); text-align: center; pointer-events: none;
+}
+.toast.good { border-color: var(--ok); color: var(--ok); }
+.toast.bad { border-color: var(--bad); color: var(--bad); }
 .coach {
-  position: absolute; z-index: 2; left: 50%; bottom: 92px; transform: translateX(-50%);
-  padding: 8px 14px; border-radius: 999px; background: rgba(13,18,32,.85); max-width: calc(100% - 24px);
-  font: 600 15px var(--f-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: absolute; z-index: 2; left: 50%; bottom: 88px; transform: translateX(-50%);
+  padding: 7px 14px; border-radius: 999px; background: rgba(13,18,32,.85); max-width: calc(100% - 24px);
+  font: 600 14px var(--f-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   border: 1px solid var(--amber); color: var(--amber); pointer-events: none;
 }
 
+/* урок: 3 секунды развёрнут, потом свёрнут в строку */
+.lesson {
+  position: absolute; z-index: 3; left: 50%; bottom: 84px; transform: translateX(-50%);
+  width: min(420px, calc(100% - 20px)); padding: 7px 10px; cursor: pointer;
+  background: rgba(13, 18, 32, .9); border: 1px solid var(--gas); border-radius: 10px;
+}
+.lesson .hd { display: flex; align-items: center; gap: 8px; }
+.lesson h3 { font: 800 13.5px/1.2 var(--f-display); margin: 0; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lesson .step { font: 11px var(--f-mono); color: var(--gas); white-space: nowrap; }
+.lesson p { margin: 4px 0 0; font-size: 13px; line-height: 1.35; }
+.lesson .msg { margin-top: 3px; font-size: 12.5px; line-height: 1.3; color: var(--amber); }
+.lesson .msg:empty { display: none; }
+.lesson.min p, .lesson.min .msg { display: none; }
+.bar { height: 5px; border-radius: 3px; background: var(--line); margin-top: 5px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--ok); }
+.btn.small { padding: 4px 9px; font-size: 12px; }
+
+.replay {
+  position: absolute; z-index: 5; top: 10px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 10px; align-items: center; padding: 5px 7px 5px 14px; border-radius: 999px; white-space: nowrap;
+  background: rgba(13,18,32,.85); border: 1px solid var(--bad); font: 700 12px var(--f-mono); color: var(--text);
+}
+.replay .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); }
+.stage.replaying .hud, .stage.replaying .pad, .stage.replaying .coach, .stage.replaying .dock, .stage.replaying .toast { display: none !important; }
+
 /* кнопки */
 .pad {
-  position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px;
+  position: absolute; z-index: 4; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px;
   padding: 10px max(10px, env(safe-area-inset-right, 0px)) 10px max(10px, env(safe-area-inset-left, 0px)); pointer-events: none;
 }
-.pad .grp { display: flex; gap: 8px; }
+.pad .grp { display: flex; gap: 7px; align-items: flex-end; }
 .tb {
-  pointer-events: auto; min-width: 76px; height: 66px; border-radius: 14px; padding: 4px 10px;
-  background: rgba(21, 28, 46, .84); border: 1.5px solid var(--line); color: var(--text);
+  pointer-events: auto; min-width: 66px; height: 62px; border-radius: 14px; padding: 4px 8px;
+  background: rgba(21, 28, 46, .8); border: 1.5px solid var(--line); color: var(--text);
   display: grid; place-items: center; align-content: center; cursor: pointer; touch-action: none;
 }
-.tb b { font: 700 24px/1 var(--f-mono); }
-.tb small { font: 600 11.5px/1.2 var(--f-body); color: var(--dim); }
-.tb.wide { min-width: 116px; border-color: var(--gas); }
+.tb b { font: 700 22px/1 var(--f-mono); }
+.tb small { font: 600 11px/1.2 var(--f-body); color: var(--dim); }
+.tb.sm { min-width: 58px; height: 52px; }
+.tb.sm b { font: 800 12px/1 var(--f-display); }
+.tb.wide { min-width: 104px; border-color: var(--gas); }
 .tb.wide b { font: 800 17px/1 var(--f-display); color: var(--gas); }
 .tb.on { background: rgba(159, 227, 255, .28); }
 .tb.hint { border-color: var(--amber); animation: pulse 1.1s infinite; }
@@ -88,64 +145,40 @@ h1 span { color: var(--amber); }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,179,71,.6); } 70% { box-shadow: 0 0 0 14px rgba(255,179,71,0); } 100% { box-shadow: 0 0 0 0 rgba(255,179,71,0); } }
 @media (prefers-reduced-motion: reduce) { .tb.hint { animation: none; box-shadow: 0 0 0 3px var(--amber); } }
 
-/* оверлеи */
+/* окна */
 .ov {
-  position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 14px;
-  background: rgba(10, 14, 26, .72); backdrop-filter: blur(2px);
+  position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 14px;
+  background: rgba(10, 14, 26, .7); backdrop-filter: blur(2px);
 }
-.card { width: min(540px, 100%); max-height: 100%; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
-.card h2 { font: 800 21px/1.15 var(--f-display); margin: 0 0 6px; }
+.card { position: relative; width: min(540px, 100%); max-height: 100%; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+.card h2 { font: 800 20px/1.15 var(--f-display); margin: 0 0 6px; padding-right: 30px; }
 .card p { margin: 0 0 10px; color: var(--dim); }
-.levels { display: grid; gap: 8px; margin: 12px 0 10px; }
+.close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--night); color: var(--text); cursor: pointer; font-size: 16px; }
+.levels { display: grid; gap: 7px; margin: 10px 0 4px; }
 .lvl {
   display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center;
   width: 100%; text-align: left; font: inherit; color: var(--text); cursor: pointer;
-  background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px;
+  background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
 }
 .lvl:hover:not(:disabled) { border-color: var(--amber); }
 .lvl:disabled { opacity: .45; cursor: not-allowed; }
 .lvl .no { font: 800 16px var(--f-display); color: var(--amber); }
+.lvl.alt { border-color: var(--gas); background: rgba(159, 227, 255, .07); }
+.lvl.alt .no { color: var(--gas); }
 .lvl .nm { font-weight: 600; }
-.lvl .ds { display: block; font-size: 13px; color: var(--dim); }
+.lvl .ds { display: block; font-size: 12.5px; color: var(--dim); }
 .lvl .best { font: 12px var(--f-mono); color: var(--gas); white-space: nowrap; }
-.opt { display: flex; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; }
-.opt input { width: 18px; height: 18px; accent-color: var(--amber); }
-.res { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; margin: 12px 0 16px; font-size: 14px; }
+.res { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 16px; margin: 10px 0 14px; font-size: 14px; }
 .res dt { color: var(--dim); }
 .res dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
 .res .total { font-weight: 700; color: var(--amber); font-size: 16px; }
 .verdict-ok { color: var(--ok); } .verdict-bad { color: var(--bad); } .verdict-mid { color: var(--amber); }
 .row { display: flex; flex-wrap: wrap; gap: 8px; }
-.btn { font: 600 14px var(--f-body); cursor: pointer; border-radius: 8px; padding: 10px 16px; background: var(--night); color: var(--text); border: 1px solid var(--line); }
+.btn { font: 600 14px var(--f-body); cursor: pointer; border-radius: 8px; padding: 9px 15px; background: var(--night); color: var(--text); border: 1px solid var(--line); }
 .btn.primary { background: var(--amber); color: #201300; border-color: var(--amber); }
-:focus-visible { outline: 2px solid var(--gas); outline-offset: 2px; }
-.lvl.train { border-color: var(--gas); background: rgba(159, 227, 255, .07); }
-.lvl.train .no { color: var(--gas); }
-.lesson {
-  position: absolute; z-index: 3; top: 10px; left: 50%; transform: translateX(-50%);
-  width: min(400px, calc(100% - 300px)); padding: 8px 10px;
-  background: rgba(13, 18, 32, .88); border: 1px solid var(--gas); border-radius: 10px;
-}
-.lesson .hd { display: flex; align-items: center; gap: 8px; }
-.lesson h3 { font: 800 14px/1.2 var(--f-display); margin: 0; flex: 1; min-width: 0; }
-.lesson .step { font: 11px var(--f-mono); color: var(--gas); white-space: nowrap; }
-.lesson p { margin: 4px 0 0; font-size: 13px; line-height: 1.35; }
-.bar { height: 6px; border-radius: 3px; background: var(--line); margin-top: 6px; overflow: hidden; }
-.bar i { display: block; height: 100%; width: 0; background: var(--ok); }
-.lesson .msg { margin-top: 4px; font-size: 12.5px; line-height: 1.3; color: var(--amber); }
-.lesson .msg:empty { display: none; }
-.btn.small { padding: 5px 10px; font-size: 12.5px; }
-.stage.lesson-on .camtoggle { display: none; }
 .brief-step { font: 12px var(--f-mono); color: var(--gas); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 4px; }
 .card .brief-text { color: var(--text); font-size: 15px; }
-.replay {
-  position: absolute; z-index: 5; top: 10px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 10px; align-items: center; padding: 6px 8px 6px 14px; border-radius: 999px;
-  background: rgba(13,18,32,.85); border: 1px solid var(--bad); font: 700 12px var(--f-mono); color: var(--text); white-space: nowrap;
-}
-.replay .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); }
-.stage.replaying .hud, .stage.replaying .pad, .stage.replaying .camtoggle, .stage.replaying .coach { display: none !important; }
-.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); font: 14px var(--f-mono); }
+:focus-visible { outline: 2px solid var(--gas); outline-offset: 2px; }
 
 .help { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 24px; margin-top: 18px; }
 .help h3 { font: 500 13px var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--amber); margin: 0 0 6px; }
@@ -153,44 +186,41 @@ h1 span { color: var(--amber); }
 .help ul { padding-left: 18px; }
 kbd { font: 12px var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--text); background: var(--panel); }
 footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch; }
-footer a { color: var(--gas); }
 
 @media (max-width: 640px) {
-  .page { padding-block: 8px 28px; }
-  header.top { margin-bottom: 8px; }
+  .page { padding-block: 6px 28px; }
+  header.top { margin-bottom: 6px; }
   .callsign { display: none; }
-  .stage { height: max(420px, calc(100svh - 96px)); border-radius: 10px; }
-  .hud.tl { font-size: 11.5px; }
-  .hud.tr { width: 108px; padding: 6px; }
-  .dial svg { width: 84px; height: 84px; }
-  .camtoggle { top: auto; bottom: 86px; left: auto; right: 10px; transform: none; }
-  .coach { bottom: 132px; font-size: 13.5px; }
-  .lesson { top: auto; bottom: 80px; width: calc(100% - 20px); }
-  .tb { min-width: 66px; height: 60px; }
-  .tb.wide { min-width: 100px; }
+  .stage { height: max(440px, calc(100svh - 70px)); border-radius: 10px; }
+  .hud.tr { width: 100px; }
+  .dial svg { width: 82px; height: 82px; }
+  .tb { min-width: 58px; height: 56px; }
+  .tb.sm { min-width: 52px; height: 48px; }
+  .tb.wide { min-width: 88px; }
+  .coach { bottom: 80px; font-size: 13px; }
+  .lesson { bottom: 76px; }
+  .toast { font-size: 13px; max-width: calc(100% - 24px); top: 92px; }
 }
 </style>
 
 <div class="page">
   <header class="top">
     <h1>Восьмёрка <span>Баклан</span></h1>
-    <span class="callsign">Полигон · дистанционный пилот №742</span>
+    <span class="callsign">Город · автобан · трюк-парк · полигон</span>
   </header>
 
   <div class="stage" id="stage">
-    <div class="loading" id="loading">Загружаю полигон…</div>
+    <div class="loading" id="loading">Загружаю город…</div>
 
-    <div class="hud tl" id="hud-tl"><div class="lv" id="h-lv">—</div><div id="h-speed">0 км/ч</div><div id="h-alt">высота 0.0 м</div></div>
-    <div class="hud tr">
-      <div class="gasbar"><span>ГАЗ В БАЛЛОНАХ</span><i><b id="h-gas"></b></i></div>
+    <div class="hud tl"><span class="sp" id="h-speed">0</span><span class="u">км/ч</span><span class="alt" id="h-alt"></span><i class="mgas"><b id="h-gas"></b></i></div>
+    <div class="hud top" id="h-top"></div>
+    <div class="hud tr off" id="h-air">
       <div class="dial">
         <svg viewBox="-60 -60 120 120" aria-hidden="true">
           <circle r="56" fill="rgba(21,28,46,.9)" stroke="#2a3550" stroke-width="2"/>
           <path d="M -40 42 L 40 42" stroke="#6fdc8c" stroke-width="3" stroke-linecap="round" opacity=".7"/>
           <text x="0" y="54" text-anchor="middle" font-size="9" fill="#8d98b3" font-family="JetBrains Mono, monospace">земля</text>
-          <g id="d-ghost" opacity=".45">
-            <rect x="-26" y="-12" width="52" height="18" rx="5" fill="none" stroke="#e8ecf5" stroke-dasharray="3 3"/>
-          </g>
+          <g id="d-ghost" opacity=".45"><rect x="-26" y="-12" width="52" height="18" rx="5" fill="none" stroke="#e8ecf5" stroke-dasharray="3 3"/></g>
           <g id="d-car">
             <path d="M -16 -12 L -11 -24 L 11 -24 L 16 -12 Z" fill="#1b2236" stroke="#d23a45" stroke-width="2"/>
             <rect x="-28" y="-12" width="56" height="18" rx="5" fill="#d23a45"/>
@@ -201,11 +231,24 @@ footer a { color: var(--gas); }
           </g>
           <text id="d-arrow" x="0" y="-34" text-anchor="middle" font-size="18" fill="#ffb347" font-family="JetBrains Mono, monospace"></text>
         </svg>
-        <div class="cap" id="d-cap">вид сзади</div>
+        <div class="cap" id="d-cap">крен 0°</div>
       </div>
       <div class="fall" id="h-fall"></div>
     </div>
-    <button class="camtoggle" id="cam" type="button">Вид: сзади</button>
+
+    <div class="dock">
+      <button class="dock-btn" id="dock-btn" type="button" aria-label="Меню" aria-expanded="false">⋯</button>
+      <div class="dock-panel" id="dock-panel" hidden>
+        <canvas id="map" width="440" height="300" aria-label="Карта"></canvas>
+        <div class="stat" id="m-stat"></div>
+        <button type="button" id="m-modes">Режимы и уровни</button>
+        <button type="button" id="m-cam">Камера: сзади</button>
+        <button type="button" id="m-assist">Ассистент переворота: вкл</button>
+        <button type="button" id="m-restart">Заново</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
     <div class="coach" id="coach" hidden></div>
     <div class="lesson" id="lesson" hidden>
       <div class="hd"><h3 id="ls-title"></h3><span class="step" id="ls-step"></span><button class="btn small" id="ls-skip" type="button">Дальше</button></div>
@@ -217,18 +260,21 @@ footer a { color: var(--gas); }
 
     <div class="pad">
       <div class="grp">
-        <button class="tb" id="b-left" type="button" aria-label="Крутить влево"><b>⟲</b><small>влево</small></button>
-        <button class="tb" id="b-right" type="button" aria-label="Крутить вправо"><b>⟳</b><small>вправо</small></button>
+        <button class="tb" id="b-left" type="button" aria-label="Влево"><b>◀</b><small id="l-sub">руль</small></button>
+        <button class="tb" id="b-right" type="button" aria-label="Вправо"><b>▶</b><small id="r-sub">руль</small></button>
       </div>
-      <button class="tb wide" id="b-thrust" type="button" aria-label="Газ и сопла"><b>ГАЗ</b><small id="thrust-sub">разгон</small></button>
+      <div class="grp">
+        <button class="tb sm" id="b-brake" type="button" aria-label="Тормоз"><b>СТОП</b><small>тормоз</small></button>
+        <button class="tb sm" id="b-hop" type="button" aria-label="Прыжок"><b>ПРЫГ</b><small>сопла</small></button>
+        <button class="tb wide" id="b-thrust" type="button" aria-label="Газ"><b>ГАЗ</b><small id="thrust-sub">разгон</small></button>
+      </div>
     </div>
 
     <div class="ov" id="ov-menu" hidden>
       <div class="card">
-        <h2>Испытательный прыжок</h2>
-        <p>Родстер «Баклан» без водителя. Разгон, закрученная рампа, переворот в воздухе, посадка на колёса за рядом машин.</p>
-        <p><b style="color:var(--text)">Как играть:</b> держите ГАЗ до рампы. В воздухе ГАЗ работает как подушка и тормозит падение. ⟲ ⟳ крутят машину. Круглый прибор справа показывает машину сзади: колёса должны смотреть на зелёную линию земли.</p>
-        <label class="opt" for="assist"><input type="checkbox" id="assist" checked> Ассистент переворота (сам докручивает машину на колёса)</label>
+        <button class="close" id="menu-close" type="button" aria-label="Закрыть">✕</button>
+        <h2>Режимы</h2>
+        <p>Свободная езда по городу и автобану с трюками, уроки управления и испытания на полигоне.</p>
         <div class="levels" id="levels"></div>
       </div>
     </div>
@@ -239,7 +285,7 @@ footer a { color: var(--gas); }
         <h2 id="br-title"></h2>
         <p class="brief-text" id="br-text"></p>
         <div class="row">
-          <button class="btn primary" id="br-go" type="button">Понятно, начать</button>
+          <button class="btn primary" id="br-go" type="button">Начать</button>
           <button class="btn" id="br-menu" type="button">Меню</button>
         </div>
       </div>
@@ -254,7 +300,7 @@ footer a { color: var(--gas); }
           <button class="btn primary" id="r-next" type="button">Следующий уровень</button>
           <button class="btn" id="r-replay" type="button">▶ Повтор с трибуны</button>
           <button class="btn" id="r-again" type="button">Ещё раз</button>
-          <button class="btn" id="r-menu" type="button">Уровни</button>
+          <button class="btn" id="r-menu" type="button">Режимы</button>
         </div>
       </div>
     </div>
@@ -262,23 +308,27 @@ footer a { color: var(--gas); }
 
   <section class="help">
     <div>
-      <h3>Кнопки</h3>
+      <h3>Езда</h3>
       <ul>
-        <li><b>ГАЗ</b> на земле разгоняет. В воздухе держите его, чтобы падать медленнее и лететь дальше.</li>
-        <li><b>⟲ влево / вправо ⟳</b> крутят машину так, как вы видите её сзади.</li>
+        <li><b>ГАЗ</b> — разгон, <b>СТОП</b> — тормоз и задний ход, <b>◀ ▶</b> — руль.</li>
+        <li><b>ПРЫГ</b> — прыжок на соплах с места или на ходу. Газ в баллонах восстанавливается на земле.</li>
       </ul>
     </div>
     <div>
-      <h3>Посадка</h3>
-      <p>Зелёное кольцо на земле показывает, куда машина сядет. Чистая посадка: крен до 20° и падение до 16 м/с. До 45° и 24 м/с машина уцелеет.</p>
+      <h3>В воздухе</h3>
+      <ul>
+        <li><b>◀ ▶</b> крутят машину бочкой. Каждый полный оборот — очки.</li>
+        <li><b>ГАЗ</b> держит подушку: машина падает медленнее и садится мягче.</li>
+        <li>Кольца в воздухе дают бонус. Садиться нужно на колёса.</li>
+      </ul>
     </div>
     <div>
       <h3>Клавиатура</h3>
-      <p><kbd>↑</kbd>/<kbd>Пробел</kbd> — газ, <kbd>←</kbd> <kbd>→</kbd> — крутить, <kbd>C</kbd> — камера, <kbd>R</kbd> — заново, <kbd>Esc</kbd> — меню.</p>
+      <p><kbd>↑</kbd> газ, <kbd>↓</kbd> тормоз, <kbd>←</kbd> <kbd>→</kbd> руль и вращение, <kbd>Пробел</kbd> прыжок, <kbd>C</kbd> камера, <kbd>R</kbd> заново, <kbd>M</kbd> меню.</p>
     </div>
   </section>
 
-  <footer>Прототип по мотивам показа летающего родстера 15 октября 2026 года. Машина, компания и все названия вымышленные.</footer>
+  <footer>Прототип по мотивам показа летающего родстера 15 октября 2026 года. Город, машина, компания и все названия вымышленные.</footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
@@ -289,12 +339,17 @@ const $ = id => document.getElementById(id);
 if (!window.THREE) { $("loading").textContent = "Не удалось загрузить 3D-движок. Обновите страницу."; return; }
 const T = THREE, DEG = Math.PI / 180;
 
-/* ---------- параметры ---------- */
+/* ---------- параметры полигона ---------- */
 const G = 14, ACC = 8, DRAG = 2, VMAX = 30;
 const RS = 70, RL = 14, RH = 5, RX = RS + RL;
 const ROW0 = RX + 8, GAP = 0.8, HALF = 2.2, WHEEL = 0.65;
 const AIR_SLOW = 0.8;
 const CLEAN_ROLL = 20, CLEAN_V = 16, HARD_ROLL = 45, HARD_V = 24;
+/* ---------- параметры города ---------- */
+const ZA = -60;                       // ось автобана
+const VMAXF = 55;                     // ~200 км/ч
+const WORLD = { x0: -580, x1: 1380, z0: -540, z1: 260 };
+const SPAWN = { x: -60, z: ZA + 13.75, yaw: 0 };
 
 const MODELS = [
   { n: "седан", len: 4.7, h: 1.45, c: 0x7f8fa8 },
@@ -310,21 +365,22 @@ const LEVELS = [
   { name: "С бодуна", desc: "Боковые сопла перепутаны, ассистент выключен.", cars: 5, invert: true, noAssist: true },
   { name: "На точку", desc: "Семь машин и посадка точно на площадку у трибуны.", cars: 7, pad: { off: 7, w: 10 } }
 ];
+const FREE = { name: "Город", cars: 4, free: true, i: -2 };
 
-/* ---------- полигон управления ---------- */
+/* ---------- уроки ---------- */
 const DRILLS = [
   { title: "Газ", short: "Держите ГАЗ до 60 км/ч.",
     text: "Зажмите и держите кнопку ГАЗ (на клавиатуре — стрелка ↑). Машина разгонится. Нужно 60 км/ч.",
     setup() { phase = "run"; },
     check() { return Math.min(1, car.v / 16.7); }, hint: () => "thrust" },
-  { title: "Подушка", short: "Держите ГАЗ, чтобы машина не упала ниже зелёной зоны 4 с.",
+  { title: "Подушка", short: "Держите ГАЗ, чтобы машина не выпала из зелёной зоны 4 с.",
     text: "Машина висит в воздухе и падает. В воздухе ГАЗ работает как подушка: пока держите, она падает медленно. Удержите машину в зелёной зоне 4 секунды.",
     setup() { phase = "drill"; car.y = 8; zone(3, 10); },
     tick(dt) { if (car.y >= 3 && car.y <= 10) this.t += dt; return Math.min(1, this.t / 4); },
     ground() { car.y = 8; car.vy = 0; flash("Упала. Держите ГАЗ дольше."); this.t = 0; },
     hint: () => car.vy < -1.5 || car.y < 5 ? "thrust" : null },
-  { title: "Переворот", short: "⟲ ⟳ — поставьте машину колёсами вниз и остановите.",
-    text: "Машина висит вверх колёсами. Кнопками ⟲ влево и вправо ⟳ поверните её колёсами вниз и остановите. Прибор справа покажет зелёный крен.",
+  { title: "Переворот", short: "◀ ▶ — поставьте машину колёсами вниз и остановите.",
+    text: "Машина висит вверх колёсами. В воздухе кнопки ◀ и ▶ крутят её. Поверните колёсами вниз и остановите — прибор крена станет зелёным.",
     setup() { phase = "drill"; car.y = 6; car.roll = 180; this.noGrav = true; },
     tick(dt) {
       const e = Math.abs(rollErr(car.roll));
@@ -339,78 +395,90 @@ const DRILLS = [
     ground() {
       const v = -car.vy;
       car.y = 0; car.vy = 0;
-      if (v <= CLEAN_V) { this.done = true; for (let i = 0; i < 8; i++) puff(new T.Vector3(car.x, .2, 0), new T.Vector3(0, 2, (Math.random() - .5) * 8), .9, .5); return; }
+      if (v <= CLEAN_V) { this.done = true; dust(car.x, 0, car.z, 8); return; }
       flash(`Слишком жёстко: ${v.toFixed(0)} м/с. Нажмите ГАЗ раньше.`); car.y = 14;
     },
     hint: () => car.y < 7 && car.y > .1 ? "thrust" : null },
   { title: "Полный прыжок", short: "ГАЗ до рампы, дальше слушайте подсказки.",
-    text: "Всё вместе: держите ГАЗ до рампы, в воздухе следите за прибором и кольцом на земле, у земли снова ГАЗ. Перелетите две машины.",
+    text: "Всё вместе: держите ГАЗ до рампы, в воздухе следите за прибором крена и кольцом на земле, у земли снова ГАЗ. Перелетите две машины.",
     setup() { L = { name: "Полигон", cars: 2, coach: true, i: -1 }; buildLevel(); phase = "run"; },
     check() { return 0; } }
 ];
 
-let save = { unlocked: 1, best: {}, assist: true };
+/* ---------- сохранение ---------- */
+let save = { unlocked: 1, best: {}, assist: true, trained: false, freeBest: 0, trickBest: 0 };
 try { const s = JSON.parse(localStorage.getItem("baklan3d-v1")); if (s && s.unlocked) save = Object.assign(save, s); } catch (e) {}
 const persist = () => { try { localStorage.setItem("baklan3d-v1", JSON.stringify(save)); } catch (e) {} };
-$("assist").checked = save.assist;
-$("assist").onchange = () => { save.assist = $("assist").checked; persist(); };
+
+/* ---------- случайность с зерном: город всегда одинаковый ---------- */
+let seed = 742;
+const rnd = () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 
 /* ---------- сцена ---------- */
 const stage = $("stage");
 const renderer = new T.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.6));
 renderer.outputEncoding = T.sRGBEncoding;
+renderer.domElement.className = "gl";
 stage.insertBefore(renderer.domElement, stage.firstChild);
 $("loading").remove();
 const scene = new T.Scene();
-const camera = new T.PerspectiveCamera(60, 1, 0.1, 900);
-
-(() => {  // небо
+const camera = new T.PerspectiveCamera(60, 1, 0.3, 1400);
+(() => {
   const c = document.createElement("canvas"); c.width = 2; c.height = 256;
   const g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 0, 256);
   gr.addColorStop(0, "#141b33"); gr.addColorStop(.45, "#3a3557"); gr.addColorStop(.75, "#b4675a"); gr.addColorStop(1, "#f0a35e");
   g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
   const tex = new T.CanvasTexture(c); tex.encoding = T.sRGBEncoding; scene.background = tex;
 })();
-scene.fog = new T.Fog(0xc98a63, 120, 420);
-scene.add(new T.HemisphereLight(0xffd6b0, 0x3b2f2c, 0.9));
-const sun = new T.DirectionalLight(0xffc48a, 1.0); sun.position.set(80, 60, -60); scene.add(sun);
-
-const mat = (c, o = {}) => new T.MeshStandardMaterial(Object.assign({ color: c, roughness: .8, metalness: .05 }, o));
-
-// земля, полоса, разметка
-const groundM = new T.Mesh(new T.PlaneGeometry(1200, 600), mat(0x8a5a3c));
-groundM.rotation.x = -Math.PI / 2; groundM.position.set(150, 0, 0); scene.add(groundM);
-const strip = new T.Mesh(new T.PlaneGeometry(400, 10), mat(0x2a2730));
-strip.rotation.x = -Math.PI / 2; strip.position.set(120, 0.01, 0); scene.add(strip);
-for (let x = -20; x < 300; x += 6) {
-  const m = new T.Mesh(new T.PlaneGeometry(2.5, .2), new T.MeshBasicMaterial({ color: 0xbfc4d0 }));
-  m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, 0); scene.add(m);
+scene.fog = new T.Fog(0xb97f62, 160, 620);
+scene.add(new T.HemisphereLight(0xffd6b0, 0x3b2f2c, 0.95));
+const sun = new T.DirectionalLight(0xffc48a, 0.9); sun.position.set(300, 120, 200); scene.add(sun);
+const mat = (c, o = {}) => new T.MeshStandardMaterial(Object.assign({ color: c, roughness: .85, metalness: .05 }, o));
+const under = (color, f = 2) => new T.MeshLambertMaterial({ color, polygonOffset: true, polygonOffsetFactor: f, polygonOffsetUnits: f });
+const flat = (w, d, color, x, z, y = .01) => {
+  const m = new T.Mesh(new T.PlaneGeometry(w, d), color.isMaterial ? color : new T.MeshLambertMaterial({ color }));
+  m.rotation.x = -Math.PI / 2; m.position.set(x, y * 3, z); scene.add(m); return m;
+};
+function textTex(lines, w = 512, h = 128, bg = "#1f6b3a", fg = "#ffffff") {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d"); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.strokeStyle = fg; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12);
+  g.fillStyle = fg; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = `bold ${Math.floor(h / (lines.length + .6))}px Golos Text, Arial, sans-serif`;
+  lines.forEach((t, i) => g.fillText(t, w / 2, h * (i + 1) / (lines.length + 1)));
+  const tex = new T.CanvasTexture(c); tex.encoding = T.sRGBEncoding; return tex;
 }
-function label(text, x) {
+
+/* препятствия: стены (низкие, отбрасывают) и здания/объекты (высокие) */
+const walls = [], solids = [], kickers = [];
+const addSolid = (x0, x1, z0, z1, h, name) => solids.push({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), h, name });
+
+/* ---------- земля и полигон ---------- */
+flat(4000, 3000, new T.MeshLambertMaterial({ color: 0x7d553b, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }), 400, -200, 0);
+flat(360, 10, under(0x2a2730), 120, 0, .02);
+const markM = new T.MeshBasicMaterial({ color: 0xbfc4d0 });
+for (let x = -20; x < 300; x += 6) flat(2.5, .2, markM, x, 0, .03);
+function groundLabel(text, x, z) {
   const c = document.createElement("canvas"); c.width = 128; c.height = 64;
   const g = c.getContext("2d"); g.fillStyle = "#e8ecf5"; g.font = "bold 40px JetBrains Mono, monospace"; g.textAlign = "center"; g.fillText(text, 64, 46);
   const m = new T.Mesh(new T.PlaneGeometry(4, 2), new T.MeshBasicMaterial({ map: new T.CanvasTexture(c), transparent: true }));
-  m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.PI / 2; m.position.set(x, 0.03, 6.5); scene.add(m);
-  const post = new T.Mesh(new T.BoxGeometry(.15, 1.2, .15), mat(0xe8ecf5)); post.position.set(x, .6, 5.3); scene.add(post);
+  m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.PI / 2; m.position.set(x, .12, z); scene.add(m);
 }
-for (let m = 10; m <= 120; m += 10) label(`${m} м`, RX + m);
-
-// горы и башня
-for (let i = 0; i < 14; i++) {
-  const w = 30 + (i * 37) % 40, h = 18 + (i * 13) % 22;
+for (let m = 10; m <= 120; m += 10) groundLabel(`${m} м`, RX + m, 6.5);
+const tower = new T.Mesh(new T.BoxGeometry(2, 30, 2), mat(0x2b2438)); tower.position.set(110, 15, -28); scene.add(tower);
+addSolid(109, 111, -29, -27, 30, "башню");
+const beacon = new T.Mesh(new T.BoxGeometry(.8, .8, .8), new T.MeshBasicMaterial({ color: 0xff5a4a })); beacon.position.set(110, 30.6, -28); scene.add(beacon);
+for (let i = 0; i < 9; i++) {
+  const w = 40 + (i * 37) % 50, h = 22 + (i * 13) % 26;
   const mtn = new T.Mesh(new T.CylinderGeometry(w * .45, w * .6, h, 6), mat(0x5b3f4f, { flatShading: true }));
-  mtn.position.set(-60 + i * 40, h / 2, (i % 2 ? -1 : 1) * (160 + (i * 29) % 60)); scene.add(mtn);
+  mtn.position.set(-300 + i * 190, h / 2, 330 + (i * 53) % 120); scene.add(mtn);
 }
-const tower = new T.Mesh(new T.BoxGeometry(2, 30, 2), mat(0x2b2438)); tower.position.set(110, 15, -40); scene.add(tower);
-const beacon = new T.Mesh(new T.BoxGeometry(.8, .8, .8), new T.MeshBasicMaterial({ color: 0xff5a4a })); beacon.position.set(110, 30.6, -40); scene.add(beacon);
 
-/* ---------- трибуна ---------- */
+/* трибуна */
 const TRIB = { x: ROW0 + 14, z: 22 };
 (() => {
-  for (let k = 0; k < 4; k++) {
-    const step = new T.Mesh(new T.BoxGeometry(26, 1, 2), mat(0x1c2033)); step.position.set(TRIB.x, .5 + k, TRIB.z + k * 2); scene.add(step);
-  }
+  for (let k = 0; k < 4; k++) { const s = new T.Mesh(new T.BoxGeometry(26, 1, 2), mat(0x1c2033)); s.position.set(TRIB.x, .5 + k, TRIB.z + k * 2); scene.add(s); }
   const roof = new T.Mesh(new T.BoxGeometry(28, .3, 10), mat(0x2b2438)); roof.position.set(TRIB.x, 7.5, TRIB.z + 3); scene.add(roof);
   const cols = [0xffd6b0, 0x9fe3ff, 0xffb347, 0xe8ecf5, 0xff6b5e];
   const fan = new T.InstancedMesh(new T.BoxGeometry(.5, .9, .5), new T.MeshBasicMaterial(), 80), m4 = new T.Matrix4(), c = new T.Color();
@@ -419,18 +487,18 @@ const TRIB = { x: ROW0 + 14, z: 22 };
     fan.setMatrixAt(i, m4); fan.setColorAt(i, c.setHex(cols[i % cols.length]));
   }
   scene.add(fan);
+  addSolid(TRIB.x - 13, TRIB.x + 13, TRIB.z - 1, TRIB.z + 8, 8, "трибуну");
 })();
 
-/* ---------- рампа-штопор ---------- */
+/* рампа-штопор */
 const smooth = t => t * t * (3 - 2 * t);
 const rampY = t => RH * t * t;
 (() => {
   const N = 48, rampMat = mat(0x3a3f58, { side: T.DoubleSide }), railA = mat(0xffb347), railB = mat(0x9fe3ff);
   for (let i = 0; i < N; i++) {
     const t = (i + .5) / N, roll = 180 * smooth(t) * DEG;
-    const cy = rampY(t) + WHEEL;
     const seg = new T.Group();
-    seg.position.set(RS + RL * t, cy, 0);
+    seg.position.set(RS + RL * t, rampY(t) + WHEEL, 0);
     seg.rotation.set(roll, 0, Math.atan(2 * RH * t / RL), "ZYX");
     const deck = new T.Mesh(new T.BoxGeometry(RL / N * 1.35, .15, 3.2), rampMat); deck.position.y = -WHEEL - .08; seg.add(deck);
     [-1.65, 1.65].forEach((z, k) => { const r = new T.Mesh(new T.BoxGeometry(RL / N * 1.35, .3, .12), k ? railA : railB); r.position.set(0, -WHEEL + .05, z); seg.add(r); });
@@ -443,14 +511,161 @@ const rampY = t => RH * t * t;
   }
 })();
 
-/* ---------- машина ---------- */
+/* ---------- автобан ---------- */
+(() => {
+  const len = 2000, cx = 400;
+  flat(len, 36, under(0x2b2830), cx, ZA, .02);
+  const white = new T.MeshBasicMaterial({ color: 0xd9dde6 });
+  [ZA + 17.5, ZA + 1.6, ZA - 1.6, ZA - 17.5].forEach(z => flat(len, .25, white, cx, z, .03));
+  const dash = new T.InstancedMesh(new T.PlaneGeometry(6, .2), white, 1020), m4 = new T.Matrix4();
+  const q = new T.Quaternion().setFromEuler(new T.Euler(-Math.PI / 2, 0, 0)), one = new T.Vector3(1, 1, 1);
+  let k = 0;
+  [5.1, 8.6, 12.1].forEach(o => [ZA + o, ZA - o].forEach(z => {
+    for (let x = -590; x < 1390 && k < 1020; x += 12) { m4.compose(new T.Vector3(x, .09, z), q, one); dash.setMatrixAt(k++, m4); }
+  }));
+  dash.count = k; scene.add(dash);
+  const concrete = mat(0x9a9aa4), rail = mat(0xb8bcc6, { metalness: .5, roughness: .4 });
+  const segs = (x0, x1, gaps) => {
+    const out = []; let s = x0;
+    gaps.sort((a, b) => a[0] - b[0]).forEach(([g0, g1]) => { if (g0 > s) out.push([s, g0]); s = Math.max(s, g1); });
+    if (s < x1) out.push([s, x1]); return out;
+  };
+  const cityGaps = [];
+  for (let x = -200; x <= 760; x += 80) cityGaps.push([x - 7, x + 7]);
+  segs(-600, 1400, [[193, 207], [593, 607], [993, 1007]]).forEach(([a, b]) => {
+    const m = new T.Mesh(new T.BoxGeometry(b - a, .9, .6), concrete); m.position.set((a + b) / 2, .45, ZA); scene.add(m);
+    walls.push({ x0: a, x1: b, z0: ZA - .5, z1: ZA + .5, h: .9 });
+  });
+  segs(-600, 1400, cityGaps).forEach(([a, b]) => {
+    const m = new T.Mesh(new T.BoxGeometry(b - a, .8, .2), rail); m.position.set((a + b) / 2, .55, ZA - 18.2); scene.add(m);
+    walls.push({ x0: a, x1: b, z0: ZA - 18.6, z1: ZA - 17.8, h: .8 });
+  });
+  segs(-600, 1400, [[-40, 640]]).forEach(([a, b]) => {
+    const m = new T.Mesh(new T.BoxGeometry(b - a, .8, .2), rail); m.position.set((a + b) / 2, .55, ZA + 18.2); scene.add(m);
+    walls.push({ x0: a, x1: b, z0: ZA + 17.8, z1: ZA + 18.6, h: .8 });
+  });
+  const pole = new T.InstancedMesh(new T.CylinderGeometry(.12, .15, 10, 6), mat(0x6b6f7c), 40);
+  const lamp = new T.InstancedMesh(new T.BoxGeometry(1.6, .25, .5), new T.MeshBasicMaterial({ color: 0xffe2a8 }), 40);
+  let n = 0;
+  for (let x = -580; x < 1400 && n < 40; x += 50, n++) {
+    m4.makeTranslation(x, 5, ZA); pole.setMatrixAt(n, m4);
+    m4.makeTranslation(x, 10, ZA); lamp.setMatrixAt(n, m4);
+  }
+  pole.count = lamp.count = n; scene.add(pole, lamp);
+  const gantry = (x, lines) => {
+    const g = new T.Group(), post = mat(0x6b6f7c);
+    [ZA - 18.8, ZA + 18.8].forEach(z => { const p = new T.Mesh(new T.BoxGeometry(.4, 8, .4), post); p.position.set(0, 4, z); g.add(p); });
+    const beam = new T.Mesh(new T.BoxGeometry(.4, .5, 38), post); beam.position.set(0, 7.8, ZA); g.add(beam);
+    const sign = new T.Mesh(new T.PlaneGeometry(14, 3.5), new T.MeshBasicMaterial({ map: textTex(lines, 512, 128), side: T.DoubleSide }));
+    sign.rotation.y = -Math.PI / 2; sign.position.set(-.3, 6, ZA + 9); g.add(sign);
+    g.position.x = x; scene.add(g);
+  };
+  gantry(-200, ["Полигон → 200 м", "Трюк-парк → 500 м"]);
+  gantry(250, ["Город ← налево", "Трюк-парк → направо"]);
+  gantry(650, ["Трамплин на крайней", "правой полосе"]);
+})();
+
+/* ---------- город ---------- */
+const XS = [], ZS = [-90, -170, -250, -330, -410, -490];
+for (let x = -200; x <= 760; x += 80) XS.push(x);
+(() => {
+  const asphalt = under(0x2f2c35, 2), walk = under(0x6f6a72, 1), park = under(0x3f5a3a, 1);
+  XS.forEach(x => flat(12, 430, asphalt, x, -290, .025));
+  ZS.forEach(z => flat(972, 12, asphalt, 280, z, .026));
+  const wc = document.createElement("canvas"); wc.width = 64; wc.height = 64;
+  const g = wc.getContext("2d");
+  g.fillStyle = "#3a3b48"; g.fillRect(0, 0, 64, 64);
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+    g.fillStyle = rnd() < .45 ? "#ffd58a" : rnd() < .5 ? "#2a2c3a" : "#5c6b8a";
+    g.fillRect(c * 16 + 4, r * 16 + 4, 8, 9);
+  }
+  const winTex = new T.CanvasTexture(wc); winTex.encoding = T.sRGBEncoding; winTex.wrapS = winTex.wrapT = T.RepeatWrapping; winTex.magFilter = T.NearestFilter;
+  const tones = [0x8c8a96, 0xa49a8c, 0x6f7a8f, 0x9a8f86, 0x7b7486, 0xb1a998];
+  const roofM = mat(0x2a2833), treeM = mat(0x2f4a2c, { flatShading: true }), treeG = new T.ConeGeometry(2.2, 7, 6);
+  for (let i = 0; i < XS.length - 1; i++) for (let j = 0; j < ZS.length - 1; j++) {
+    const x0 = XS[i] + 6, x1 = XS[i + 1] - 6, z1 = ZS[j] - 6, z0 = ZS[j + 1] + 6;
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    if ((i * 7 + j * 3) % 11 === 4) {   // сквер
+      flat(x1 - x0, z1 - z0, park, cx, cz, .04);
+      for (let t = 0; t < 7; t++) {
+        const tx = x0 + 6 + rnd() * (x1 - x0 - 12), tz = z0 + 6 + rnd() * (z1 - z0 - 12);
+        const tr = new T.Mesh(treeG, treeM); tr.position.set(tx, 3.5, tz); scene.add(tr);
+        addSolid(tx - .8, tx + .8, tz - .8, tz + .8, 7, "дерево");
+      }
+      continue;
+    }
+    flat(x1 - x0, z1 - z0, walk, cx, cz, .04);
+    const big = rnd() < .3;
+    const cells = big ? [[x0 + 4, x1 - 4, z0 + 4, z1 - 4]]
+      : [[x0 + 2, cx - 1, z0 + 2, cz - 1], [cx + 1, x1 - 2, z0 + 2, cz - 1], [x0 + 2, cx - 1, cz + 1, z1 - 2], [cx + 1, x1 - 2, cz + 1, z1 - 2]];
+    cells.forEach(([a, b, c, d]) => {
+      if (!big && rnd() < .2) return;
+      const shrink = big ? 0 : rnd() * 4;
+      const w = b - a - shrink, dz = d - c - shrink;
+      const h = big ? 40 + rnd() * 50 : 8 + rnd() * (Math.abs(cz - ZA) > 250 ? 45 : 24);
+      const tex = winTex.clone(); tex.needsUpdate = true;
+      tex.repeat.set(Math.max(1, Math.round(w / 6)), Math.max(1, Math.round(h / 5)));
+      const side = mat(tones[Math.floor(rnd() * tones.length)], { map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: .35 });
+      const m = new T.Mesh(new T.BoxGeometry(w, h, dz), [side, side, roofM, roofM, side, side]);
+      const bx = (a + b) / 2, bz = (c + d) / 2;
+      m.position.set(bx, h / 2, bz); scene.add(m);
+      addSolid(bx - w / 2, bx + w / 2, bz - dz / 2, bz + dz / 2, h, "дом");
+    });
+  }
+  const s = new T.Mesh(new T.PlaneGeometry(16, 4), new T.MeshBasicMaterial({ map: textTex(["ГОРОД БАКЛАН"], 512, 128, "#2b2438", "#ffb347"), side: T.DoubleSide }));
+  s.position.set(240, 9, -84); scene.add(s);
+  const sp = new T.Mesh(new T.BoxGeometry(.4, 9, .4), mat(0x6b6f7c)); sp.position.set(240, 4.5, -84.2); scene.add(sp);
+})();
+
+/* ---------- трюк-парк и трамплины ---------- */
+function kicker(x, z, yaw, len, w, h, color = 0x3a3f58) {
+  kickers.push({ x, z, yaw, len, w, h, fx: Math.cos(yaw), fz: -Math.sin(yaw) });
+  const g = new T.Group();
+  const slope = Math.atan(h / len), L2 = Math.hypot(len, h);
+  const deck = new T.Mesh(new T.BoxGeometry(L2, .3, w), mat(color, { roughness: .6 }));
+  deck.rotation.z = slope; deck.position.set(len / 2, h / 2 - .15, 0); g.add(deck);
+  const back = new T.Mesh(new T.BoxGeometry(.4, h, w), mat(0x2a2d3c)); back.position.set(len - .2, h / 2, 0); g.add(back);
+  const sideM = mat(0x2a2d3c, { side: T.DoubleSide });
+  [-1, 1].forEach(s => {
+    const sh = new T.Shape(); sh.moveTo(0, 0); sh.lineTo(len, 0); sh.lineTo(len, h); sh.closePath();
+    const side = new T.Mesh(new T.ShapeGeometry(sh), sideM); side.position.z = s * w / 2; g.add(side);
+  });
+  const stripe = new T.Mesh(new T.BoxGeometry(.6, .32, w + .02), mat(0xffb347)); stripe.rotation.z = slope; stripe.position.set(len - .4, h - .1, 0); g.add(stripe);
+  g.position.set(x, 0, z); g.rotation.y = yaw; scene.add(g);
+}
+const rings = [];
+function ring(x, y, z, yaw = 0) {
+  const m = new T.Mesh(new T.TorusGeometry(3.2, .28, 8, 28), new T.MeshBasicMaterial({ color: 0xffb347 }));
+  m.position.set(x, y, z); m.rotation.y = Math.PI / 2 + yaw; scene.add(m);
+  rings.push({ m, x, y, z, got: false });
+}
+(() => {
+  flat(330, 100, under(0x5d5862), 460, 15, .02);
+  const s = new T.Mesh(new T.PlaneGeometry(14, 3.5), new T.MeshBasicMaterial({ map: textTex(["ТРЮК-ПАРК"], 512, 128, "#2b2438", "#9fe3ff"), side: T.DoubleSide }));
+  s.position.set(310, 7, -30); s.rotation.y = Math.PI / 2; scene.add(s);
+  kicker(320, 0, 0, 10, 6, 3);            ring(352, 7, 0);
+  kicker(360, 30, 0, 16, 8, 6, 0x4a3f58); ring(400, 13, 30);
+  for (let i = 0; i < 4; i++) {
+    const bx = 392 + i * 12.5, bus = new T.Mesh(new T.BoxGeometry(11, 3.2, 2.6), mat(0xe0a83a, { roughness: .5 }));
+    bus.position.set(bx, 1.9, 30); scene.add(bus);
+    const win = new T.Mesh(new T.BoxGeometry(9.5, .8, 2.62), mat(0x1b2236)); win.position.set(bx, 2.5, 30); scene.add(win);
+    addSolid(bx - 5.5, bx + 5.5, 28.7, 31.3, 3.5, "автобус");
+  }
+  kicker(470, -15, 0, 28, 9, 11, 0x5a3348); ring(530, 22, -15); ring(560, 16, -15);
+  kicker(600, 50, Math.PI, 12, 6, 4);     ring(565, 9, 50, Math.PI);
+  kicker(700, ZA + 13.75, 0, 12, 3.2, 3.5);
+  kicker(1100, ZA + 13.75, 0, 22, 3.2, 7);
+  kicker(900, ZA - 13.75, Math.PI, 14, 3.2, 4.5);
+  ring(760, 9, ZA + 13.75); ring(1190, 16, ZA + 13.75);
+})();
+
+/* ---------- машина игрока ---------- */
 function makeRoadster() {
   const g = new T.Group();
   const s = new T.Shape();
   s.moveTo(2.3, -.28); s.lineTo(2.32, -.02); s.quadraticCurveTo(1.6, .18, .55, .26);
   s.lineTo(-.15, .56); s.lineTo(-.95, .56); s.quadraticCurveTo(-1.9, .4, -2.28, .12); s.lineTo(-2.3, -.28); s.closePath();
-  const body = new T.Mesh(new T.ExtrudeGeometry(s, { depth: 1.7, bevelEnabled: true, bevelSize: .1, bevelThickness: .1, bevelSegments: 2 }),
-    mat(0xd23a45, { roughness: .35, metalness: .3 }));
+  const body = new T.Mesh(new T.ExtrudeGeometry(s, { depth: 1.7, bevelEnabled: true, bevelSize: .1, bevelThickness: .1, bevelSegments: 2 }), mat(0xd23a45, { roughness: .35, metalness: .3 }));
   body.position.z = -.85; g.add(body);
   const w = new T.Shape();
   w.moveTo(.42, .3); w.lineTo(-.16, .56); w.lineTo(-.9, .56); w.lineTo(-1.15, .34); w.closePath();
@@ -465,13 +680,41 @@ function makeRoadster() {
   const glowM = new T.MeshBasicMaterial({ color: 0x9fe3ff });
   [[1.6, .5], [1.6, -.5], [-1.6, .5], [-1.6, -.5]].forEach(([x, z]) => { const n = new T.Mesh(new T.CylinderGeometry(.12, .12, .06, 10), glowM); n.position.set(x, -.38, z); g.add(n); });
   const tail = new T.Mesh(new T.BoxGeometry(.05, .08, 1.5), new T.MeshBasicMaterial({ color: 0xff4050 })); tail.position.set(-2.4, .02, 0); g.add(tail);
+  const head = new T.Mesh(new T.BoxGeometry(.05, .06, 1.4), new T.MeshBasicMaterial({ color: 0xfff1d0 })); head.position.set(2.36, -.05, 0); g.add(head);
   return g;
 }
 const carObj = makeRoadster(); scene.add(carObj);
-const shadow = new T.Mesh(new T.CircleGeometry(1, 24), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35 }));
-shadow.rotation.x = -Math.PI / 2; shadow.scale.set(2.6, 1.2, 1); scene.add(shadow);
+const shadow = new T.Mesh(new T.CircleGeometry(1, 24), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35, depthWrite: false }));
+shadow.rotation.x = -Math.PI / 2; scene.add(shadow);
 const marker = new T.Mesh(new T.RingGeometry(1.2, 1.6, 32), new T.MeshBasicMaterial({ color: 0x6fdc8c, transparent: true, opacity: .85, side: T.DoubleSide }));
 marker.rotation.x = -Math.PI / 2; scene.add(marker);
+
+/* ---------- трафик ---------- */
+function boxCar(color, len = 4.4) {
+  const g = new T.Group();
+  const lo = new T.Mesh(new T.BoxGeometry(len, .8, 1.8), mat(color, { roughness: .5 })); lo.position.y = .7; g.add(lo);
+  const up = new T.Mesh(new T.BoxGeometry(len * .5, .6, 1.6), mat(0x2a3348, { roughness: .3 })); up.position.set(-len * .05, 1.4, 0); g.add(up);
+  const tl = new T.Mesh(new T.BoxGeometry(.05, .2, 1.4), new T.MeshBasicMaterial({ color: 0xff3a3a })); tl.position.set(-len / 2 - .01, .8, 0); g.add(tl);
+  const hl = new T.Mesh(new T.BoxGeometry(.05, .2, 1.4), new T.MeshBasicMaterial({ color: 0xfff1d0 })); hl.position.set(len / 2 + .01, .8, 0); g.add(hl);
+  return g;
+}
+const traffic = [];
+(() => {
+  const lanes = [[ZA + 3.35, 1], [ZA + 6.85, 1], [ZA + 10.35, 1], [ZA - 3.35, -1], [ZA - 6.85, -1], [ZA - 10.35, -1]];
+  const cols = [0x7f8fa8, 0xc9cfdb, 0x3a4a6a, 0x9aa1a8, 0x5d6b85, 0xe8ecf5, 0x6a2a35];
+  for (let i = 0; i < 18; i++) {
+    const [z, dir] = lanes[i % lanes.length];
+    const m = boxCar(cols[i % cols.length]); m.rotation.y = dir > 0 ? 0 : Math.PI; scene.add(m);
+    traffic.push({ m, x: -580 + rnd() * 1960, z, dir, v: 20 + rnd() * 12 });
+  }
+})();
+function tickTraffic(dt) {
+  for (const c of traffic) {
+    c.x += c.dir * c.v * dt;
+    if (c.x > 1390) c.x = -590; if (c.x < -590) c.x = 1390;
+    c.m.position.set(c.x, 0, c.z);
+  }
+}
 
 /* ---------- частицы ---------- */
 const puffGeo = new T.SphereGeometry(1, 6, 4), pool = [];
@@ -485,6 +728,7 @@ function puff(p, v, life, s) {
   q.m.position.copy(p); q.v.copy(v).add(new T.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 2, (Math.random() - .5) * 2));
   q.t = 0; q.life = life; q.s = s; q.m.visible = true;
 }
+function dust(x, y, z, n) { for (let i = 0; i < n; i++) puff(new T.Vector3(x, y + .3, z), new T.Vector3((Math.random() - .5) * 6, 2, (Math.random() - .5) * 6), .8, .3); }
 function tickPuffs(dt) {
   for (const q of pool) {
     if (!q.m.visible) continue;
@@ -494,14 +738,13 @@ function tickPuffs(dt) {
   }
 }
 
-/* ---------- уровень ---------- */
-let levelObjs = [];
+/* ---------- ряд машин на полигоне ---------- */
+let levelObjs = [], rowSolids = [];
 function buildLevel() {
   levelObjs.forEach(o => scene.remove(o)); levelObjs = [];
   row = []; let x = ROW0;
-  for (let i = 0; i < L.cars; i++) {
-    const m = MODELS[i % MODELS.length]; row.push({ ...m, x0: x, x1: x + m.len }); x += m.len + GAP;
-  }
+  for (let i = 0; i < L.cars; i++) { const m = MODELS[i % MODELS.length]; row.push({ ...m, x0: x, x1: x + m.len }); x += m.len + GAP; }
+  rowSolids = row.map(c => ({ x0: c.x0, x1: c.x1, z0: -1, z1: 1, h: c.h, name: c.n }));
   row.forEach(c => {
     const g = new T.Group(), len = c.len;
     const lower = new T.Mesh(new T.BoxGeometry(len, c.h * .5, 1.9), mat(c.c, { roughness: .5 })); lower.position.y = c.h * .25 + .25; g.add(lower);
@@ -511,22 +754,19 @@ function buildLevel() {
     g.position.set((c.x0 + c.x1) / 2, 0, 0); scene.add(g); levelObjs.push(g);
   });
   L.padX = L.pad ? row[row.length - 1].x1 + L.pad.off : null;
-  if (L.padX != null) {
-    const p = new T.Mesh(new T.PlaneGeometry(L.pad.w, 8), new T.MeshBasicMaterial({ color: 0xffb347 }));
-    p.rotation.x = -Math.PI / 2; p.position.set(L.padX + L.pad.w / 2, .04, 0); scene.add(p); levelObjs.push(p);
-    const st = new T.Mesh(new T.BoxGeometry(14, 4, 5), mat(0x1c2033)); st.position.set(L.padX + L.pad.w + 10, 2, 9); scene.add(st); levelObjs.push(st);
-  }
+  if (L.padX != null) levelObjs.push(flat(L.pad.w, 8, new T.MeshBasicMaterial({ color: 0xffb347 }), L.padX + L.pad.w / 2, 0, .05));
 }
 
 /* ---------- состояние ---------- */
-let L, row = [], car, gas, phase = "idle", tPhase = 0, landing, totalRoll, time = 0, result, assistOn = true, camMode = "chase";
-let mode = "level", di = 0, zoneMesh = null, flashT = 0, flashMsg = "", briefPhase = "run";
+let L, row = [], car, gas, phase = "free", tPhase = 0, landing, totalRoll = 0, time = 0, result, assistOn = true, camMode = "chase";
+let mode = "free", di = 0, zoneMesh = null, flashT = 0, flashMsg = "", briefPhase = "run", briefTimer = null;
 let rec = [], simT = 0, replay = null;
-const input = { thrust: false, rl: false, rr: false };
+let free = { score: 0, air: false, airT: 0, cork: false, ringBonus: 0, safe: { ...SPAWN }, safeT: 0, gh: 0, hopLock: false };
+const input = { thrust: false, rl: false, rr: false, brake: false, hop: false };
 
 function freshCar() {
-  car = { x: 0, y: 0, v: 0, vx: 0, vy: 0, roll: 0, om: 0, pitch: 0, spin: 0, floor: 0 };
-  gas = 100; tPhase = 0; landing = null; totalRoll = 0; result = null; rec = []; simT = 0; replay = null;
+  car = { x: 0, y: 0, z: 0, yaw: 0, v: 0, vx: 0, vy: 0, roll: 0, om: 0, pitch: 0, spin: 0, floor: 0 };
+  gas = 100; tPhase = 0; landing = null; totalRoll = 0; result = null; rec = []; simT = 0; replay = null; free.gh = 0;
   if (zoneMesh) { scene.remove(zoneMesh); zoneMesh = null; }
 }
 function zone(y0, y1) {
@@ -542,9 +782,10 @@ function reset(li) {
   phase = "run";
 }
 const rollErr = r => ((r % 360) + 540) % 360 - 180;
-const timeToGround = () => (car.vy + Math.sqrt(Math.max(0, car.vy * car.vy + 2 * G * Math.max(0, car.y)))) / G;
+const timeToGround = (gh = 0) => { const h = Math.max(0, car.y - gh); return (car.vy + Math.sqrt(Math.max(0, car.vy * car.vy + 2 * G * h))) / G; };
 const nozzle = (lx, ly) => new T.Vector3(lx, ly, 0).applyEuler(carObj.rotation).add(carObj.position);
 
+/* ---------- физика полигона (уровни и уроки) ---------- */
 function step(dt) {
   time += dt; tPhase += dt; simT += dt; flashT = Math.max(0, flashT - dt);
   if (mode === "train") gas = 100;
@@ -571,22 +812,7 @@ function step(dt) {
     if (L.gust) w *= .6 + .4 * Math.sin(time * 1.7) + .3 * Math.sin(time * 4.3);
     car.vx = Math.max(2, car.vx + w * dt);
     car.vy -= G * dt;
-    if (input.thrust && gas > 0) {
-      car.vy += (car.vy < -1 ? G + 9 : G * .8) * dt; gas -= 20 * dt;
-      if (Math.random() < .6) puff(nozzle(0, -.5), new T.Vector3(car.vx * .4, -7, 0), .7, .35);
-    }
-    let r = (input.rr ? 1 : 0) - (input.rl ? 1 : 0);
-    if (L.invert) r = -r;
-    if (r && gas > 0) {
-      car.om += r * 260 * dt; gas -= 5 * dt;
-      if (Math.random() < .5) puff(nozzle(0, .2).add(new T.Vector3(0, 0, r * 1.1)), new T.Vector3(car.vx * .5, 0, r * 5), .4, .25);
-    } else if (assistOn) {
-      const target = Math.ceil((car.roll - 10) / 360) * 360;
-      const want = (target - car.roll) / Math.max(.3, timeToGround());
-      car.om += (want - car.om) * Math.min(1, dt * 2.5);
-    }
-    gas = Math.max(0, gas);
-    car.roll += car.om * dt; totalRoll += Math.abs(car.om * dt);
+    airControls(dt, L.invert);
     car.x += car.vx * dt; car.y += car.vy * dt;
     car.pitch += (Math.atan2(car.vy, car.vx) * .35 - car.pitch) * Math.min(1, dt * 4);
     for (const c of row) if (car.x + HALF > c.x0 && car.x - HALF < c.x1 && car.y <= c.h)
@@ -595,12 +821,9 @@ function step(dt) {
   } else if (phase === "drill") {
     const d = DRILLS[di];
     if (d.noGrav) car.vy = 0; else car.vy -= G * dt;
-    if (input.thrust) {
-      car.vy += (car.vy < -1 ? G + 9 : G * .8) * dt;
-      if (Math.random() < .6) puff(nozzle(0, -.5), new T.Vector3(car.vx * .4, -7, 0), .7, .35);
-    }
+    if (input.thrust) cushion(dt);
     const r = (input.rr ? 1 : 0) - (input.rl ? 1 : 0);
-    if (r) { car.om += r * 260 * dt; if (Math.random() < .5) puff(nozzle(0, .2).add(new T.Vector3(0, 0, r * 1.1)), new T.Vector3(0, 0, r * 5), .4, .25); }
+    if (r) sideJet(r, dt);
     if (d.noGrav) car.om *= Math.pow(.5, dt);
     car.roll += car.om * dt;
     car.x += car.vx * dt; car.y += car.vy * dt;
@@ -612,23 +835,49 @@ function step(dt) {
     car.pitch *= .9;
     if (car.vx <= 0) { phase = "done"; showResult(); }
   } else if (phase === "crash") {
-    car.vx *= Math.pow(.2, dt); car.vy -= G * dt;
-    car.x += car.vx * dt; car.y = Math.max(car.floor, car.y + car.vy * dt);
-    if (car.y === car.floor) car.vy = Math.abs(car.vy) * .3;
-    car.roll += car.spin * dt; car.spin *= Math.pow(.4, dt);
+    tumble(dt);
     if (tPhase > 1.5 && !result) showResult();
   }
+}
+function cushion(dt) {
+  car.vy += (car.vy < -1 ? G + 9 : G * .8) * dt;
+  if (Math.random() < .6) puff(nozzle(0, -.5), new T.Vector3(0, -7, 0), .7, .35);
+}
+function sideJet(r, dt) {
+  car.om += r * 260 * dt;
+  if (Math.random() < .5) puff(nozzle(0, .2), new T.Vector3(0, 0, r * 5).applyAxisAngle(new T.Vector3(0, 1, 0), car.yaw), .4, .25);
+}
+function airControls(dt, invert) {
+  if (input.thrust && gas > 0) { cushion(dt); gas -= 20 * dt; }
+  let r = (input.rr ? 1 : 0) - (input.rl ? 1 : 0);
+  if (invert) r = -r;
+  if (r && gas > 0) { sideJet(r, dt); gas -= 5 * dt; }
+  else if (assistOn) {
+    const target = Math.ceil((car.roll - 10) / 360) * 360;
+    const want = (target - car.roll) / Math.max(.3, timeToGround(mode === "free" ? free.gh : 0));
+    car.om += (want - car.om) * Math.min(1, dt * 2.5);
+  }
+  gas = Math.max(0, gas);
+  car.roll += car.om * dt; totalRoll += Math.abs(car.om * dt);
+}
+function tumble(dt) {
+  car.vx *= Math.pow(.2, dt); car.v *= Math.pow(.2, dt); car.vy -= G * dt;
+  const fwd = mode === "free" ? car.v : car.vx;
+  car.x += Math.cos(car.yaw) * fwd * dt; car.z -= Math.sin(car.yaw) * fwd * dt;
+  car.y = Math.max(car.floor, car.y + car.vy * dt);
+  if (car.y === car.floor) car.vy = Math.abs(car.vy) * .3;
+  car.roll += car.spin * dt; car.spin *= Math.pow(.4, dt);
 }
 function land() {
   const err = Math.abs(rollErr(car.roll)), vImp = -car.vy;
   if (car.x < row[0].x0) return crash("Недолёт: машина села перед рядом. Держите ГАЗ на разгоне до самой рампы и в воздухе.");
-  let q = err <= CLEAN_ROLL && vImp <= CLEAN_V ? "clean" : err <= HARD_ROLL && vImp <= HARD_V ? "hard" : null;
+  const q = err <= CLEAN_ROLL && vImp <= CLEAN_V ? "clean" : err <= HARD_ROLL && vImp <= HARD_V ? "hard" : null;
   if (!q) {
     let why = err > 110 ? "Посадка на крышу." : err > HARD_ROLL ? `Посадка на бок, крен ${Math.round(err)}°.` : `Слишком жёстко: ${vImp.toFixed(1)} м/с.`;
-    why += err > HARD_ROLL ? " Смотрите на прибор справа: колёса машины должны смотреть на зелёную линию." : " Держите ГАЗ перед землёй.";
+    why += err > HARD_ROLL ? " Смотрите на прибор крена: колёса должны смотреть на зелёную линию." : " Держите ГАЗ перед землёй.";
     return crash(why);
   }
-  for (let i = 0; i < 10; i++) puff(new T.Vector3(car.x, .2, 0), new T.Vector3(0, 2, (Math.random() - .5) * 8), .9, .5);
+  dust(car.x, 0, 0, 10);
   landing = { x: car.x, err, vImp, q };
   car.y = 0; car.vy = 0; car.roll = 0; car.om = 0;
   phase = "roll"; tPhase = 0;
@@ -638,11 +887,149 @@ function crash(reason) {
   const on = row.find(c => car.x + HALF > c.x0 && car.x - HALF < c.x1);
   car.floor = car.y > 0 && on ? on.h : 0;
   car.vy = Math.abs(car.vy || 4) * .25; car.spin = 400 * (Math.random() < .5 ? -1 : 1);
-  for (let i = 0; i < 16; i++) puff(new T.Vector3(car.x, car.y + .5, 0), new T.Vector3(0, 3, (Math.random() - .5) * 6), 1.2, .6);
+  dust(car.x, car.y, car.z, 16);
   result = null; landing = { fail: reason };
 }
 
-/* ---------- результат ---------- */
+/* ---------- физика свободной езды ---------- */
+function groundAt(x, z) {
+  let h = 0, slope = 0;
+  for (const k of kickers) {
+    const dx = x - k.x, dz = z - k.z, u = dx * k.fx + dz * k.fz, w = -dx * k.fz + dz * k.fx;
+    if (u >= 0 && u <= k.len && Math.abs(w) <= k.w / 2) { const hh = k.h * u / k.len; if (hh > h) { h = hh; slope = Math.atan(k.h / k.len); } }
+  }
+  return { h, slope };
+}
+const inBox = (b, x, z, pad) => x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad;
+function hitSolid(x, z, y) {
+  for (const b of solids) if (y < b.h && inBox(b, x, z, 1.1)) return b;
+  for (const b of rowSolids) if (y < b.h && inBox(b, x, z, 1.1)) return b;
+  for (const c of traffic) if (y < 1.7 && Math.abs(x - c.x) < 4.2 && Math.abs(z - c.z) < 1.8) return { name: "машину в потоке" };
+  return null;
+}
+function hitWall(x, z, y) { for (const b of walls) if (y < b.h && inBox(b, x, z, .9)) return b; return null; }
+
+function startFree(toast = true) {
+  mode = "free"; stopReplay(); hideLesson();
+  $("ov-menu").hidden = $("ov-res").hidden = true;
+  L = FREE; buildLevel(); freshCar();
+  car.x = SPAWN.x; car.z = SPAWN.z; car.yaw = SPAWN.yaw;
+  Object.assign(free, { air: false, airT: 0, cork: false, ringBonus: 0, safe: { ...SPAWN }, safeT: 0, gh: 0, hopLock: false });
+  assistOn = save.assist;
+  phase = "free";
+  if (toast) showToast("Свободная езда. Трюк-парк — справа от автобана, город — слева. «⋯» — карта и режимы", "", 4500);
+}
+function respawn() {
+  car.x = free.safe.x; car.z = free.safe.z; car.yaw = free.safe.yaw; car.y = groundAt(car.x, car.z).h;
+  car.v = 0; car.vy = 0; car.roll = 0; car.om = 0; car.pitch = 0; free.air = false; phase = "free";
+}
+function freeCrash(reason) {
+  phase = "fcrash"; tPhase = 0; free.air = false;
+  car.floor = 0; car.vy = Math.abs(car.vy || 3) * .3; car.spin = 360 * (Math.random() < .5 ? -1 : 1);
+  dust(car.x, car.y, car.z, 16);
+  showToast(reason, "bad", 2600);
+}
+function takeoff(cork) {
+  free.air = true; free.airT = 0; free.cork = cork; free.ringBonus = 0; totalRoll = 0;
+  rings.forEach(r => { r.got = false; r.m.material.color.setHex(0xffb347); });
+  phase = "free";
+}
+function stepFree(dt) {
+  time += dt; tPhase += dt;
+  if (phase === "fcrash") { tumble(dt); if (tPhase > 1.6) respawn(); return; }
+  if (phase === "fcork") {   // штопор полигона
+    const t = (car.x - RS) / RL, ang = Math.atan(2 * RH * t / RL);
+    car.v -= G * Math.sin(ang) * dt;
+    if (car.v <= .5) { car.x = RS - 3; car.v = 0; car.y = 0; car.roll = 0; car.pitch = 0; phase = "free"; showToast("Не хватило скорости на штопор", "bad"); return; }
+    car.x += car.v * Math.cos(ang) * dt;
+    const t2 = Math.min(1, (car.x - RS) / RL);
+    car.y = rampY(t2); car.pitch = ang; car.roll = 180 * smooth(t2);
+    if (car.x >= RX) {
+      const a = Math.atan(2 * RH / RL);
+      car.vy = car.v * Math.sin(a); car.v = car.v * Math.cos(a);
+      car.roll = 180; car.om = 180 / timeToGround();
+      takeoff(true);
+    }
+    return;
+  }
+  if (!free.air) {
+    if (input.thrust) car.v += 10 * (1 - .7 * Math.max(0, car.v) / VMAXF) * dt;
+    if (input.brake) car.v = car.v > .5 ? car.v - 16 * dt : Math.max(-9, car.v - 5 * dt);
+    if (!input.thrust && !input.brake) car.v -= Math.sign(car.v) * Math.min(Math.abs(car.v), (1.2 + car.v * car.v * .0006) * dt);
+    car.v = Math.max(-9, Math.min(VMAXF, car.v));
+    const steer = (input.rl ? 1 : 0) - (input.rr ? 1 : 0);
+    car.yaw += steer * 2.1 * Math.min(1, Math.abs(car.v) / 5) / (1 + Math.abs(car.v) / 20) * Math.sign(car.v || 1) * dt;
+    const nfx = Math.cos(car.yaw), nfz = -Math.sin(car.yaw);
+    const nx = car.x + nfx * car.v * dt, nz = car.z + nfz * car.v * dt;
+    const g0 = groundAt(nx, nz);
+    const out = nx < WORLD.x0 || nx > WORLD.x1 || nz < WORLD.z0 || nz > WORLD.z1;
+    const solid = hitSolid(nx, nz, car.y + .2);
+    if (solid && Math.abs(car.v) > 22) return freeCrash(`Авария: врезались в ${solid.name}. Возвращаем на дорогу`);
+    if (out || solid || hitWall(nx, nz, car.y + .1) || g0.h - car.y > .7) {
+      if (Math.abs(car.v) > 8) showToast("Бум!", "bad", 900);
+      car.v = -car.v * .25;
+    } else {
+      if (Math.abs(nz) < 1.8 && nx >= RS - .3 && nx <= RS + 1.5 && nfx > .85 && car.v > 6) {
+        car.x = RS; car.z = 0; car.yaw = 0; car.y = 0; phase = "fcork"; return;
+      }
+      if (g0.h < car.y - .25) {   // съехали с трамплина — взлёт
+        car.x = nx; car.z = nz;
+        car.vy = car.v * Math.sin(car.pitch); car.v = car.v * Math.cos(car.pitch);
+        takeoff(false); return;
+      }
+      car.x = nx; car.z = nz; car.y = g0.h;
+      car.pitch += (g0.slope - car.pitch) * Math.min(1, dt * 12);
+    }
+    if (input.hop && gas >= 20 && !free.hopLock) {
+      gas -= 20; car.vy = 10; free.hopLock = true; dust(car.x, car.y, car.z, 6); takeoff(false); return;
+    }
+    if (!input.hop) free.hopLock = false;
+    gas = Math.min(100, gas + 6 * dt);
+    free.safeT += dt;
+    if (free.safeT > 1 && car.y < .05 && Math.abs(car.v) > 1 && !hitSolid(car.x, car.z, 0)) { free.safe = { x: car.x, z: car.z, yaw: car.yaw }; free.safeT = 0; }
+    if (Math.abs(car.v) > 3 && input.thrust && Math.random() < .08) puff(nozzle(-2.3, -.2), new T.Vector3(0, .5, 0), .4, .12);
+    return;
+  }
+  // воздух
+  free.airT += dt;
+  car.vy -= G * dt;
+  free.gh = groundAt(car.x, car.z).h;
+  airControls(dt, false);
+  const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw);
+  car.x += fx * car.v * dt; car.z += fz * car.v * dt; car.y += car.vy * dt;
+  car.pitch += (Math.atan2(car.vy, Math.abs(car.v) + .1) * .35 - car.pitch) * Math.min(1, dt * 4);
+  for (const r of rings) if (!r.got && Math.hypot(car.x - r.x, car.y + .6 - r.y, car.z - r.z) < 2.9) {
+    r.got = true; r.m.material.color.setHex(0x6fdc8c); free.ringBonus += 300; showToast("Кольцо +300", "good", 1200);
+  }
+  if (car.x < WORLD.x0 || car.x > WORLD.x1 || car.z < WORLD.z0 || car.z > WORLD.z1) car.v = -car.v * .3;
+  const s = hitSolid(car.x, car.z, car.y);
+  if (s) return freeCrash(`Авария: влетели в ${s.name}`);
+  const g = groundAt(car.x, car.z);
+  if (car.y <= g.h) landFree(g);
+}
+function landFree(g) {
+  const err = Math.abs(rollErr(car.roll)), vImp = -car.vy;
+  car.y = g.h; free.air = false;
+  const q = err <= CLEAN_ROLL && vImp <= CLEAN_V ? "clean" : err <= HARD_ROLL && vImp <= HARD_V ? "hard" : null;
+  if (!q) return freeCrash(err > HARD_ROLL ? `Приземлились на ${err > 110 ? "крышу" : "бок"}. Возвращаем на дорогу` : `Слишком жёстко: ${vImp.toFixed(0)} м/с. Держите ГАЗ у земли`);
+  dust(car.x, g.h, car.z, 8);
+  car.vy = 0; car.roll = 0; car.om = 0;
+  const trickRoll = totalRoll + (free.cork ? 180 : 0), turns = Math.floor((trickRoll + 40) / 360);
+  if (free.airT < .6 && !turns) return;
+  const parts = [];
+  let pts = Math.round(free.airT * 120);
+  if (free.cork) { parts.push("Штопор"); pts += 400; }
+  const barrels = free.cork ? turns - 1 : turns;
+  if (barrels > 0) { parts.push(barrels > 1 ? `Бочка ×${barrels}` : "Бочка"); pts += barrels * 600; }
+  parts.push(`${free.airT.toFixed(1)} с в воздухе`);
+  if (q === "clean") { pts += 200; parts.push("чисто"); } else pts = Math.round(pts * .6);
+  pts += free.ringBonus;
+  free.score += pts;
+  save.freeBest = Math.max(save.freeBest, free.score); save.trickBest = Math.max(save.trickBest, pts); persist();
+  showToast(`${parts.join(" · ")}  +${pts}`, q === "clean" ? "good" : "", 2600);
+}
+
+/* ---------- результат уровня ---------- */
 function showResult() {
   if (mode === "train") return trainJumpResult();
   $("r-replay").hidden = rec.length < 10;
@@ -655,10 +1042,7 @@ function showResult() {
     score = sD + sL + sG + sS;
     rows.push(["Дальность", `${dist.toFixed(1)} м`, sD], ["Посадка", landing.q === "clean" ? `чистая, крен ${Math.round(landing.err)}°` : `жёсткая, ${landing.vImp.toFixed(1)} м/с`, sL],
       ["Газ в баллонах", `${Math.round(gas)}%`, sG], ["Лишние обороты", `${extraTurns}`, sS]);
-    if (L.padX != null) {
-      padOk = landing.x >= L.padX && landing.x <= L.padX + L.pad.w;
-      score += padOk ? 800 : 0; rows.push(["Площадка", padOk ? "в точку" : "мимо", padOk ? 800 : 0]);
-    }
+    if (L.padX != null) { padOk = landing.x >= L.padX && landing.x <= L.padX + L.pad.w; score += padOk ? 800 : 0; rows.push(["Площадка", padOk ? "в точку" : "мимо", padOk ? 800 : 0]); }
   }
   const passed = ok && padOk !== false, prev = save.best[L.i] || 0;
   if (passed) { if (score > prev) save.best[L.i] = score; save.unlocked = Math.max(save.unlocked, Math.min(LEVELS.length, L.i + 2)); persist(); }
@@ -672,17 +1056,17 @@ function showResult() {
   $("r-next").hidden = !(passed && L.i < LEVELS.length - 1);
   $("r-next").textContent = "Следующий уровень"; $("r-again").textContent = "Ещё раз";
   $("ov-res").hidden = false; $("coach").hidden = true;
-  ($("r-next").hidden ? $("r-again") : $("r-next")).focus({ preventScroll: true });
 }
 
-/* ---------- меню ---------- */
+/* ---------- меню режимов ---------- */
 function renderMenu() {
   $("levels").innerHTML = `
-    <button class="lvl train" type="button" data-i="train">
-      <span class="no">◎</span>
+    <button class="lvl alt" type="button" data-i="free"><span class="no">⌂</span>
+      <span><span class="nm">Город и автобан</span><span class="ds">Свободная езда, трамплины, кольца, бочки. Рекорд: ${save.freeBest}</span></span><span class="best"></span></button>
+    <button class="lvl alt" type="button" data-i="train"><span class="no">◎</span>
       <span><span class="nm">Полигон управления</span><span class="ds">Пять коротких уроков: газ, подушка, переворот, посадка, прыжок.</span></span>
-      <span class="best">${save.trained ? "пройден" : "начните здесь"}</span>
-    </button>` + LEVELS.map((l, i) => `
+      <span class="best">${save.trained ? "пройден" : ""}</span></button>` +
+    LEVELS.map((l, i) => `
     <button class="lvl" type="button" data-i="${i}" ${i + 1 > save.unlocked ? "disabled" : ""}>
       <span class="no">${i + 1}</span>
       <span><span class="nm">${l.name}</span><span class="ds">${i + 1 > save.unlocked ? "Откроется после уровня " + i : l.desc}</span></span>
@@ -691,47 +1075,61 @@ function renderMenu() {
 }
 $("levels").addEventListener("click", e => {
   const b = e.target.closest(".lvl"); if (!b || b.disabled) return;
-  b.dataset.i === "train" ? startTraining(0) : start(+b.dataset.i);
+  const v = b.dataset.i;
+  v === "free" ? startFree() : v === "train" ? startTraining(0) : start(+v);
 });
-function hideLesson() { $("lesson").hidden = true; stage.classList.remove("lesson-on"); $("ov-brief").hidden = true; }
-function start(i) { mode = "level"; hideLesson(); stopReplay(); reset(i); $("ov-menu").hidden = true; $("ov-res").hidden = true; }
-function toMenu() {
-  stopReplay(); hideLesson(); mode = "level";
-  renderMenu(); $("ov-res").hidden = true; $("ov-menu").hidden = false;
-  reset(Math.min(save.unlocked, LEVELS.length) - 1); phase = "idle";
+function openMenu() { closeDock(); renderMenu(); $("ov-menu").hidden = false; }
+$("menu-close").onclick = () => { $("ov-menu").hidden = true; };
+function hideLesson() { $("lesson").hidden = true; $("ov-brief").hidden = true; clearInterval(briefTimer); }
+function start(i) {
+  mode = "level"; hideLesson(); stopReplay(); reset(i); $("ov-menu").hidden = true; $("ov-res").hidden = true;
+  showToast(`Уровень ${i + 1}: ${LEVELS[i].name}. ${LEVELS[i].desc}`, "", 3000);
 }
 $("r-again").onclick = () => mode === "train" ? startTraining(DRILLS.length - 1) : start(L.i);
-$("r-next").onclick = () => mode === "train" ? start(0) : start(L.i + 1);
-$("r-menu").onclick = toMenu;
+$("r-next").onclick = () => mode === "train" ? startFree() : start(L.i + 1);
+$("r-menu").onclick = () => { $("ov-res").hidden = true; openMenu(); };
 $("r-replay").onclick = startReplay;
 $("rp-skip").onclick = () => endReplay();
 
+/* ---------- уроки ---------- */
+let lessonOpenUntil = 0;
 function startTraining(i) {
   mode = "train"; di = i; stopReplay();
   $("ov-menu").hidden = true; $("ov-res").hidden = true;
   L = { name: "Полигон", cars: 0, i: -1 }; buildLevel(); freshCar();
+  assistOn = save.assist;
   const d = DRILLS[di]; d.t = 0; d.p = 0; d.done = false;
   d.setup.call(d);
-  $("lesson").hidden = false; stage.classList.add("lesson-on");
-  $("ls-title").textContent = d.title; $("ls-step").textContent = `${di + 1} / ${DRILLS.length}`;
+  $("lesson").hidden = false;
+  $("ls-title").textContent = d.title; $("ls-step").textContent = `${di + 1}/${DRILLS.length}`;
   $("ls-text").textContent = d.short; $("ls-bar").style.width = "0"; $("ls-msg").textContent = "";
   briefPhase = phase; phase = "brief";
   $("br-step").textContent = `Урок ${di + 1} из ${DRILLS.length}`;
   $("br-title").textContent = d.title; $("br-text").textContent = d.text;
-  $("ov-brief").hidden = false; $("br-go").focus({ preventScroll: true });
+  $("ov-brief").hidden = false;
+  let left = 4; $("br-go").textContent = `Начать · ${left}`;
+  clearInterval(briefTimer);
+  briefTimer = setInterval(() => { left--; if (left <= 0) beginLesson(); else $("br-go").textContent = `Начать · ${left}`; }, 1000);
 }
-$("br-go").onclick = () => { $("ov-brief").hidden = true; phase = briefPhase; };
-$("br-menu").onclick = toMenu;
-$("ls-skip").onclick = () => di + 1 < DRILLS.length ? startTraining(di + 1) : toMenu();
-function flash(m) { flashMsg = m; flashT = 3; }
+function beginLesson() {
+  clearInterval(briefTimer);
+  if ($("ov-brief").hidden) return;
+  $("ov-brief").hidden = true; phase = briefPhase; lessonOpenUntil = performance.now() + 3000;
+}
+$("br-go").onclick = beginLesson;
+$("br-menu").onclick = () => { hideLesson(); openMenu(); };
+$("ls-skip").onclick = e => { e.stopPropagation(); di + 1 < DRILLS.length ? startTraining(di + 1) : startFree(); };
+$("lesson").onclick = () => { lessonOpenUntil = performance.now() + 3000; };
+function flash(m) { flashMsg = m; flashT = 3; lessonOpenUntil = performance.now() + 3000; }
 function trainTick() {
   const d = DRILLS[di];
+  $("lesson").classList.toggle("min", performance.now() > lessonOpenUntil);
   if (di === DRILLS.length - 1) { const c = coachHint(); $("ls-msg").textContent = c ? c.t : ""; return; }
   const p = d.tick ? (d.p || 0) : d.check.call(d);
   $("ls-bar").style.width = `${Math.round(p * 100)}%`;
   $("ls-msg").textContent = phase === "lesson-done" ? "Готово!" : flashT > 0 ? flashMsg : "";
   if (p >= 1 && phase !== "lesson-done" && phase !== "brief") {
-    phase = "lesson-done";
+    phase = "lesson-done"; lessonOpenUntil = performance.now() + 1500;
     const from = di;
     setTimeout(() => { if (mode === "train" && phase === "lesson-done" && di === from) startTraining(from + 1); }, 1000);
   }
@@ -742,8 +1140,8 @@ function trainJumpResult() {
   if (ok) {
     save.trained = true; persist();
     t.textContent = "Полигон пройден"; t.className = "verdict-ok";
-    $("r-reason").textContent = "Вы умеете разгоняться, держать подушку, крутить машину и садиться. Пора на первый уровень.";
-    $("r-next").hidden = false; $("r-next").textContent = "К первому уровню";
+    $("r-reason").textContent = "Вы умеете разгоняться, держать подушку, крутить машину и садиться. Дальше — город и трюк-парк.";
+    $("r-next").hidden = false; $("r-next").textContent = "В город";
   } else {
     t.textContent = "Почти"; t.className = "verdict-mid";
     $("r-reason").textContent = landing.fail + " Попробуйте ещё раз.";
@@ -774,22 +1172,70 @@ function replayPose() {
   car.x = a.x + (b.x - a.x) * k; car.y = a.y + (b.y - a.y) * k;
   car.roll = a.roll + (b.roll - a.roll) * k; car.pitch = a.pitch + (b.pitch - a.pitch) * k;
 }
-$("cam").onclick = () => { camMode = camMode === "chase" ? "cockpit" : "chase"; $("cam").textContent = camMode === "chase" ? "Вид: сзади" : "Вид: из кабины"; $("cam").blur(); };
+
+/* ---------- «⋯», тосты, карта ---------- */
+let dockCloseAt = 0;
+function openDock() { $("dock-panel").hidden = false; $("dock-btn").setAttribute("aria-expanded", "true"); dockCloseAt = performance.now() + 8000; syncDock(); }
+function closeDock() { $("dock-panel").hidden = true; $("dock-btn").setAttribute("aria-expanded", "false"); }
+$("dock-btn").onclick = () => $("dock-panel").hidden ? openDock() : closeDock();
+$("dock-panel").addEventListener("pointerdown", () => { dockCloseAt = performance.now() + 8000; });
+stage.addEventListener("pointerdown", e => { if (!e.target.closest(".dock")) closeDock(); });
+function syncDock() {
+  $("m-cam").textContent = `Камера: ${camMode === "chase" ? "сзади" : "из кабины"}`;
+  $("m-assist").textContent = `Ассистент переворота: ${save.assist ? "вкл" : "выкл"}`;
+  $("m-stat").textContent = mode === "free" ? `Очки ${free.score} · рекорд ${save.freeBest} · лучший трюк ${save.trickBest}`
+    : mode === "train" ? `Полигон · урок ${di + 1}` : `Уровень ${L.i + 1}: ${L.name}`;
+}
+$("m-modes").onclick = openMenu;
+$("m-cam").onclick = () => { camMode = camMode === "chase" ? "cockpit" : "chase"; syncDock(); };
+$("m-assist").onclick = () => { save.assist = !save.assist; persist(); assistOn = save.assist && !(L && L.noAssist); syncDock(); };
+$("m-restart").onclick = () => { closeDock(); restart(); };
+function restart() {
+  if (mode === "free") { free.score = 0; startFree(false); }
+  else if (mode === "train") startTraining(di);
+  else start(L.i);
+}
+let toastUntil = 0;
+function showToast(text, kind = "", ms = 3000) {
+  const t = $("toast"); t.textContent = text; t.className = "toast" + (kind ? " " + kind : ""); t.hidden = false;
+  toastUntil = performance.now() + ms;
+}
+const mapC = $("map"), mg = mapC.getContext("2d");
+function drawMap() {
+  const W = mapC.width, H = mapC.height, sx = W / (WORLD.x1 - WORLD.x0 + 40), sz = H / (WORLD.z1 - WORLD.z0 + 40);
+  const P = (x, z) => [(x - WORLD.x0 + 20) * sx, (z - WORLD.z0 + 20) * sz];
+  const rect = (x0, z0, x1, z1) => { const [a, b] = P(x0, z0), [c, d] = P(x1, z1); mg.fillRect(a, b, c - a, d - b); };
+  mg.fillStyle = "#1a1626"; mg.fillRect(0, 0, W, H);
+  mg.fillStyle = "#3a3542";
+  XS.forEach(x => rect(x - 6, -500, x + 6, -78));
+  ZS.forEach(z => rect(-206, z - 6, 766, z + 6));
+  mg.fillStyle = "#4b4656"; rect(-600, ZA - 18, 1400, ZA + 18);
+  mg.fillStyle = "#5d5862"; rect(295, -35, 625, 65);
+  mg.fillStyle = "#3a3540"; rect(-20, -5, 300, 5);
+  mg.fillStyle = "#ffb347"; kickers.forEach(k => { const [a, b] = P(k.x, k.z); mg.fillRect(a - 3, b - 3, 6, 6); });
+  mg.fillStyle = "#e8ecf5"; mg.font = "bold 18px Golos Text, sans-serif";
+  [["Город", 150, -300], ["Трюк-парк", 330, 90], ["Полигон", -10, 35], ["Автобан", -560, ZA - 24]].forEach(([t, x, z]) => { const [a, b] = P(x, z); mg.fillText(t, a, b); });
+  const [cx, cz] = P(car.x, car.z);
+  mg.save(); mg.translate(cx, cz); mg.rotate(-car.yaw);
+  mg.fillStyle = "#ff6b5e"; mg.beginPath(); mg.moveTo(11, 0); mg.lineTo(-7, -7); mg.lineTo(-3, 0); mg.lineTo(-7, 7); mg.closePath(); mg.fill();
+  mg.restore();
+}
 
 /* ---------- управление ---------- */
-const KEYS = { ArrowUp: "thrust", " ": "thrust", w: "thrust", "ц": "thrust", ArrowLeft: "rl", a: "rl", "ф": "rl", ArrowRight: "rr", d: "rr", "в": "rr" };
-const keyOf = e => KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+const KEYS = { ArrowUp: "thrust", w: "thrust", "ц": "thrust", ArrowDown: "brake", s: "brake", "ы": "brake", ArrowLeft: "rl", a: "rl", "ф": "rl", ArrowRight: "rr", d: "rr", "в": "rr", " ": "hop" };
+const keyOf = e => { let k = KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key]; if (k === "hop" && mode !== "free") k = "thrust"; return k; };
 addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.closest && e.target.closest("button")) return;
   const k = keyOf(e);
   if (k) { input[k] = true; e.preventDefault(); return; }
   const key = e.key.toLowerCase();
-  if ((key === "r" || key === "к") && phase !== "idle") mode === "train" ? startTraining(di) : start(L.i);
-  if (key === "c" || key === "с") $("cam").click();
-  if (e.key === "Escape") toMenu();
-  if (e.key === "Enter" && !$("ov-res").hidden && !$("r-next").hidden) { e.preventDefault(); $("r-next").click(); }
+  if (key === "r" || key === "к") restart();
+  if (key === "c" || key === "с") $("m-cam").click();
+  if (key === "m" || key === "ь") openMenu();
+  if (e.key === "Escape") { closeDock(); $("ov-menu").hidden = true; }
 });
-addEventListener("keyup", e => { const k = keyOf(e); if (k) input[k] = false; });
-addEventListener("blur", () => { input.thrust = input.rl = input.rr = false; });
+addEventListener("keyup", e => { const k = keyOf(e); if (k) input[k] = false; if (e.key === " ") input.hop = input.thrust = false; });
+addEventListener("blur", () => { for (const k in input) input[k] = false; });
 function hold(id, key) {
   const el = $(id);
   el.addEventListener("pointerdown", e => { e.preventDefault(); input[key] = true; el.classList.add("on"); el.setPointerCapture?.(e.pointerId); });
@@ -797,92 +1243,105 @@ function hold(id, key) {
   ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => el.addEventListener(ev, off));
   el.addEventListener("contextmenu", e => e.preventDefault());
 }
-hold("b-thrust", "thrust"); hold("b-left", "rl"); hold("b-right", "rr");
+hold("b-thrust", "thrust"); hold("b-left", "rl"); hold("b-right", "rr"); hold("b-brake", "brake"); hold("b-hop", "hop");
 
 /* ---------- тренер и приборы ---------- */
 function coachHint() {
   if (phase === "run") return car.x < RS - 2 ? { t: "Держите ГАЗ до рампы", k: "thrust" } : null;
   if (phase !== "air") return null;
   const pe = rollErr(car.roll + car.om * timeToGround());
-  if (Math.abs(pe) > 15 && !assistOn) return pe > 0 ? { t: "Перекручивает — жмите ⟲ влево", k: "rl" } : { t: "Недокручивает — жмите вправо ⟳", k: "rr" };
-  if (car.x < row[row.length - 1].x1 && car.vy < 0 && car.x + car.vx * timeToGround() < row[row.length - 1].x1 + HALF) return { t: "Не долетаете — держите ГАЗ", k: "thrust" };
+  if (Math.abs(pe) > 15 && !assistOn) return pe > 0 ? { t: "Перекручивает — жмите ◀", k: "rl" } : { t: "Недокручивает — жмите ▶", k: "rr" };
+  if (car.vy < 0 && car.x + car.vx * timeToGround() < row[row.length - 1].x1 + HALF) return { t: "Не долетаете — держите ГАЗ", k: "thrust" };
   if (car.y < 8 && -car.vy > CLEAN_V - 2) return { t: "Земля близко — держите ГАЗ", k: "thrust" };
   return { t: "Летим ровно", k: null };
 }
 const btnFor = { thrust: $("b-thrust"), rl: $("b-left"), rr: $("b-right") };
-let lastHint = "", lastCoach = "";
+let lastHint = "", lastCoach = "", coachSince = 0, lastGasShown = -1;
 function ui() {
-  const speed = phase === "run" || phase === "ramp" ? car.v : Math.hypot(car.vx, phase === "air" ? car.vy : 0);
-  $("h-lv").textContent = !L ? "" : mode === "train" ? `Полигон · урок ${di + 1}` : `${L.i + 1}. ${L.name}`;
-  $("h-speed").textContent = `${Math.round(speed * 3.6)} км/ч`;
-  $("h-alt").textContent = `высота ${Math.max(0, car.y).toFixed(1)} м`;
-  $("h-gas").style.width = `${gas}%`; $("h-gas").style.background = gas > 25 ? "var(--gas)" : "var(--bad)";
-  $("thrust-sub").textContent = phase === "run" || phase === "idle" || (phase === "brief" && briefPhase === "run") ? "разгон" : "подушка";
-  const err = rollErr(car.roll);
-  $("d-car").setAttribute("transform", `rotate(${err.toFixed(1)})`);
-  const pe = phase === "air" ? rollErr(car.roll + car.om * timeToGround()) : err;
-  $("d-ghost").setAttribute("transform", `rotate(${pe.toFixed(1)})`);
-  $("d-arrow").textContent = Math.abs(car.om) > 25 && phase === "air" ? (car.om > 0 ? "↻" : "↺") : "";
-  const ae = Math.abs(err);
-  $("d-cap").textContent = phase === "air" || phase === "ramp" || phase === "drill" ? `крен ${Math.round(ae)}°` : "вид сзади";
-  $("d-cap").style.color = ae <= CLEAN_ROLL ? "var(--ok)" : ae <= HARD_ROLL ? "var(--amber)" : "var(--bad)";
-  const vs = -car.vy;
-  $("h-fall").textContent = (phase === "air" || phase === "drill") && vs > 0 ? `падение ${vs.toFixed(0)} м/с` : "";
-  $("h-fall").style.color = vs > HARD_V ? "var(--bad)" : vs > CLEAN_V ? "var(--amber)" : "var(--ok)";
+  const now = performance.now();
+  const inAir = phase === "air" || phase === "ramp" || phase === "drill" || phase === "fcork" || (mode === "free" && free.air);
+  const speed = mode === "free" ? Math.abs(car.v) : phase === "run" || phase === "ramp" ? car.v : Math.hypot(car.vx, phase === "air" ? car.vy : 0);
+  $("h-speed").textContent = Math.round(speed * 3.6);
+  $("h-alt").textContent = inAir ? `высота ${Math.max(0, car.y - (mode === "free" ? free.gh : 0)).toFixed(1)} м` : "";
+  if (Math.round(gas) !== lastGasShown) { $("h-gas").style.width = `${gas}%`; $("h-gas").style.background = gas > 25 ? "var(--gas)" : "var(--bad)"; lastGasShown = Math.round(gas); }
+  $("h-top").textContent = replay ? "" : mode === "free" ? `Очки ${free.score}` : mode === "train" ? "" : `${L.i + 1}. ${L.name}`;
+  const freeGround = mode === "free" && !free.air;
+  $("b-brake").hidden = $("b-hop").hidden = mode !== "free";
+  $("l-sub").textContent = $("r-sub").textContent = freeGround ? "руль" : "крутить";
+  $("thrust-sub").textContent = (mode === "free" ? !free.air : phase === "run" || (phase === "brief" && briefPhase === "run")) ? "разгон" : "подушка";
+  $("h-air").classList.toggle("off", !inAir);
+  if (inAir) {
+    const err = rollErr(car.roll);
+    $("d-car").setAttribute("transform", `rotate(${err.toFixed(1)})`);
+    const pe = (phase === "air" || free.air) ? rollErr(car.roll + car.om * timeToGround(mode === "free" ? free.gh : 0)) : err;
+    $("d-ghost").setAttribute("transform", `rotate(${pe.toFixed(1)})`);
+    $("d-arrow").textContent = Math.abs(car.om) > 25 ? (car.om > 0 ? "↻" : "↺") : "";
+    const ae = Math.abs(err);
+    $("d-cap").textContent = `крен ${Math.round(ae)}°`;
+    $("d-cap").style.color = ae <= CLEAN_ROLL ? "var(--ok)" : ae <= HARD_ROLL ? "var(--amber)" : "var(--bad)";
+    const vs = -car.vy;
+    $("h-fall").textContent = vs > 0 ? `падение ${vs.toFixed(0)} м/с` : "";
+    $("h-fall").style.color = vs > HARD_V ? "var(--bad)" : vs > CLEAN_V ? "var(--amber)" : "var(--ok)";
+  }
   let c = null;
   if (mode === "train") {
     const d = DRILLS[di];
-    if (phase !== "brief" && phase !== "lesson-done" && $("ov-res").hidden) c = di === DRILLS.length - 1 ? coachHint() : { t: "", k: d.hint ? d.hint.call(d) : null };
-    if (c) c = { t: "", k: c.k };   // в уроке текст подсказки показывает полоска урока
-  } else if (L && L.coach && $("ov-res").hidden && $("ov-menu").hidden && !replay) c = coachHint();
+    if (phase !== "brief" && phase !== "lesson-done" && $("ov-res").hidden) c = { t: "", k: di === DRILLS.length - 1 ? (coachHint() || {}).k : (d.hint ? d.hint.call(d) : null) };
+  } else if (mode === "level" && L.coach && $("ov-res").hidden && $("ov-menu").hidden && !replay) c = coachHint();
+  else if (mode === "free" && free.air && car.y - free.gh < 6 && -car.vy > CLEAN_V - 2) c = { t: "Земля близко — держите ГАЗ", k: "thrust" };
   const hk = c ? c.k : null, ct = c ? c.t : "";
   if (hk !== lastHint) { Object.entries(btnFor).forEach(([k, el]) => el.classList.toggle("hint", k === hk)); lastHint = hk; }
-  if (ct !== lastCoach) { $("coach").textContent = ct; $("coach").hidden = !ct; lastCoach = ct; }
+  if (ct !== lastCoach) { lastCoach = ct; coachSince = now; $("coach").textContent = ct; }
+  $("coach").hidden = !ct || now - coachSince > 3000;
+  if (!$("toast").hidden && now > toastUntil) $("toast").hidden = true;
+  if (!$("dock-panel").hidden) { if (now > dockCloseAt) closeDock(); else { drawMap(); syncDock(); } }
 }
 
 /* ---------- кадр ---------- */
-const camPos = new T.Vector3(-12, 4, 4), look = new T.Vector3();
+const camPos = new T.Vector3(SPAWN.x - 10, 4, SPAWN.z), look = new T.Vector3();
 function render(dt) {
-  carObj.position.set(car.x, car.y + WHEEL, 0);
-  carObj.rotation.set(car.roll * DEG, 0, car.pitch, "ZYX");
-  shadow.position.set(car.x, .03, 0);
-  const sh = Math.max(.15, 1 - car.y / 25); shadow.material.opacity = .35 * sh; shadow.scale.set(2.6 * (1 + car.y / 30), 1.2 * (1 + car.y / 30), 1);
-  marker.visible = phase === "air" && !replay;
+  carObj.position.set(car.x, car.y + WHEEL, car.z);
+  carObj.rotation.set(car.roll * DEG, car.yaw, car.pitch, "YZX");
+  const gh = mode === "free" ? groundAt(car.x, car.z).h : 0;
+  const hgt = Math.max(0, car.y - gh);
+  shadow.position.set(car.x, gh + .15, car.z); shadow.rotation.z = car.yaw;
+  shadow.material.opacity = .35 * Math.max(.15, 1 - hgt / 25); shadow.scale.set(2.6 * (1 + hgt / 30), 1.2 * (1 + hgt / 30), 1);
+  marker.visible = !replay && (phase === "air" || (mode === "free" && free.air));
   if (marker.visible) {
-    const lx = car.x + car.vx * timeToGround();
-    const okX = lx > row[row.length - 1].x1 + HALF;
-    marker.position.set(lx, .05, 0); marker.material.color.setHex(okX ? 0x6fdc8c : 0xff6b5e);
+    const t = timeToGround(gh), fwd = mode === "free" ? car.v : car.vx;
+    const lx = car.x + Math.cos(car.yaw) * fwd * t, lz = car.z - Math.sin(car.yaw) * fwd * t;
+    const okX = mode === "free" ? !hitSolid(lx, lz, .5) : lx > row[row.length - 1].x1 + HALF;
+    marker.position.set(lx, groundAt(lx, lz).h + .18, lz); marker.material.color.setHex(okX ? 0x6fdc8c : 0xff6b5e);
   }
   if (replay) {
     carObj.visible = true;
     const eye = new T.Vector3(TRIB.x - 4, 5, TRIB.z - 3);
     camPos.copy(eye); camera.position.copy(eye); camera.up.set(0, 1, 0);
     look.set(car.x, car.y + .6, 0); camera.lookAt(look);
-    const dist = eye.distanceTo(look);
-    camera.fov = Math.max(14, Math.min(55, 2 * Math.atan(12 / dist) / DEG));
-  } else if (camMode === "cockpit" && phase !== "idle" && phase !== "drill" && phase !== "brief") {
+    camera.fov = Math.max(14, Math.min(55, 2 * Math.atan(12 / eye.distanceTo(look)) / DEG));
+  } else if (camMode === "cockpit" && phase !== "drill" && phase !== "brief") {
     carObj.visible = false;
     const eye = new T.Vector3(.4, .7, 0).applyEuler(carObj.rotation).add(carObj.position);
     const fwd = new T.Vector3(10, .4, 0).applyEuler(carObj.rotation).add(carObj.position);
-    const up = new T.Vector3(0, 1, 0).applyEuler(carObj.rotation);
-    camera.position.copy(eye); camera.up.copy(up); camera.lookAt(fwd);
-    camera.fov = 75;
+    camera.position.copy(eye); camera.up.copy(new T.Vector3(0, 1, 0).applyEuler(carObj.rotation)); camera.lookAt(fwd);
+    camera.fov = 75; camPos.copy(eye);
   } else {
     carObj.visible = true;
-    const air = phase === "air" || phase === "crash" || phase === "drill" || (phase === "brief" && briefPhase === "drill") || (phase === "lesson-done" && car.y > .5);
-    const want = phase === "idle"
-      ? new T.Vector3(car.x - 8 + Math.sin(time * .2) * 3, 3.5, 9)
-      : phase === "drill" || (phase === "brief" && briefPhase === "drill") ? new T.Vector3(car.x - 14, car.y + 3, 9)
-      : new T.Vector3(car.x - (air ? 11 : 9), car.y + (air ? 4.5 : 3), air ? 5 : 3.5);
-    camPos.lerp(want, Math.min(1, dt * 4));
+    const air = phase === "air" || phase === "crash" || phase === "fcrash" || phase === "drill" || (phase === "brief" && briefPhase === "drill") || (phase === "lesson-done" && car.y > .5) || (mode === "free" && free.air);
+    const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw);
+    let want;
+    if (mode === "free") { const back = air ? 12 : 9 + Math.abs(car.v) * .05; want = new T.Vector3(car.x - fx * back, car.y + (air ? 5 : 3.2), car.z - fz * back); }
+    else if (phase === "drill" || (phase === "brief" && briefPhase === "drill")) want = new T.Vector3(car.x - 14, car.y + 3, 9);
+    else want = new T.Vector3(car.x - (air ? 11 : 9), car.y + (air ? 4.5 : 3), air ? 5 : 3.5);
+    camPos.lerp(want, Math.min(1, dt * (mode === "free" ? 5 : 4)));
     camera.position.copy(camPos); camera.up.set(0, 1, 0);
-    look.set(car.x + (air ? 6 : 5), car.y + .6 - (air ? Math.min(3, car.y * .25) : 0), 0);
-    camera.lookAt(look); camera.fov = 60;
+    if (mode === "free") look.set(car.x + fx * 6, car.y + .8 - (air ? Math.min(3, hgt * .25) : 0), car.z + fz * 6);
+    else look.set(car.x + (air ? 6 : 5), car.y + .6 - (air ? Math.min(3, car.y * .25) : 0), 0);
+    camera.lookAt(look); camera.fov = 60 + (mode === "free" ? Math.min(14, Math.abs(car.v) * .25) : 0);
   }
   camera.updateProjectionMatrix();
   renderer.render(scene, camera);
 }
-
 function resize() {
   const w = stage.clientWidth, h = stage.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
@@ -893,23 +1352,24 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (replay) {
-    replay.t += dt * .8;
-    replayPose();
+    replay.t += dt * .8; replayPose();
     if (replay.t >= replay.end + .8) endReplay();
-  } else if (phase !== "idle" && phase !== "done" && phase !== "brief" && phase !== "lesson-done") {
+  } else if (mode === "free") {
+    const sim = dt * (free.air ? .9 : 1), n = Math.ceil(sim / (1 / 120));
+    for (let i = 0; i < n; i++) stepFree(sim / n);
+  } else if (phase !== "done" && phase !== "brief" && phase !== "lesson-done") {
     const sim = dt * (phase === "air" ? AIR_SLOW : 1), n = Math.ceil(sim / (1 / 120));
     for (let i = 0; i < n; i++) step(sim / n);
     if (["run", "ramp", "air", "roll", "crash"].includes(phase) && !result && rec.length < 6000) rec.push({ t: simT, x: car.x, y: car.y, roll: car.roll, pitch: car.pitch });
-  } else { time += dt; if (phase === "idle") car.x = 30 + Math.sin(time * .3) * 2; }
+  } else time += dt;
   if (mode === "train" && !replay && $("ov-res").hidden) trainTick();
-  tickPuffs(dt);
+  tickTraffic(dt); tickPuffs(dt);
   ui(); render(dt);
   requestAnimationFrame(frame);
 }
 
-resize(); renderMenu();
-reset(Math.min(save.unlocked, LEVELS.length) - 1); phase = "idle"; car.x = 30;
-$("ov-menu").hidden = false;
+resize();
+startFree();
 requestAnimationFrame(frame);
 })();
 </script>
