@@ -53,6 +53,12 @@ h1 span { color: var(--amber); }
 .mgas b { display: block; height: 100%; width: 100%; background: var(--gas); }
 .hud.top { top: 10px; left: 50%; transform: translateX(-50%); background: var(--glass); border-radius: 999px; padding: 6px 14px; white-space: nowrap; color: var(--amber); }
 .hud.top:empty { display: none; }
+.mini { position: absolute; z-index: 2; top: 74px; left: 10px; width: 112px; pointer-events: none; text-align: center; }
+.mini canvas { width: 112px; height: 112px; border-radius: 50%; border: 2px solid var(--line); background: #1a1626; display: block; }
+.mini span { display: inline-block; margin-top: 4px; font: 700 11px var(--f-mono); color: var(--text); background: var(--glass); padding: 2px 8px; border-radius: 999px; }
+.dock-panel .go { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dock-panel .go button { font-size: 12.5px; padding: 7px 8px; text-align: center; }
+.dock-panel .lbl { font: 600 11px var(--f-mono); color: var(--dim); letter-spacing: .05em; text-transform: uppercase; }
 
 /* прибор крена: только в воздухе */
 .hud.tr {
@@ -231,6 +237,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
 
     <div class="hud tl"><span class="sp" id="h-speed">0</span><span class="u">км/ч</span><span class="alt" id="h-alt"></span><i class="mgas"><b id="h-gas"></b></i></div>
     <div class="hud top" id="h-top"></div>
+    <div class="mini" id="mini-wrap"><canvas id="mini" width="240" height="240" aria-label="Мини-карта"></canvas><span id="zone">Автобан</span></div>
     <div class="hud tr off" id="h-air">
       <div class="dial">
         <svg viewBox="-60 -60 120 120" aria-hidden="true">
@@ -259,9 +266,12 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
       <div class="dock-panel" id="dock-panel" hidden>
         <canvas id="map" width="440" height="300" aria-label="Карта"></canvas>
         <div class="stat" id="m-stat"></div>
+        <div class="lbl">Куда ехать</div>
+        <div class="go" id="m-go"></div>
         <button type="button" id="m-modes">Режимы и уровни</button>
         <button type="button" id="m-cam">Камера: сзади</button>
         <button type="button" id="m-assist">Ассистент переворота: вкл</button>
+        <button type="button" id="m-mini">Мини-карта: вкл</button>
         <button type="button" id="m-ctrl">Управление: джойстик</button>
         <button type="button" id="m-paint">Цвет: белая</button>
         <button type="button" id="m-garage">Осмотреть машину</button>
@@ -390,7 +400,7 @@ const LEVELS = [
   { name: "С бодуна", desc: "Боковые сопла перепутаны, ассистент выключен.", cars: 5, invert: true, noAssist: true },
   { name: "На точку", desc: "Семь машин и посадка точно на площадку у трибуны.", cars: 7, pad: { off: 7, w: 10 } }
 ];
-const FREE = { name: "Город", cars: 4, free: true, i: -2 };
+const FREE = { name: "Город", cars: 0, free: true, i: -2 };
 
 /* ---------- уроки ---------- */
 const DRILLS = [
@@ -1062,7 +1072,6 @@ function hitSolid(x, z, y) {
   for (const c of traffic) if (y < 1.7 && Math.abs(x - c.x) < 4.2 && Math.abs(z - c.z) < 1.8) return { name: "машину в потоке" };
   return null;
 }
-function hitWall(x, z, y) { for (const b of walls) if (y < b.h && inBox(b, x, z, .9)) return b; return null; }
 
 function startFree(toast = true) {
   mode = "free"; stopReplay(); hideLesson();
@@ -1123,8 +1132,8 @@ function stepFree(dt) {
     const out = nx < WORLD.x0 || nx > WORLD.x1 || nz < WORLD.z0 || nz > WORLD.z1;
     const solid = hitSolid(nx, nz, car.y + .2);
     if (solid && Math.abs(car.v) > 22) return freeCrash(`Авария: врезались в ${solid.name}. Возвращаем на дорогу`);
-    if (out || solid || hitWall(nx, nz, car.y + .1) || g0.h - car.y > .7) {
-      if (Math.abs(car.v) > 8) showToast("Бум!", "bad", 900);
+    if (out || solid || g0.h - car.y > .7) {
+      if (Math.abs(car.v) > 8) showToast(out ? "Край карты — разворачивайтесь" : "Бум!", "bad", 1200);
       car.v = -car.v * .25;
     } else {
       if (Math.abs(nz) < 1.8 && nx >= RS - .3 && nx <= RS + 1.5 && nfx > .85 && car.v > 6) {
@@ -1144,6 +1153,8 @@ function stepFree(dt) {
     }
     if (!input.hop) free.hopLock = false;
     gas = Math.min(100, gas + 6 * dt);
+    free.stuckT = (th > .5 || bk > .5) && Math.abs(car.v) < 1.5 ? (free.stuckT || 0) + dt : 0;
+    if (free.stuckT > 2.5) { free.stuckT = -6; showToast("Застряли? Нажмите «⋯» → «Куда ехать», машина перенесётся", "", 3500); }
     free.safeT += dt;
     if (free.safeT > 1 && car.y < .05 && Math.abs(car.v) > 1 && !hitSolid(car.x, car.z, 0)) { free.safe = { x: car.x, z: car.z, yaw: car.yaw }; free.safeT = 0; }
     if (Math.abs(car.v) > 3 && thr() > .3 && Math.random() < .08) puff(nozzle(-2.1, -.35), new T.Vector3(0, .5, 0), .4, .12);
@@ -1343,6 +1354,7 @@ stage.addEventListener("pointerdown", e => { if (!e.target.closest(".dock")) clo
 function syncDock() {
   $("m-cam").textContent = `Камера: ${camMode === "chase" ? "сзади" : "из кабины"}`;
   $("m-assist").textContent = `Ассистент переворота: ${save.assist ? "вкл" : "выкл"}`;
+  $("m-mini").textContent = `Мини-карта: ${save.mini === false ? "выкл" : "вкл"}`;
   $("m-ctrl").textContent = `Управление: ${joyMode() ? "джойстик" : "кнопки"}`;
   $("m-paint").textContent = `Цвет: ${PAINTS[(save.paint || 0) % PAINTS.length].n}`;
   $("m-stat").textContent = mode === "free" ? `Очки ${free.score} · рекорд ${save.freeBest} · лучший трюк ${save.trickBest}`
@@ -1366,25 +1378,72 @@ function showToast(text, kind = "", ms = 3000) {
   toastUntil = performance.now() + ms;
 }
 const mapC = $("map"), mg = mapC.getContext("2d");
+function paintWorld(g, px) {   // всё в метрах, px — сколько метров в одном пикселе
+  g.fillStyle = "#4a4458"; XS.forEach(x => g.fillRect(x - 6, -500, 12, 422)); ZS.forEach(z => g.fillRect(-206, z - 6, 972, 12));
+  g.fillStyle = "#2b2836"; solids.forEach(b => { if (b.name === "дом") g.fillRect(b.x0, b.z0, b.x1 - b.x0, b.z1 - b.z0); });
+  g.fillStyle = "#3f5a3a"; solids.forEach(b => { if (b.name === "дерево") g.fillRect(b.x0 - 1, b.z0 - 1, 3.6, 3.6); });
+  g.fillStyle = "#6c6679"; g.fillRect(-600, ZA - 18, 2000, 36);
+  g.fillStyle = "#cfd3dc"; g.fillRect(-600, ZA - .6, 2000, 1.2); g.fillRect(-600, ZA - 18, 2000, Math.max(.8, px)); g.fillRect(-600, ZA + 17.2, 2000, Math.max(.8, px));
+  g.fillStyle = "#6a6271"; g.fillRect(295, -35, 330, 100);
+  g.fillStyle = "#5a5463"; g.fillRect(-20, -5, 320, 10);
+  g.fillStyle = "#9fe3ff"; g.fillRect(RS, -1.6, RL, 3.2);
+  g.fillStyle = "#e0a83a"; solids.forEach(b => { if (b.name === "автобус") g.fillRect(b.x0, b.z0, b.x1 - b.x0, b.z1 - b.z0); });
+  kickers.forEach(k => {
+    g.save(); g.translate(k.x, k.z); g.rotate(-k.yaw); g.fillStyle = "#ffb347"; g.fillRect(0, -k.w / 2, k.len, k.w); g.restore();
+  });
+}
+const PLACES = [["Город", 150, -300], ["Трюк-парк", 330, 90], ["Полигон", -10, 30], ["Автобан", -560, ZA - 26]];
 function drawMap() {
-  const W = mapC.width, H = mapC.height, sx = W / (WORLD.x1 - WORLD.x0 + 40), sz = H / (WORLD.z1 - WORLD.z0 + 40);
-  const P = (x, z) => [(x - WORLD.x0 + 20) * sx, (z - WORLD.z0 + 20) * sz];
-  const rect = (x0, z0, x1, z1) => { const [a, b] = P(x0, z0), [c, d] = P(x1, z1); mg.fillRect(a, b, c - a, d - b); };
-  mg.fillStyle = "#1a1626"; mg.fillRect(0, 0, W, H);
-  mg.fillStyle = "#3a3542";
-  XS.forEach(x => rect(x - 6, -500, x + 6, -78));
-  ZS.forEach(z => rect(-206, z - 6, 766, z + 6));
-  mg.fillStyle = "#4b4656"; rect(-600, ZA - 18, 1400, ZA + 18);
-  mg.fillStyle = "#5d5862"; rect(295, -35, 625, 65);
-  mg.fillStyle = "#3a3540"; rect(-20, -5, 300, 5);
-  mg.fillStyle = "#ffb347"; kickers.forEach(k => { const [a, b] = P(k.x, k.z); mg.fillRect(a - 3, b - 3, 6, 6); });
+  const W = mapC.width, H = mapC.height, sc = Math.min(W / (WORLD.x1 - WORLD.x0 + 40), H / (WORLD.z1 - WORLD.z0 + 40));
+  mg.setTransform(1, 0, 0, 1, 0, 0); mg.fillStyle = "#1a1626"; mg.fillRect(0, 0, W, H);
+  mg.setTransform(sc, 0, 0, sc, (20 - WORLD.x0) * sc, (20 - WORLD.z0) * sc);
+  paintWorld(mg, 1 / sc);
+  mg.setTransform(1, 0, 0, 1, 0, 0);
   mg.fillStyle = "#e8ecf5"; mg.font = "bold 18px Golos Text, sans-serif";
-  [["Город", 150, -300], ["Трюк-парк", 330, 90], ["Полигон", -10, 35], ["Автобан", -560, ZA - 24]].forEach(([t, x, z]) => { const [a, b] = P(x, z); mg.fillText(t, a, b); });
-  const [cx, cz] = P(car.x, car.z);
+  PLACES.forEach(([t, x, z]) => mg.fillText(t, (x - WORLD.x0 + 20) * sc, (z - WORLD.z0 + 20) * sc));
+  const cx = (car.x - WORLD.x0 + 20) * sc, cz = (car.z - WORLD.z0 + 20) * sc;
   mg.save(); mg.translate(cx, cz); mg.rotate(-car.yaw);
-  mg.fillStyle = "#ff6b5e"; mg.beginPath(); mg.moveTo(11, 0); mg.lineTo(-7, -7); mg.lineTo(-3, 0); mg.lineTo(-7, 7); mg.closePath(); mg.fill();
+  mg.fillStyle = "#ff6b5e"; mg.strokeStyle = "#fff"; mg.lineWidth = 2;
+  mg.beginPath(); mg.moveTo(13, 0); mg.lineTo(-8, -8); mg.lineTo(-4, 0); mg.lineTo(-8, 8); mg.closePath(); mg.fill(); mg.stroke();
   mg.restore();
 }
+// мини-карта: всегда «нос вверх», радиус ~140 м
+const mini = $("mini"), mn = mini.getContext("2d");
+function zoneName(x, z) {
+  if (Math.abs(z - ZA) < 19) return "Автобан";
+  if (z < ZA - 19 && z > -505 && x > -210 && x < 770) return "Город";
+  if (x > 290 && x < 630 && z > -36 && z < 66) return "Трюк-парк";
+  if (x > -25 && x < 300 && z > -40 && z < 40) return "Полигон";
+  return "Пустырь";
+}
+function drawMini() {
+  const W = mini.width, R = W / 2, sc = R / 140;
+  mn.setTransform(1, 0, 0, 1, 0, 0); mn.fillStyle = "#3a2d2a"; mn.fillRect(0, 0, W, W);
+  mn.setTransform(1, 0, 0, 1, R, R); mn.rotate(car.yaw - Math.PI / 2); mn.scale(sc, sc); mn.translate(-car.x, -car.z);
+  paintWorld(mn, 1 / sc);
+  mn.setTransform(1, 0, 0, 1, R, R);
+  mn.fillStyle = "#ff6b5e"; mn.strokeStyle = "#fff"; mn.lineWidth = 3;
+  mn.beginPath(); mn.moveTo(0, -16); mn.lineTo(11, 12); mn.lineTo(0, 6); mn.lineTo(-11, 12); mn.closePath(); mn.fill(); mn.stroke();
+  // стрелки-указатели к местам за краем мини-карты
+  mn.font = "bold 20px Golos Text, sans-serif"; mn.textAlign = "center"; mn.textBaseline = "middle";
+  [["Т", 460, 15, "#ffb347"], ["Г", 280, -290, "#e8ecf5"], ["П", 70, 0, "#9fe3ff"]].forEach(([t, x, z, c]) => {
+    const dx = x - car.x, dz = z - car.z; if (Math.hypot(dx, dz) < 130) return;
+    const ang = Math.atan2(dz, dx) + (car.yaw - Math.PI / 2);
+    mn.fillStyle = c; mn.fillText(t, Math.cos(ang) * (R - 16), Math.sin(ang) * (R - 16));
+  });
+  $("zone").textContent = zoneName(car.x, car.z);
+}
+const GO = [["Автобан", SPAWN.x, SPAWN.z, 0], ["Трюк-парк", 296, 0, 0], ["Полигон · штопор", 15, 0, 0], ["Город", -190, -90, 0]];
+$("m-go").innerHTML = GO.map(([n], i) => `<button type="button" data-g="${i}">${n}</button>`).join("");
+$("m-go").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const [n, x, z, yaw] = GO[+b.dataset.g];
+  if (mode !== "free") startFree(false);
+  car.x = x; car.z = z; car.yaw = yaw; car.y = 0; car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0;
+  free.air = false; free.safe = { x, z, yaw }; phase = "free"; camPos.set(x - 9, 3.2, z);
+  closeDock(); showToast(`${n}. Джойстик вверх — поехали`, "good", 2500);
+});
+$("m-mini").onclick = () => { save.mini = save.mini === false; persist(); syncDock(); };
 
 /* ---------- управление ---------- */
 const joy = { id: null, x: 0, y: 0 }, JOY_R = 60;
@@ -1464,7 +1523,7 @@ function ui() {
   $("b-brake").hidden = jm || mode !== "free";
   $("b-hop").hidden = mode !== "free";
   $("b-hop").classList.toggle("hop-big", jm);
-  $("joy-hint").hidden = !jm || now > joyHintUntil || !$("ov-menu").hidden || !$("ov-brief").hidden || !$("ov-res").hidden;
+  $("joy-hint").hidden = !jm || now > joyHintUntil || !$("dock-panel").hidden || !$("ov-menu").hidden || !$("ov-brief").hidden || !$("ov-res").hidden;
   $("l-sub").textContent = $("r-sub").textContent = freeGround ? "руль" : "крутить";
   $("thrust-sub").textContent = (mode === "free" ? !free.air : phase === "run" || (phase === "brief" && briefPhase === "run")) ? "разгон" : "подушка";
   $("h-air").classList.toggle("off", !inAir);
@@ -1497,6 +1556,9 @@ function ui() {
   $("coach").hidden = !ct || now - coachSince > 3000;
   if (!$("toast").hidden && now > toastUntil) $("toast").hidden = true;
   if (!$("dock-panel").hidden) { if (now > dockCloseAt) closeDock(); else { drawMap(); syncDock(); } }
+  const showMini = mode === "free" && save.mini !== false && !replay;
+  $("mini-wrap").hidden = !showMini;
+  if (showMini) drawMini();
 }
 
 /* ---------- кадр ---------- */
