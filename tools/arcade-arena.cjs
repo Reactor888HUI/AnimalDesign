@@ -60,7 +60,8 @@ const path = require("path");
   out.roofMission = !!(await ev(() => __t.missions())).arenaRoof;
   // чаша: с поля по трибунам на крышу (газ в сторону главного входа)
   const [kx, kz, ky] = A.roofKick;
-  await ev(([x, z, y]) => __t.teleport(x, z, y), [A.C[0], A.C[1], Math.atan2(-(kz - A.C[1]), kx - A.C[0])]);
+  const ax = kx - A.C[0], az = kz - A.C[1], al = Math.hypot(ax, az);    // в 15 м от центра — мимо знака «888»
+  await ev(([x, z, y]) => __t.teleport(x, z, y), [A.C[0] + ax / al * 15, A.C[1] + az / al * 15, Math.atan2(-az, ax)]);
   await p.keyboard.down("ArrowUp");
   let top = 0; for (let i = 0; i < 40 && top < 29; i++) { await run(150); top = Math.max(top, (await ev(() => __t.car())).y); }
   await p.keyboard.up("ArrowUp");
