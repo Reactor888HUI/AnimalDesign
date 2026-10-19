@@ -98,6 +98,7 @@ h1 span { color: var(--amber); }
 }
 .dock-panel {
   position: absolute; top: 46px; right: 0; width: 240px; padding: 10px; display: grid; gap: 6px;
+  max-height: calc(var(--stage-h, 70vh) - 62px); overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   background: rgba(21, 28, 46, .96); border: 1px solid var(--line); border-radius: 12px;
 }
 .dock-panel button {
@@ -105,6 +106,7 @@ h1 span { color: var(--amber); }
   border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer;
 }
 .dock-panel button:hover { border-color: var(--amber); }
+.dock-panel button.main { border-color: var(--amber); color: var(--amber); font-weight: 700; text-align: center; }
 .dock-panel canvas { width: 100%; height: auto; border-radius: 8px; background: #1a1626; display: block; }
 .dock-panel .stat { font: 12px var(--f-mono); color: var(--dim); }
 
@@ -199,7 +201,7 @@ h1 span { color: var(--amber); }
   position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 14px;
   background: rgba(10, 14, 26, .7); backdrop-filter: blur(2px);
 }
-.card { position: relative; width: min(540px, 100%); max-height: 100%; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+.card { position: relative; width: min(540px, 100%); max-height: 100%; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
 .card h2 { font: 800 20px/1.15 var(--f-display); margin: 0 0 6px; padding-right: 30px; }
 .card p { margin: 0 0 10px; color: var(--dim); }
 .close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--night); color: var(--text); cursor: pointer; font-size: 16px; }
@@ -312,6 +314,9 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
     <div class="dock">
       <button class="dock-btn" id="dock-btn" type="button" aria-label="Меню" aria-expanded="false">⋯</button>
       <div class="dock-panel" id="dock-panel" hidden>
+        <button type="button" id="m-modes" class="main">Режимы и уровни</button>
+        <div class="lbl">Куда ехать</div>
+        <div class="go" id="m-go"></div>
         <canvas id="map" width="300" height="440" aria-label="Карта"></canvas>
         <div class="stat" id="m-stat"></div>
         <button type="button" id="m-replay" hidden>▶ Повтор лучшего трюка</button>
@@ -320,9 +325,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <div class="lbl" id="m-board-h" hidden>Рекорды игроков</div>
         <ol class="board" id="m-board" hidden></ol>
         <div class="board-note" id="m-board-note" hidden></div>
-        <div class="lbl">Куда ехать</div>
-        <div class="go" id="m-go"></div>
-        <button type="button" id="m-modes">Режимы и уровни</button>
+        <div class="lbl">Настройки</div>
         <button type="button" id="m-cam">Камера: сзади</button>
         <button type="button" id="m-assist">Ассистент переворота: вкл</button>
         <button type="button" id="m-snd">Звук: вкл</button>
@@ -925,7 +928,12 @@ function placeName(x, z) {
     const c2 = rings[0].map(([x, z]) => new T.Vector2(x, z)), hs = rings.slice(1).map(r => r.map(([x, z]) => new T.Vector2(x, z))), all = c2.concat(...hs);
     T.ShapeUtils.triangulateShape(c2, hs).forEach(t => t.forEach(i => roofs.push(all[i].x, h, all[i].y, rcol.r, rcol.g, rcol.b)));
     const name = kind === 4 ? "стену стадиона" : "дом";
-    solids.push({ ...bboxOf(rings[0]), h, name, rings });
+    const sb = { ...bboxOf(rings[0]), h, name, rings };
+    // посадочная площадка: плоская крыша, где помещается квадрат 7×7 м вокруг середины, высота 3–45 м
+    const cx = (sb.x0 + sb.x1) / 2, cz = (sb.z0 + sb.z1) / 2;
+    if (kind !== 4 && h >= 3 && h <= 45 && [[0, 0], [3.5, 3.5], [-3.5, 3.5], [3.5, -3.5], [-3.5, -3.5]].every(([dx, dz]) => inRings(cx + dx, cz + dz, rings)))
+      sb.pad = { x: cx, z: cz };
+    solids.push(sb);
   });
   const wallGeo = list => {
     const P = [], N = [], U = [], C = [];
@@ -942,6 +950,16 @@ function placeName(x, z) {
   rg.setAttribute("normal", new T.Float32BufferAttribute(RP.map((_, i) => i % 3 === 1 ? 1 : 0), 3));
   add(rg, new T.MeshStandardMaterial({ vertexColors: true, roughness: .95, side: DS }));
 
+  // зелёные площадки «H» на крышах, куда можно садиться
+  const pads = solids.filter(b => b.pad), pc = document.createElement("canvas"); pc.width = pc.height = 128;
+  const pg = pc.getContext("2d");
+  pg.strokeStyle = "#3ddc84"; pg.lineWidth = 12; pg.beginPath(); pg.arc(64, 64, 54, 0, Math.PI * 2); pg.stroke();
+  pg.fillStyle = "rgba(61,220,132,.25)"; pg.fill();
+  pg.fillStyle = "#ffffff"; pg.font = "bold 72px Arial, sans-serif"; pg.textAlign = "center"; pg.textBaseline = "middle"; pg.fillText("H", 64, 68);
+  const padMat = new T.MeshBasicMaterial({ map: new T.CanvasTexture(pc), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  const padI = new T.InstancedMesh(new T.PlaneGeometry(7, 7).rotateX(-Math.PI / 2), padMat, Math.max(1, pads.length));
+  pads.forEach((b, i) => padI.setMatrixAt(i, m4.compose(new T.Vector3(b.pad.x, b.h + .04, b.pad.z), q.identity(), one0)));
+  padI.count = pads.length; scene.add(padI);
   // деревья: из карты (отдельные и аллеи) + россыпь в лесополосах
   const trees = dm(OSM.t);
   OSM.a.filter(a => a[0] === "f").forEach(([, rs]) => {
@@ -1615,7 +1633,7 @@ const MISSIONS = [
   { id: "barrel2", t: "Две бочки за один прыжок", pts: 800 },
   { id: "rings3", t: "Три кольца подряд без аварий", pts: 600 },
   { id: "autobahn", t: "Автобан от старта до финиша за 30 с", pts: 700 },
-  { id: "roof", t: "Приземлись на крышу дома в Ростове", pts: 900 },
+  { id: "roof", t: "Сядь на площадку «H» на крыше в Ростове", pts: 900 },
   { id: "overpass", t: "Перелети автобан с трамплина", pts: 600 },
   { id: "eight", t: "Круг по «Восьмёрке» за 40 с", pts: 800 },
   { id: "bridge", t: "Переправься по мосту на левый берег Дона", pts: 300 }
@@ -1826,7 +1844,9 @@ function stepFree(dt) {
   car.vy -= G * dt;
   free.gh = groundAt(car.x, car.z, car.y).h;
   airControls(dt, false);
-  landingReserve(dt, free.gh);
+  // баллон смотрит и вперёд по ходу полёта: если там крыша, тормозить надо до неё, а не до улицы
+  const ahead = t => groundAt(car.x + Math.cos(car.yaw) * car.v * t, car.z - Math.sin(car.yaw) * car.v * t, car.y).h;
+  landingReserve(dt, Math.max(free.gh, ahead(.3), ahead(.6)));
   const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw), yPrev = car.y;
   car.x += fx * car.v * dt; car.z += fz * car.v * dt; car.y += car.vy * dt;
   if (car.y > 3.6 && car.x > 386 && car.x < 448 && Math.abs(car.z - 30) < 3.5) free.overBus = true;
@@ -1854,7 +1874,10 @@ function landFree(g) {
   if (!q) return freeCrash(err > HARD_ROLL ? `Приземлились на ${err > 110 ? "крышу" : "бок"}. Возвращаем на дорогу` : `Слишком жёстко: ${vImp.toFixed(0)} м/с. Держите ГАЗ у земли`);
   dust(car.x, g.h, car.z, 8); sfx.thump(Math.min(1, vImp / 14));
   car.vy = 0; car.roll = 0; car.om = 0;
-  if (g.roof) completeMission("roof");
+  if (g.roof && g.roof.pad && Math.hypot(car.x - g.roof.pad.x, car.z - g.roof.pad.z) < 6) {   // точно на площадку «H»
+    free.score += 300; save.freeBest = Math.max(save.freeBest, free.score); persist();
+    queueToast("Посадка на площадку «H»  +300", "good", 2000); completeMission("roof");
+  }
   if (free.overBus) completeMission("bus");
   if (free.fromOverpass && car.z < ZA - 19) completeMission("overpass");
   const trickRoll = totalRoll + (free.cork ? 180 : 0), turns = Math.floor((trickRoll + 40) / 360);
@@ -2094,6 +2117,7 @@ function openDock() { $("dock-panel").hidden = false; $("dock-btn").setAttribute
 function closeDock() { $("dock-panel").hidden = true; $("dock-btn").setAttribute("aria-expanded", "false"); }
 $("dock-btn").onclick = () => $("dock-panel").hidden ? openDock() : closeDock();
 $("dock-panel").addEventListener("pointerdown", () => { dockCloseAt = performance.now() + 8000; });
+$("dock-panel").addEventListener("scroll", () => { dockCloseAt = performance.now() + 8000; }, { passive: true });
 stage.addEventListener("pointerdown", e => { if (!e.target.closest(".dock")) closeDock(); });
 function syncDock() {
   $("m-cam").textContent = `Камера: ${camMode === "chase" ? "сзади" : "из кабины"}`;
@@ -2149,6 +2173,7 @@ const MAPS = .75, mapImg = (() => {
   });
   g.fillStyle = "#6c6875"; g.fillRect(BRIDGE.x - BRIDGE.w / 2, BRIDGE.z1, BRIDGE.w, BRIDGE.z0 - BRIDGE.z1);
   g.fillStyle = "#c39c7c"; OSM.b.forEach(([, k, rs]) => { g.fillStyle = k === 4 ? "#e4e5ea" : k === 1 ? "#a9b1bf" : "#c39c7c"; poly(rs.map(dm)); });
+  g.fillStyle = "#3ddc84"; solids.forEach(b => { if (b.pad) { g.beginPath(); g.arc(b.pad.x, b.pad.z, 5, 0, Math.PI * 2); g.fill(); } });   // площадки «H»
   return c;
 })();
 function paintWorld(g, px) {   // всё в метрах, px — сколько метров в одном пикселе
@@ -2551,6 +2576,7 @@ function layerGround() {
 }
 function resize() {
   const w = stage.clientWidth, h = stage.clientHeight;
+  stage.style.setProperty("--stage-h", h + "px");          // меню «⋯» не длиннее поля игры, остальное прокручивается
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 addEventListener("resize", resize);
@@ -2621,7 +2647,9 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   burst: () => ({ ...BURST }),
   setGas: v => { gas = v; },
   vy: () => ({ vy: car.vy, air: free.air }),
+  carY: () => car.y,
   roofs: () => solids.filter(b => b.rings && b.h > 3 && b.h < 14 && b.x1 - b.x0 > 14 && b.z1 - b.z0 > 14).map(b => ({ x: (b.x0 + b.x1) / 2, z: (b.z0 + b.z1) / 2, h: b.h, ok: inRings((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, b.rings) && !hitSolid((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, b.h + .3) })).filter(b => b.ok),
+  pads: () => solids.filter(b => b.pad && !hitSolid(b.pad.x, b.pad.z, b.h + .3)).map(b => ({ x: b.pad.x, z: b.pad.z, h: b.h })),
   fast: on => { testFast = on; },
   draw: () => render(0),
   spin: r => { totalRoll = r; },

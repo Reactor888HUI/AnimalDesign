@@ -21,7 +21,7 @@ const SHOTS = process.env.SHOTS || ".";
   await ev(() => __t.teleport(700, -1050, Math.PI / 2)); await keys(["ArrowUp"], 5000);
   out.bridge = !!(await M()).bridge;
   // крыша дома
-  const roof = (await ev(() => __t.roofs()))[0];
+  const roof = (await ev(() => __t.pads()))[0];       // зелёная площадка «H»
   await ev(r => { __t.teleport(r.x, r.z, 0); __t.setCar({ y: r.h + 4, vy: 0, v: 0, air: true }); }, roof); await run(1500);
   out.roof = { ...(await ev(() => __t.car())), done: !!(await M()).roof, h: roof.h };
   await shot("p2-roof.png");
