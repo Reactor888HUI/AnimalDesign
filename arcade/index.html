@@ -145,6 +145,23 @@ h1 span { color: var(--amber); }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,179,71,.6); } 70% { box-shadow: 0 0 0 14px rgba(255,179,71,0); } 100% { box-shadow: 0 0 0 0 rgba(255,179,71,0); } }
 @media (prefers-reduced-motion: reduce) { .tb.hint { animation: none; box-shadow: 0 0 0 3px var(--amber); } }
 
+/* плавающий джойстик: появляется под пальцем в любой точке экрана */
+.joy { position: absolute; z-index: 3; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; pointer-events: none;
+  border: 2px solid rgba(159, 227, 255, .55); background: rgba(13, 18, 32, .28); }
+.joy span { position: absolute; font: 700 10.5px var(--f-body); color: rgba(232, 236, 245, .8); }
+.joy .u { top: 6px; left: 50%; transform: translateX(-50%); } .joy .d { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.joy .l { left: 7px; top: 50%; transform: translateY(-50%); } .joy .r { right: 7px; top: 50%; transform: translateY(-50%); }
+.joy-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
+  background: rgba(159, 227, 255, .5); border: 2px solid var(--gas); }
+.joy-hint {
+  position: absolute; z-index: 2; left: 50%; top: 58%; transform: translate(-50%, -50%); pointer-events: none; text-align: center;
+  padding: 10px 16px; border-radius: 14px; background: rgba(13, 18, 32, .72); border: 1px dashed var(--gas);
+  font: 600 14px/1.45 var(--f-body); color: var(--text); width: min(320px, calc(100% - 40px));
+}
+.joy-hint b { color: var(--gas); }
+.tb.hop-big { min-width: 96px; height: 76px; border-color: var(--amber); }
+.tb.hop-big b { font-size: 16px; color: var(--amber); }
+
 /* окна */
 .ov {
   position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 14px;
@@ -245,6 +262,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <button type="button" id="m-modes">Режимы и уровни</button>
         <button type="button" id="m-cam">Камера: сзади</button>
         <button type="button" id="m-assist">Ассистент переворота: вкл</button>
+        <button type="button" id="m-ctrl">Управление: джойстик</button>
         <button type="button" id="m-paint">Цвет: белая</button>
         <button type="button" id="m-garage">Осмотреть машину</button>
         <button type="button" id="m-restart">Заново</button>
@@ -260,6 +278,9 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
       <div class="msg" id="ls-msg"></div>
     </div>
     <div class="replay" id="replay" hidden><span class="dot"></span><span>ПОВТОР · ТРИБУНА</span><button class="btn small" id="rp-skip" type="button">Пропустить</button></div>
+
+    <div class="joy" id="joy" hidden><span class="u">газ</span><span class="d">тормоз</span><span class="l">◀</span><span class="r">▶</span><div class="joy-knob" id="joy-knob"></div></div>
+    <div class="joy-hint" id="joy-hint" hidden>Коснитесь экрана в любом месте и ведите пальцем:<br><b>вверх</b> — газ, <b>вниз</b> — тормоз, <b>влево / вправо</b> — руль.<br>В воздухе тот же джойстик крутит машину.</div>
 
     <div class="pad">
       <div class="grp">
@@ -313,15 +334,16 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
     <div>
       <h3>Езда</h3>
       <ul>
-        <li><b>ГАЗ</b> — разгон, <b>СТОП</b> — тормоз и задний ход, <b>◀ ▶</b> — руль.</li>
+        <li><b>Джойстик:</b> коснитесь экрана где угодно и ведите пальцем. Вверх — газ (чем дальше, тем сильнее), вниз — тормоз и задний ход, влево и вправо — руль.</li>
+        <li>Старые кнопки ГАЗ / СТОП / ◀ ▶ включаются в «⋯» → «Управление».</li>
         <li><b>ПРЫГ</b> — прыжок на соплах с места или на ходу. Газ в баллонах восстанавливается на земле.</li>
       </ul>
     </div>
     <div>
       <h3>В воздухе</h3>
       <ul>
-        <li><b>◀ ▶</b> крутят машину бочкой. Каждый полный оборот — очки.</li>
-        <li><b>ГАЗ</b> держит подушку: машина падает медленнее и садится мягче.</li>
+        <li>Джойстик <b>влево и вправо</b> крутит машину бочкой. Каждый полный оборот — очки.</li>
+        <li>Джойстик <b>вверх</b> держит подушку: машина падает медленнее и садится мягче.</li>
         <li>Кольца в воздухе дают бонус. Садиться нужно на колёса.</li>
       </ul>
     </div>
@@ -923,7 +945,7 @@ function step(dt) {
   time += dt; tPhase += dt; simT += dt; flashT = Math.max(0, flashT - dt);
   if (mode === "train") gas = 100;
   if (phase === "run") {
-    car.v = Math.max(0, Math.min(VMAX, car.v + (input.thrust ? ACC : -DRAG) * dt));
+    car.v = Math.max(0, Math.min(VMAX, car.v + (thr() > .05 ? ACC * thr() : -DRAG) * dt));
     car.x += car.v * dt; car.y = 0; car.pitch = 0;
     if (mode === "train" && di === 0) car.x = Math.min(car.x, RS - 15);
     if (car.x >= RS) { phase = "ramp"; tPhase = 0; }
@@ -954,9 +976,9 @@ function step(dt) {
   } else if (phase === "drill") {
     const d = DRILLS[di];
     if (d.noGrav) car.vy = 0; else car.vy -= G * dt;
-    if (input.thrust) cushion(dt);
-    const r = (input.rr ? 1 : 0) - (input.rl ? 1 : 0);
-    if (r) sideJet(r, dt);
+    if (thr() > .05) cushion(dt, thr());
+    const r = turn();
+    if (Math.abs(r) > .05) sideJet(r, dt);
     if (d.noGrav) car.om *= Math.pow(.5, dt);
     car.roll += car.om * dt;
     car.x += car.vx * dt; car.y += car.vy * dt;
@@ -972,8 +994,8 @@ function step(dt) {
     if (tPhase > 1.5 && !result) showResult();
   }
 }
-function cushion(dt) {
-  car.vy += (car.vy < -1 ? G + 9 : G * .8) * dt;
+function cushion(dt, k = 1) {
+  car.vy += (car.vy < -1 ? G + 9 : G * .8) * dt * Math.min(1, k * 1.25);
   if (Math.random() < .6) puff(nozzle(0, -.5), new T.Vector3(0, -7, 0), .7, .35);
 }
 function sideJet(r, dt) {
@@ -981,10 +1003,10 @@ function sideJet(r, dt) {
   if (Math.random() < .5) puff(nozzle(0, .2), new T.Vector3(0, 0, r * 5).applyAxisAngle(new T.Vector3(0, 1, 0), car.yaw), .4, .25);
 }
 function airControls(dt, invert) {
-  if (input.thrust && gas > 0) { cushion(dt); gas -= 20 * dt; }
-  let r = (input.rr ? 1 : 0) - (input.rl ? 1 : 0);
+  if (thr() > .05 && gas > 0) { cushion(dt, thr()); gas -= 20 * dt * Math.min(1, thr() * 1.25); }
+  let r = turn();
   if (invert) r = -r;
-  if (r && gas > 0) { sideJet(r, dt); gas -= 5 * dt; }
+  if (Math.abs(r) > .05 && gas > 0) { sideJet(r, dt); gas -= 5 * Math.abs(r) * dt; }
   else if (assistOn) {
     const target = Math.ceil((car.roll - 10) / 360) * 360;
     const want = (target - car.roll) / Math.max(.3, timeToGround(mode === "free" ? free.gh : 0));
@@ -1051,7 +1073,8 @@ function startFree(toast = true) {
   Object.assign(free, { air: false, airT: 0, cork: false, ringBonus: 0, safe: { ...SPAWN }, safeT: 0, gh: 0, hopLock: false });
   assistOn = save.assist;
   phase = "free";
-  if (toast) showToast("Свободная езда. Трюк-парк — справа от автобана, город — слева. «⋯» — карта и режимы", "", 4500);
+  if (joyMode()) joyHintUntil = performance.now() + 6000;
+  if (toast) showToast("Трюк-парк — справа, город — слева. «⋯» — карта и режимы", "", 4500);
 }
 function respawn() {
   car.x = free.safe.x; car.z = free.safe.z; car.yaw = free.safe.yaw; car.y = groundAt(car.x, car.z).h;
@@ -1087,11 +1110,12 @@ function stepFree(dt) {
     return;
   }
   if (!free.air) {
-    if (input.thrust) car.v += 10 * (1 - .7 * Math.max(0, car.v) / VMAXF) * dt;
-    if (input.brake) car.v = car.v > .5 ? car.v - 16 * dt : Math.max(-9, car.v - 5 * dt);
-    if (!input.thrust && !input.brake) car.v -= Math.sign(car.v) * Math.min(Math.abs(car.v), (1.2 + car.v * car.v * .0006) * dt);
+    const th = thr(), bk = brk();
+    if (th) car.v += 10 * th * (1 - .7 * Math.max(0, car.v) / VMAXF) * dt;
+    if (bk) car.v = car.v > .5 ? car.v - 16 * bk * dt : Math.max(-9 * bk, car.v - 5 * bk * dt);
+    if (!th && !bk) car.v -= Math.sign(car.v) * Math.min(Math.abs(car.v), (1.2 + car.v * car.v * .0006) * dt);
     car.v = Math.max(-9, Math.min(VMAXF, car.v));
-    const steer = (input.rl ? 1 : 0) - (input.rr ? 1 : 0);
+    const steer = -turn();
     car.yaw += steer * 2.1 * Math.min(1, Math.abs(car.v) / 5) / (1 + Math.abs(car.v) / 20) * Math.sign(car.v || 1) * dt;
     const nfx = Math.cos(car.yaw), nfz = -Math.sin(car.yaw);
     const nx = car.x + nfx * car.v * dt, nz = car.z + nfz * car.v * dt;
@@ -1114,14 +1138,15 @@ function stepFree(dt) {
       car.x = nx; car.z = nz; car.y = g0.h;
       car.pitch += (g0.slope - car.pitch) * Math.min(1, dt * 12);
     }
-    if (input.hop && gas >= 20 && !free.hopLock) {
+    const wantHop = (input.hop || free.hopReq) && !free.hopLock; free.hopReq = false;
+    if (wantHop && gas >= 20) {
       gas -= 20; car.vy = 10; free.hopLock = true; dust(car.x, car.y, car.z, 6); takeoff(false); return;
     }
     if (!input.hop) free.hopLock = false;
     gas = Math.min(100, gas + 6 * dt);
     free.safeT += dt;
     if (free.safeT > 1 && car.y < .05 && Math.abs(car.v) > 1 && !hitSolid(car.x, car.z, 0)) { free.safe = { x: car.x, z: car.z, yaw: car.yaw }; free.safeT = 0; }
-    if (Math.abs(car.v) > 3 && input.thrust && Math.random() < .08) puff(nozzle(-2.1, -.35), new T.Vector3(0, .5, 0), .4, .12);
+    if (Math.abs(car.v) > 3 && thr() > .3 && Math.random() < .08) puff(nozzle(-2.1, -.35), new T.Vector3(0, .5, 0), .4, .12);
     return;
   }
   // воздух
@@ -1239,7 +1264,8 @@ function startTraining(i) {
   $("ls-text").textContent = d.short; $("ls-bar").style.width = "0"; $("ls-msg").textContent = "";
   briefPhase = phase; phase = "brief";
   $("br-step").textContent = `Урок ${di + 1} из ${DRILLS.length}`;
-  $("br-title").textContent = d.title; $("br-text").textContent = d.text;
+  $("br-title").textContent = d.title;
+  $("br-text").textContent = joyMode() ? d.text + " На телефоне: джойстик вверх — ГАЗ, влево и вправо — ◀ ▶." : d.text;
   $("ov-brief").hidden = false;
   let left = 4; $("br-go").textContent = `Начать · ${left}`;
   clearInterval(briefTimer);
@@ -1317,6 +1343,7 @@ stage.addEventListener("pointerdown", e => { if (!e.target.closest(".dock")) clo
 function syncDock() {
   $("m-cam").textContent = `Камера: ${camMode === "chase" ? "сзади" : "из кабины"}`;
   $("m-assist").textContent = `Ассистент переворота: ${save.assist ? "вкл" : "выкл"}`;
+  $("m-ctrl").textContent = `Управление: ${joyMode() ? "джойстик" : "кнопки"}`;
   $("m-paint").textContent = `Цвет: ${PAINTS[(save.paint || 0) % PAINTS.length].n}`;
   $("m-stat").textContent = mode === "free" ? `Очки ${free.score} · рекорд ${save.freeBest} · лучший трюк ${save.trickBest}`
     : mode === "train" ? `Полигон · урок ${di + 1}` : `Уровень ${L.i + 1}: ${L.name}`;
@@ -1360,6 +1387,33 @@ function drawMap() {
 }
 
 /* ---------- управление ---------- */
+const joy = { id: null, x: 0, y: 0 }, JOY_R = 60;
+const joyMode = () => save.ctrl !== "buttons";
+const dz = v => Math.abs(v) < .14 ? 0 : (v - Math.sign(v) * .14) / .86;
+const thr = () => Math.max(input.thrust ? 1 : 0, dz(Math.max(0, joy.y)));          // газ / подушка 0…1
+const brk = () => Math.max(input.brake ? 1 : 0, dz(Math.max(0, -joy.y)));          // тормоз 0…1
+const turn = () => Math.max(-1, Math.min(1, (input.rr ? 1 : 0) - (input.rl ? 1 : 0) + dz(joy.x)));   // вправо +
+let joyHintUntil = performance.now() + 7000;
+stage.addEventListener("pointerdown", e => {
+  if (!joyMode() || joy.id !== null || e.target.closest("button, .ov, .dock, .lesson")) return;
+  const r = stage.getBoundingClientRect();
+  joy.id = e.pointerId; joy.ox = e.clientX; joy.oy = e.clientY; joyHintUntil = 0;
+  const el = $("joy"); el.style.left = `${e.clientX - r.left}px`; el.style.top = `${e.clientY - r.top}px`; el.hidden = false;
+  stage.setPointerCapture?.(e.pointerId);
+});
+stage.addEventListener("pointermove", e => {
+  if (e.pointerId !== joy.id) return;
+  let dx = e.clientX - joy.ox, dy = e.clientY - joy.oy; const d = Math.hypot(dx, dy);
+  if (d > JOY_R) { dx *= JOY_R / d; dy *= JOY_R / d; }
+  joy.x = dx / JOY_R; joy.y = -dy / JOY_R;
+  $("joy-knob").style.transform = `translate(${dx}px, ${dy}px)`;
+});
+const joyEnd = e => {
+  if (e.pointerId !== joy.id) return;
+  joy.id = null; joy.x = joy.y = 0; $("joy").hidden = true; $("joy-knob").style.transform = "";
+};
+["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => stage.addEventListener(ev, joyEnd));
+$("m-ctrl").onclick = () => { save.ctrl = joyMode() ? "buttons" : "joy"; persist(); syncDock(); joyHintUntil = joyMode() ? performance.now() + 5000 : 0; };
 const KEYS = { ArrowUp: "thrust", w: "thrust", "ц": "thrust", ArrowDown: "brake", s: "brake", "ы": "brake", ArrowLeft: "rl", a: "rl", "ф": "rl", ArrowRight: "rr", d: "rr", "в": "rr", " ": "hop" };
 const keyOf = e => { let k = KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key]; if (k === "hop" && mode !== "free") k = "thrust"; return k; };
 addEventListener("keydown", e => {
@@ -1382,6 +1436,7 @@ function hold(id, key) {
   el.addEventListener("contextmenu", e => e.preventDefault());
 }
 hold("b-thrust", "thrust"); hold("b-left", "rl"); hold("b-right", "rr"); hold("b-brake", "brake"); hold("b-hop", "hop");
+$("b-hop").addEventListener("pointerdown", () => { free.hopReq = true; });   // короткий тап тоже прыгает
 
 /* ---------- тренер и приборы ---------- */
 function coachHint() {
@@ -1404,7 +1459,12 @@ function ui() {
   if (Math.round(gas) !== lastGasShown) { $("h-gas").style.width = `${gas}%`; $("h-gas").style.background = gas > 25 ? "var(--gas)" : "var(--bad)"; lastGasShown = Math.round(gas); }
   $("h-top").textContent = replay ? "" : mode === "free" ? `Очки ${free.score}` : mode === "train" ? "" : `${L.i + 1}. ${L.name}`;
   const freeGround = mode === "free" && !free.air;
-  $("b-brake").hidden = $("b-hop").hidden = mode !== "free";
+  const jm = joyMode();
+  $("b-left").hidden = $("b-right").hidden = $("b-thrust").hidden = jm;
+  $("b-brake").hidden = jm || mode !== "free";
+  $("b-hop").hidden = mode !== "free";
+  $("b-hop").classList.toggle("hop-big", jm);
+  $("joy-hint").hidden = !jm || now > joyHintUntil || !$("ov-menu").hidden || !$("ov-brief").hidden || !$("ov-res").hidden;
   $("l-sub").textContent = $("r-sub").textContent = freeGround ? "руль" : "крутить";
   $("thrust-sub").textContent = (mode === "free" ? !free.air : phase === "run" || (phase === "brief" && briefPhase === "run")) ? "разгон" : "подушка";
   $("h-air").classList.toggle("off", !inAir);
@@ -1427,7 +1487,11 @@ function ui() {
     if (phase !== "brief" && phase !== "lesson-done" && $("ov-res").hidden) c = { t: "", k: di === DRILLS.length - 1 ? (coachHint() || {}).k : (d.hint ? d.hint.call(d) : null) };
   } else if (mode === "level" && L.coach && $("ov-res").hidden && $("ov-menu").hidden && !replay) c = coachHint();
   else if (mode === "free" && free.air && car.y - free.gh < 6 && -car.vy > CLEAN_V - 2) c = { t: "Земля близко — держите ГАЗ", k: "thrust" };
-  const hk = c ? c.k : null, ct = c ? c.t : "";
+  const JOYTXT = { thrust: "Джойстик вверх — газ", rl: "Джойстик влево", rr: "Джойстик вправо" };
+  const hk = c ? c.k : null;
+  let ct = c ? c.t : "";
+  if (jm && hk && !ct) ct = JOYTXT[hk];
+  if (jm && ct) ct = ct.replace("жмите ◀", "джойстик влево").replace("жмите ▶", "джойстик вправо").replace("держите ГАЗ", "джойстик вверх").replace("Держите ГАЗ", "Джойстик вверх");
   if (hk !== lastHint) { Object.entries(btnFor).forEach(([k, el]) => el.classList.toggle("hint", k === hk)); lastHint = hk; }
   if (ct !== lastCoach) { lastCoach = ct; coachSince = now; $("coach").textContent = ct; }
   $("coach").hidden = !ct || now - coachSince > 3000;
