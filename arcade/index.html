@@ -63,6 +63,12 @@ h1 span { color: var(--amber); }
 .dock-panel .mis li b { margin-left: auto; color: var(--amber); font: 700 11px var(--f-mono); white-space: nowrap; }
 .dock-panel .mis li.done { color: #6fdc8c; }
 .dock-panel .mis li.done b { color: #6fdc8c; }
+.dock-panel .board { margin: 0; padding: 0 0 0 22px; display: grid; gap: 3px; font-size: 12.5px; }
+.dock-panel .board li { color: var(--text); }
+.dock-panel .board li span { display: inline-flex; width: calc(100% - 4px); gap: 6px; }
+.dock-panel .board li b { margin-left: auto; font: 700 11.5px var(--f-mono); color: var(--amber); }
+.dock-panel .board li.me { color: #9fe3ff; }
+.dock-panel .board-note { font-size: 11.5px; color: var(--dim); }
 .hud-replay { position: absolute; z-index: 3; top: 48px; left: 50%; transform: translateX(-50%); border: 1px solid var(--amber); background: rgba(13, 18, 32, .85); color: var(--amber); font: 700 13px var(--f-display); padding: 7px 14px; border-radius: 999px; }
 .dock-panel .lbl { font: 600 11px var(--f-mono); color: var(--dim); letter-spacing: .05em; text-transform: uppercase; }
 
@@ -303,6 +309,9 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <button type="button" id="m-replay" hidden>▶ Повтор лучшего трюка</button>
         <div class="lbl" id="m-mis-h">Задания</div>
         <ul class="mis" id="m-mis"></ul>
+        <div class="lbl" id="m-board-h" hidden>Рекорды игроков</div>
+        <ol class="board" id="m-board" hidden></ol>
+        <div class="board-note" id="m-board-note" hidden></div>
         <div class="lbl">Куда ехать</div>
         <div class="go" id="m-go"></div>
         <button type="button" id="m-modes">Режимы и уровни</button>
@@ -313,6 +322,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <button type="button" id="m-mini">Мини-карта: вкл</button>
         <button type="button" id="m-ctrl">Управление: джойстик</button>
         <button type="button" id="m-paint">Цвет: белая</button>
+        <button type="button" id="m-tune">Обвес: заводской</button>
         <button type="button" id="m-garage">Осмотреть машину</button>
         <button type="button" id="m-restart">Заново</button>
       </div>
@@ -487,7 +497,7 @@ const DRILLS = [
 /* ---------- сохранение ---------- */
 let save = { unlocked: 1, best: {}, assist: true, trained: false, freeBest: 0, trickBest: 0, missions: {} };
 try { const s = JSON.parse(localStorage.getItem("baklan3d-v1")); if (s && s.unlocked) save = Object.assign(save, s); } catch (e) {}
-const persist = () => { try { localStorage.setItem("baklan3d-v1", JSON.stringify(save)); } catch (e) {} };
+const persist = () => { try { localStorage.setItem("baklan3d-v1", JSON.stringify(save)); } catch (e) {} setTimeout(pushScore, 0); };
 
 /* ---------- случайность с зерном: город всегда одинаковый ---------- */
 let seed = 742;
@@ -1014,7 +1024,7 @@ const EIGHT = { ax: 960, bx: 1060, z: 170, r: 50 };      // две петли, �
 
 freeze(scene);   // вся неподвижная геометрия мира — несколько склеенных мешей
 // сетка 40 м для препятствий: домов сотни, проверять все на каждом шаге физики дорого
-const SGRID = 40, sgrid = new Map(), skey = (i, j) => i * 4096 + j;
+const SGRID = 40, sgrid = new Map(), skey = (i, j) => i * 4096 + j, STREET = {};
 solids.forEach(b => {
   for (let i = Math.floor((b.x0 - 2) / SGRID); i <= Math.floor((b.x1 + 2) / SGRID); i++)
     for (let j = Math.floor((b.z0 - 2) / SGRID); j <= Math.floor((b.z1 + 2) / SGRID); j++) {
@@ -1022,6 +1032,95 @@ solids.forEach(b => {
     }
 });
 const solidsNear = (x, z) => sgrid.get(skey(Math.floor(x / SGRID), Math.floor(z / SGRID))) || [];
+// у домов Ростова настоящий контур: сначала грубая рамка, потом точка в многоугольнике или ближе pad к стене
+const inBox = (b, x, z, pad) => x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad &&
+  (!b.rings || inRings(x, z, b.rings) || b.rings.some(r => lineDist(x, z, r, true) < pad));
+
+/* ---------- улицы Ростова: фонари, светофоры, «зебры» ---------- */
+const SIGNALS = { A: [], B: [] };          // материалы сигналов двух направлений перекрёстка
+(() => {
+  const m4 = new T.Matrix4(), q = new T.Quaternion(), V = (x, y, z) => new T.Vector3(x, y, z), one = V(1, 1, 1);
+  const yawOf = (dx, dz) => Math.atan2(-dz, dx);
+  const geo = (...parts) => mergeGeos(parts.map(([g, x, y, z]) => { const n = g.toNonIndexed(); n.translate(x, y, z); return n; }));
+  // перекрёстки — общие вершины разных улиц; «ноги» — направления выходящих из них отрезков
+  const vmap = new Map(), key = (x, z) => Math.round(x * 2) + "," + Math.round(z * 2);
+  ROADS.forEach((r, ri) => { if (r.c > 2 || r.name === "Понтонный мост") return; r.pts.forEach((pt, i) => { const k = key(...pt); if (!vmap.has(k)) vmap.set(k, []); vmap.get(k).push([ri, i]); }); });
+  const cross = [];
+  vmap.forEach(list => {
+    if (new Set(list.map(l => l[0])).size < 2) return;
+    const [x, z] = ROADS[list[0][0]].pts[list[0][1]];
+    if (!inStrip(x, z) || z > -86) return;
+    const legs = [];
+    list.forEach(([ri, i]) => { const r = ROADS[ri]; [i - 1, i + 1].forEach(j => { if (j < 0 || j >= r.pts.length) return; const [px, pz] = r.pts[j], L = Math.hypot(px - x, pz - z); if (L > 1) legs.push({ dx: (px - x) / L, dz: (pz - z) / L, w: r.w, c: r.c, L }); }); });
+    if (legs.length >= 3) cross.push({ x, z, legs, major: Math.min(...legs.map(l => l.c)), wmax: Math.max(...legs.map(l => l.w)) });
+  });
+  // «зебры»: полосы вдоль дороги шириной 0,5 м с шагом 1 м поперёк неё, за краем перекрёстка
+  const zeb = [];
+  cross.forEach(cr => cr.legs.forEach(l => {
+    const d = cr.wmax / 2 + 2.5; if (l.L < d + 4) return;
+    const cx = cr.x + l.dx * d, cz = cr.z + l.dz * d, yaw = yawOf(l.dx, l.dz);
+    for (let o = -l.w / 2 + .6; o <= l.w / 2 - .5; o += 1) zeb.push([cx - l.dz * o, cz + l.dx * o, yaw]);
+  }));
+  const zi = new T.InstancedMesh(new T.PlaneGeometry(3, .5).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0xeeeae0 }), Math.min(zeb.length, 5000));
+  zeb.slice(0, 5000).forEach(([x, z, yaw], i) => zi.setMatrixAt(i, m4.compose(V(x, .095, z), q.setFromAxisAngle(yUp0, yaw), one)));
+  scene.add(zi);
+  // светофоры на перекрёстках улиц и магистралей: по столбу на каждую «ногу», смотрят навстречу подъезжающим
+  const tl = [];
+  cross.filter(cr => cr.major <= 1).slice(0, 70).forEach(cr => cr.legs.slice(0, 4).forEach(l => {
+    const d = cr.wmax / 2 + 1.5, off = l.w / 2 + 1.2;
+    const x = cr.x + l.dx * d - l.dz * off, z = cr.z + l.dz * d + l.dx * off;
+    if (solidsNear(x, z).some(b => b.h > .5 && inBox(b, x, z, 1.1))) return;
+    tl.push([x, z, yawOf(l.dx, l.dz), Math.abs(l.dx) > Math.abs(l.dz) ? "A" : "B"]);
+  }));
+  const tlBody = new T.InstancedMesh(geo([new T.CylinderGeometry(.07, .08, 3.2, 6), 0, 1.6, 0], [new T.BoxGeometry(.3, 1.05, .34), .05, 3.6, 0]), mat(0x2b2d33), tl.length);
+  tl.forEach(([x, z, yaw], i) => tlBody.setMatrixAt(i, m4.compose(V(x, 0, z), q.setFromAxisAngle(yUp0, yaw), one)));
+  scene.add(tlBody);
+  ["A", "B"].forEach(grp => {
+    const mine = tl.filter(t => t[3] === grp);
+    [[3.92, 0xff3b30], [3.6, 0xffc400], [3.28, 0x3ddc84]].forEach(([y, c]) => {
+      const m = new T.MeshBasicMaterial({ color: c }); m.userData.on = new T.Color(c); m.userData.off = new T.Color(c).multiplyScalar(.18);
+      const im = new T.InstancedMesh(new T.CircleGeometry(.12, 8).rotateY(Math.PI / 2).translate(.205, y, 0), m, Math.max(1, mine.length));
+      mine.forEach(([x, z, yaw], i) => im.setMatrixAt(i, m4.compose(V(x, 0, z), q.setFromAxisAngle(yUp0, yaw), one)));
+      im.count = mine.length; scene.add(im); SIGNALS[grp].push(m);
+    });
+  });
+  // фонари вдоль улиц: через 34 м, по очереди с разных сторон, не в домах и не в воде
+  const lamps = [], taken = new Set();
+  ROADS.forEach(r => {
+    if (r.c > 2 || r.name === "Понтонный мост") return;
+    let side = 1, acc = 12;
+    for (let i = 1; i < r.pts.length && lamps.length < 800; i++) {
+      const [ax, az] = r.pts[i - 1], [bx, bz] = r.pts[i], L = Math.hypot(bx - ax, bz - az); if (L < .1) continue;
+      const ux = (bx - ax) / L, uz = (bz - az) / L, off = r.w / 2 + 1;
+      for (; acc < L; acc += 34) {
+        const ox = -uz * off * side, oz = ux * off * side, x = ax + ux * acc + ox, z = az + uz * acc + oz;
+        side = -side;
+        const k = Math.round(x / 15) + "," + Math.round(z / 15);
+        if (taken.has(k) || !inStrip(x, z) || z > -86 || solidsNear(x, z).some(b => b.h > .5 && inBox(b, x, z, 1.1)) || waterAt(x, z)) continue;
+        taken.add(k); lamps.push([x, z, yawOf(-ox, -oz)]);
+      }
+      acc -= L;
+    }
+  });
+  const pool = document.createElement("canvas"); pool.width = pool.height = 64;
+  const pg = pool.getContext("2d"), gr = pg.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, "rgba(255,214,150,.55)"); gr.addColorStop(1, "rgba(255,214,150,0)"); pg.fillStyle = gr; pg.fillRect(0, 0, 64, 64);
+  const lampParts = [
+    [geo([new T.CylinderGeometry(.07, .09, 7, 5), 0, 3.5, 0], [new T.BoxGeometry(1.6, .08, .08), .8, 7, 0]), mat(0x5c606b)],
+    [new T.BoxGeometry(.55, .1, .24).translate(1.5, 6.92, 0), new T.MeshBasicMaterial({ color: 0xffe2a0 })],
+    [new T.PlaneGeometry(11, 11).rotateX(-Math.PI / 2).translate(1.5, .14, 0), new T.MeshBasicMaterial({ map: new T.CanvasTexture(pool), transparent: true, depthWrite: false, blending: T.AdditiveBlending })]
+  ];
+  lampParts.forEach(([g, m]) => {
+    const im = new T.InstancedMesh(g, m, Math.max(1, lamps.length));
+    lamps.forEach(([x, z, yaw], i) => im.setMatrixAt(i, m4.compose(V(x, 0, z), q.setFromAxisAngle(yUp0, yaw), one)));
+    im.count = lamps.length; scene.add(im);
+  });
+  STREET.lamps = lamps.length; STREET.signals = tl.length; STREET.zebras = zeb.length; STREET.crossings = cross.length;
+})();
+function tickSignals(t) {                  // цикл 16 с: у одного направления зелёный, у другого красный
+  const ph = t % 16, a = ph < 6 ? 2 : ph < 8 ? 1 : 0, b = ph < 8 ? 0 : ph < 14 ? 2 : 1;   // 0 красный, 1 жёлтый, 2 зелёный
+  [["A", a], ["B", b]].forEach(([grp, on]) => SIGNALS[grp].forEach((m, k) => m.color.copy(k === 2 - on ? m.userData.on : m.userData.off)));
+}
 
 /* ---------- машина игрока ---------- */
 /* ВАЗ-2108 по референсам: длина 4.0 м, ширина 1.64, высота 1.4, база 2.46, колея 1.4 */
@@ -1049,7 +1148,11 @@ function makeVaz2108() {
   // низ: свесы — по бамперам, между колёс — пороги (клиренс ~180)
   const yBot = x => {
     let y = tab([[X(4006), H(300)], [X(3640), H(300)], [X(3560), H(180)], [X(560), H(180)], [X(480), H(337)], [X(0), H(337)]], x);
-    for (const [c, r] of [[XF, RF], [XR, RR]]) { const d = Math.abs(x - c); if (d < r) y = Math.max(y, YW + Math.sqrt(r * r - d * d)); }
+    // арки трапециевидные, как на чертеже: плоский верх ±0,55 r, скошенные стороны до уровня оси
+    for (const [c, r] of [[XF, RF], [XR, RR]]) {
+      const d = Math.abs(x - c), top = YW + r * 1.02, a = r * .55, b = r * 1.12;
+      if (d < b) y = Math.max(y, d < a ? top : top - (d - a) / (b - a) * (top - YW - .02));
+    }
     return y;
   };
   // полуширина по плечу: 825, к носу и корме — скосы углов
@@ -1157,13 +1260,42 @@ function makeVaz2108() {
   });
   box(.02, .05, .05, mat(0x8fb0ff, { metalness: .8, roughness: .2 }), X(3952) - .012, H(760), 0, 0, .08);   // значок между фонарями
   box(.02, .11, .5, plateM, X(4006) - .006, (H(300) + H(585)) / 2, 0);                                      // номер на бампере
+  // номерные знаки: вымышленный номер, буквы — только те, что бывают на номерах
+  const pc = document.createElement("canvas"); pc.width = 512; pc.height = 112;
+  const pg = pc.getContext("2d");
+  pg.fillStyle = "#f4f4f0"; pg.fillRect(0, 0, 512, 112); pg.strokeStyle = "#111"; pg.lineWidth = 6; pg.strokeRect(4, 4, 504, 104);
+  pg.beginPath(); pg.moveTo(390, 6); pg.lineTo(390, 106); pg.stroke();
+  pg.fillStyle = "#111"; pg.textBaseline = "middle"; pg.textAlign = "center";
+  pg.font = "bold 74px Arial, sans-serif"; pg.fillText("В 888 ВК", 197, 60);
+  pg.font = "bold 50px Arial, sans-serif"; pg.fillText("161", 450, 46);
+  pg.font = "bold 18px Arial, sans-serif"; pg.fillText("RUS", 450, 90);
+  const plateTex = new T.CanvasTexture(pc); plateTex.encoding = T.sRGBEncoding; plateTex.anisotropy = 4;
+  const plateFace = new T.MeshBasicMaterial({ map: plateTex });
+  [[X(0) + .034, bumpY, Math.PI / 2], [X(4006) - .018, (H(300) + H(585)) / 2, -Math.PI / 2]].forEach(([x, y, ry]) => {
+    const m = new T.Mesh(new T.PlaneGeometry(.5, .11), plateFace); m.position.set(x, y, 0); m.rotation.y = ry; g.add(m);
+  });
   // колёса 13": шина Ø576, штампованные диски; колея 1400 / 1370
   const tireM = mat(0x0b0e17), rimM = mat(0xc9ccd2, { metalness: .6, roughness: .35 }), hubM = mat(0x2a2d36);
+  // обвес по выбору (не склеивается со статикой — его включают и выключают): штампованные или литые диски, брызговики, ветровики
+  const opt = { stock: new T.Group(), alloy: new T.Group(), flaps: new T.Group(), visors: new T.Group() };
+  Object.values(opt).forEach(o => { o.userData.dyn = true; g.add(o); });
+  const alloyM = mat(0x3b3f48, { metalness: .7, roughness: .3 }), spokeM = mat(0xd8dbe2, { metalness: .8, roughness: .25 });
   [[XF, .7], [XF, -.7], [XR, .685], [XR, -.685]].forEach(([x, z]) => {
     const t = new T.Mesh(new T.CylinderGeometry(.288, .288, .165, 20), tireM); t.rotation.x = Math.PI / 2; t.position.set(x, YW, z); g.add(t);
-    const r = new T.Mesh(new T.CylinderGeometry(.165, .165, .175, 16), rimM); r.rotation.x = Math.PI / 2; r.position.set(x, YW, z); g.add(r);
+    const r = new T.Mesh(new T.CylinderGeometry(.165, .165, .175, 16), rimM); r.rotation.x = Math.PI / 2; r.position.set(x, YW, z); opt.stock.add(r);
     const h = new T.Mesh(new T.CylinderGeometry(.055, .055, .185, 8), hubM); h.rotation.x = Math.PI / 2; h.position.set(x, YW, z); g.add(h);
+    const d = new T.Mesh(new T.CylinderGeometry(.19, .19, .172, 20), alloyM); d.rotation.x = Math.PI / 2; d.position.set(x, YW, z); opt.alloy.add(d);
+    for (let k = 0; k < 5; k++) {                       // пять спиц на внешней стороне
+      const sp = new T.Mesh(new T.BoxGeometry(.045, .3, .02), spokeM); sp.position.set(x, YW, z + Math.sign(z) * .09); sp.rotation.z = k / 5 * Math.PI * 2; opt.alloy.add(sp);
+    }
+    const f = new T.Mesh(new T.BoxGeometry(.012, .2, .2), black); f.position.set(x - (x > 0 ? RF : RR) * 1.08, YW - .07, z * 1.02); opt.flaps.add(f);
   });
+  const visorM = new T.MeshStandardMaterial({ color: 0x0e1218, roughness: .2, metalness: .3, transparent: true, opacity: .78, side: T.DoubleSide });
+  [-1, 1].forEach(sd => {
+    const xm = (X(1880) + X(2454)) / 2, v = new T.Mesh(new T.BoxGeometry(X(1880) - X(2454) + .06, .075, .008), visorM);
+    v.position.set(xm, yWin - .005, sd * (sideZ(xm, yWin) + .035)); v.rotation.x = -sd * .45; opt.visors.add(v);
+  });
+  g.userData.opt = opt;
   // сопла снизу — это всё-таки испытательная «восьмёрка»
   const glowM = new T.MeshBasicMaterial({ color: 0x9fe3ff });
   [[1.5, .42], [1.5, -.42], [-1.5, .42], [-1.5, -.42]].forEach(([x, z]) => { const n = new T.Mesh(new T.CylinderGeometry(.11, .11, .05, 10), glowM); n.position.set(x, H(150), z); g.add(n); });
@@ -1173,6 +1305,11 @@ function makeVaz2108() {
   return g;
 }
 const carObj = makeVaz2108(); scene.add(carObj);
+const TUNES = ["заводской", "брызговики и ветровики", "+ литые диски"];
+function setTune(n) {
+  const o = carObj.userData.opt;
+  o.flaps.visible = o.visors.visible = n >= 1; o.alloy.visible = n >= 2; o.stock.visible = n < 2;
+}
 function setPaint(i) {
   const p = PAINTS[i % PAINTS.length];
   carObj.userData.paint.color.setHex(p.c);
@@ -1476,9 +1613,6 @@ function groundAt(x, z, y = -1) {   // y — высота машины: крыш
   if (y > .6) for (const b of solidsNear(x, z)) if (b.rings && b.h <= y + .6 && b.h > h && inBox(b, x, z, 0)) { h = b.h; slope = 0; roof = b; }
   return { h, slope, roof };
 }
-// у домов Ростова настоящий контур: сначала грубая рамка, потом точка в многоугольнике или ближе pad к стене
-const inBox = (b, x, z, pad) => x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad &&
-  (!b.rings || inRings(x, z, b.rings) || b.rings.some(r => lineDist(x, z, r, true) < pad));
 function hitSolid(x, z, y) {
   for (const b of solidsNear(x, z)) if (y < b.h && inBox(b, x, z, 1.1)) return b;
   for (const b of rowSolids) if (y < b.h && inBox(b, x, z, 1.1)) return b;
@@ -1854,6 +1988,50 @@ function replayPose() {
   if (a.z !== undefined) { car.z = a.z + (b.z - a.z) * k; car.yaw = a.yaw + Math.atan2(Math.sin(b.yaw - a.yaw), Math.cos(b.yaw - a.yaw)) * k; }
 }
 
+/* ---------- общая таблица рекордов: база опубликованной игры ---------- */
+// Каждый игрок пишет только свой документ scores/<id>, читают все. Хранятся только id и числа — имена берутся при показе.
+// В локальном файле и в автотестах базы нет — раздел просто не показывается.
+const board = { db: null, user: null, me: null, rows: [], sent: "", timer: 0, readOnly: false };
+(async () => {
+  try {
+    if (typeof window.claude === "undefined" || !window.claude.use) return;
+    const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    if (!db) return;
+    board.db = db; board.user = user; board.me = user ? await user.id() : null;
+    if (!board.me) board.readOnly = true;
+    db.collection("scores").orderBy("best", "desc").limit(10).onSnapshot(snap => {
+      board.rows = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderBoard();
+    }, () => { board.db = null; renderBoard(); });
+    pushScore(); renderBoard();
+  } catch (e) { board.db = null; }
+})();
+function pushScore() {                     // свой рекорд — не чаще раза в 4 с и только если он изменился
+  if (!board.db || !board.me || board.readOnly || !save.freeBest) return;
+  const row = { best: save.freeBest, trick: save.trickBest || 0, missions: Object.keys(save.missions || {}).length };
+  const k = JSON.stringify(row); if (k === board.sent) return;
+  clearTimeout(board.timer);
+  board.timer = setTimeout(async () => {
+    try { await board.db.doc("scores/" + board.me).set({ ...row, at: Date.now() }); board.sent = k; }
+    catch (e) { if (e && (e.code === "invalid_argument" || e.code === "revoked" || e.code === "not_granted")) board.readOnly = true; }
+    renderBoard();
+  }, 4000);
+}
+async function renderBoard() {
+  const show = !!board.db;
+  $("m-board-h").hidden = $("m-board").hidden = !show; $("m-board-note").hidden = !show || (!board.readOnly && board.rows.length > 0);
+  if (!show) return;
+  const ids = board.rows.map(r => r.id), ps = board.user && ids.length ? await board.user.profiles(ids) : {};
+  const ol = $("m-board"); ol.textContent = "";
+  board.rows.forEach(r => {
+    const li = document.createElement("li"), sp = document.createElement("span"), nm = document.createElement("i"), b = document.createElement("b");
+    nm.style.fontStyle = "normal";
+    nm.textContent = (r.id === board.me ? "вы" : (ps[r.id] && ps[r.id].name) || "Игрок") + (r.missions ? ` · заданий ${Math.min(r.missions, MISSIONS.length)}` : "");
+    b.textContent = Number(r.best || 0).toLocaleString("ru-RU");
+    sp.append(nm, b); li.append(sp); if (r.id === board.me) li.className = "me"; ol.append(li);
+  });
+  $("m-board-note").textContent = board.readOnly ? "Ваш рекорд сюда не попадёт: у вас доступ только на просмотр." : "Пока пусто — сыграйте в свободной езде, рекорд появится здесь.";
+}
+
 /* ---------- «⋯», тосты, карта ---------- */
 let dockCloseAt = 0;
 function openDock() { $("dock-panel").hidden = false; $("dock-btn").setAttribute("aria-expanded", "true"); dockCloseAt = performance.now() + 8000; syncDock(); }
@@ -1869,6 +2047,7 @@ function syncDock() {
   $("m-mini").textContent = `Мини-карта: ${save.mini === false ? "выкл" : "вкл"}`;
   $("m-ctrl").textContent = `Управление: ${{ joy: "джойстик", wheel: "руль + педаль", buttons: "кнопки" }[ctrl()]}`;
   $("m-paint").textContent = `Цвет: ${PAINTS[(save.paint || 0) % PAINTS.length].n}`;
+  $("m-tune").textContent = `Обвес: ${TUNES[save.tune || 0]}`;
   const done = MISSIONS.filter(m => save.missions && save.missions[m.id]).length;
   $("m-mis-h").textContent = `Задания · ${done} из ${MISSIONS.length}`;
   $("m-mis").innerHTML = MISSIONS.map(m => { const ok = save.missions && save.missions[m.id]; return `<li class="${ok ? "done" : ""}"><span>${ok ? "✓" : "○"}</span><span>${m.t}</span><b>+${m.pts}</b></li>`; }).join("");
@@ -1878,6 +2057,7 @@ function syncDock() {
     : mode === "train" ? `Полигон · урок ${di + 1}` : `Уровень ${L.i + 1}: ${L.name}`;
 }
 $("m-modes").onclick = openMenu;
+$("m-tune").onclick = () => { save.tune = ((save.tune || 0) + 1) % TUNES.length; persist(); setTune(save.tune); syncDock(); };
 $("m-replay").onclick = startFreeReplay;
 $("b-replay").onclick = () => { replayBtnUntil = 0; startFreeReplay(); };
 $("m-cam").onclick = () => { camMode = camMode === "chase" ? "cockpit" : "chase"; syncDock(); };
@@ -2327,7 +2507,7 @@ function frame(now) {
     if (["run", "ramp", "air", "roll", "crash"].includes(phase) && !result && rec.length < 6000) rec.push({ t: simT, x: car.x, y: car.y, roll: car.roll, pitch: car.pitch });
   } else time += dt;
   if (mode === "train" && !replay && $("ov-res").hidden) trainTick();
-  tickTraffic(dt); tickPuffs(dt);
+  tickTraffic(dt); tickPuffs(dt); tickSignals(performance.now() / 1000);
   const airNow = mode === "free" ? free.air : phase === "air" || phase === "drill";
   sfx.tick(dt, { speed: mode === "free" ? car.v : phase === "run" || phase === "ramp" ? car.v : phase === "roll" ? car.vx : 0, throttle: thr(), air: airNow, skid: mode === "free" && !free.air ? Math.abs(car.vl || 0) : 0 });
   ui(); if (!testFast || ++testFrame % 20 === 0) render(dt);   // в быстрых автотестах рисуем редко — физика идёт в полную скорость
@@ -2338,6 +2518,7 @@ setHintText();
 resize();
 if ((save.quality || "auto") !== "auto") setQuality(QUALS[save.quality][1]);
 setPaint(save.paint || 0);
+setTune(save.tune || 0);
 startFree();
 if (location.hash === "#test") window.__t = {   // крючок для автотестов
   info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, fps: perf.fps, pr: renderer.getPixelRatio() }),
@@ -2349,6 +2530,9 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   cam: () => { const c = camera.position; return { x: c.x, y: c.y, z: c.z, inside: solidsNear(c.x, c.z).some(b => b.h > c.y && inBox(b, c.x, c.z, 0)) }; },
   houses: () => solids.filter(b => b.h > 8).map(b => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, h: b.h })),
   roads: () => ROADS.filter(r => r.c <= 3).map(r => r.pts),
+  street: () => ({ ...STREET }),
+  tune: n => { save.tune = n; setTune(n); },
+  signals: () => ["A", "B"].map(g => SIGNALS[g].map(m => m.color.getHexString())),
   place: n => roadPoint(n),
   missions: () => ({ ...(save.missions || {}) }),
   roofs: () => solids.filter(b => b.rings && b.h > 3 && b.h < 14 && b.x1 - b.x0 > 14 && b.z1 - b.z0 > 14).map(b => ({ x: (b.x0 + b.x1) / 2, z: (b.z0 + b.z1) / 2, h: b.h, ok: inRings((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, b.rings) && !hitSolid((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, b.h + .3) })).filter(b => b.ok),
