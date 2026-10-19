@@ -530,6 +530,35 @@ stage.insertBefore(renderer.domElement, stage.firstChild);
 $("loading").remove();
 const scene = new T.Scene();
 const camera = new T.PerspectiveCamera(60, 1, 0.5, 1400);
+/* ---------- куски мира: мелкие объекты по квадратам 200 м, рисуем только видимые ---------- */
+// InstancedMesh в three r149 сам не отсекается (frustumCulled = false): деревья, фонари и разметка рисовались
+// все и всегда, даже за спиной. Здесь они разложены по квадратам; каждый кадр квадрат показывается, только
+// если он в поле зрения и ближе дальности, которая зависит от качества (perf.reach).
+const CHUNKS = [], CHUNK = 200, chunkP = new T.Vector3();
+function chunked(geo, mat, mats, far = 1) {   // mats — матрицы экземпляров; far — доля дальности тумана
+  geo.computeBoundingSphere();
+  const gr = geo.boundingSphere.center.length() + geo.boundingSphere.radius, groups = new Map();
+  mats.forEach(m => { chunkP.setFromMatrixPosition(m); const k = Math.floor(chunkP.x / CHUNK) * 4096 + Math.floor(chunkP.z / CHUNK); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); });
+  groups.forEach(list => {
+    const im = new T.InstancedMesh(geo, mat, list.length), box = new T.Box3(), sph = new T.Sphere();
+    list.forEach((m, i) => { im.setMatrixAt(i, m); box.expandByPoint(chunkP.setFromMatrixPosition(m)); });
+    box.getBoundingSphere(sph); sph.radius += gr * 1.6;              // запас на размер и масштаб экземпляра
+    scene.add(im); CHUNKS.push({ obj: im, s: sph, far });
+  });
+}
+const chunkFrustum = new T.Frustum(), chunkPV = new T.Matrix4(), chunkStat = { shown: 0, total: 0 };
+function cullChunks() {
+  camera.updateMatrixWorld();
+  chunkPV.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); chunkFrustum.setFromProjectionMatrix(chunkPV);
+  const reach = scene.fog.far * (perf.q <= .75 ? .6 : perf.q <= 1 ? .8 : 1);
+  let n = 0;
+  for (const ch of CHUNKS) {
+    ch.obj.visible = camera.position.distanceTo(ch.s.center) - ch.s.radius < reach * ch.far && chunkFrustum.intersectsSphere(ch.s);
+    if (ch.obj.visible) n++;
+  }
+  chunkStat.shown = n; chunkStat.total = CHUNKS.length;
+}
+const M4 = (x, y, z, yaw = 0, sx = 1, sy = 1, sz = 1) => new T.Matrix4().compose(new T.Vector3(x, y, z), new T.Quaternion().setFromAxisAngle(yUp0, yaw), new T.Vector3(sx, sy, sz));
 (() => {
   const c = document.createElement("canvas"); c.width = 2; c.height = 256;
   const g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 0, 256);
@@ -858,9 +887,8 @@ function placeName(x, z) {
       carry = (carry - L) % 9; if (carry < 0) carry += 9;
     }
   });
-  const dash = new T.InstancedMesh(new T.PlaneGeometry(3, .18).rotateX(-Math.PI / 2), white, dashes.length), m4 = new T.Matrix4(), q = new T.Quaternion();
-  dashes.forEach(([x, z, yaw], i) => dash.setMatrixAt(i, m4.compose(new T.Vector3(x, .09, z), q.setFromAxisAngle(yUp0, yaw), one0)));
-  scene.add(dash);
+  const m4 = new T.Matrix4(), q = new T.Quaternion();
+  chunked(new T.PlaneGeometry(3, .18).rotateX(-Math.PI / 2), white, dashes.map(([x, z, yaw]) => M4(x, .09, z, yaw)), .7);
   // железная дорога и трамвай
   const rails = OSM.l.map(([k, a]) => ({ k, pts: dm(a) }));
   add(stripGeo(rails.filter(r => r.k === 0).map(r => ({ pts: r.pts, w: 3.2 })), .04, false), flatMat(0x8a7f74, 1));
@@ -942,23 +970,20 @@ function placeName(x, z) {
   pg.fillStyle = "rgba(61,220,132,.25)"; pg.fill();
   pg.fillStyle = "#ffffff"; pg.font = "bold 72px Arial, sans-serif"; pg.textAlign = "center"; pg.textBaseline = "middle"; pg.fillText("H", 64, 68);
   const padMat = new T.MeshBasicMaterial({ map: new T.CanvasTexture(pc), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-  const padI = new T.InstancedMesh(new T.PlaneGeometry(7, 7).rotateX(-Math.PI / 2), padMat, Math.max(1, pads.length));
-  pads.forEach((b, i) => padI.setMatrixAt(i, m4.compose(new T.Vector3(b.pad.x, b.h + .04, b.pad.z), q.identity(), one0)));
-  padI.count = pads.length; scene.add(padI);
+  chunked(new T.PlaneGeometry(7, 7).rotateX(-Math.PI / 2), padMat, pads.map(b => M4(b.pad.x, b.h + .04, b.pad.z)));
   // деревья: из карты (отдельные и аллеи) + россыпь в лесополосах
   const trees = dm(OSM.t);
   OSM.a.filter(a => a[0] === "f").forEach(([, rs]) => {
     const rings = rs.map(dm), b = bboxOf(rings[0]), n = Math.min(120, Math.round((b.x1 - b.x0) * (b.z1 - b.z0) / 320));
     for (let i = 0; i < n; i++) { const x = b.x0 + rnd() * (b.x1 - b.x0), z = b.z0 + rnd() * (b.z1 - b.z0); if (inRings(x, z, rings)) trees.push([x, z]); }
   });
-  const crown = new T.InstancedMesh(new T.IcosahedronGeometry(2.3, 0), mat(0x6e9a52, { flatShading: true }), trees.length);
-  const trunk = new T.InstancedMesh(new T.CylinderGeometry(.18, .26, 3, 4, 1, true), mat(0x6b5444), trees.length), sc = new T.Vector3();
-  trees.forEach(([x, z], i) => {
+  const crowns = [], trunks = [];
+  trees.forEach(([x, z]) => {
     const s = .75 + rnd() * .55;
-    crown.setMatrixAt(i, m4.compose(new T.Vector3(x, 3 + 2.1 * s, z), q.setFromAxisAngle(yUp0, rnd() * 6), sc.set(s, s * 1.1, s)));
-    trunk.setMatrixAt(i, m4.compose(new T.Vector3(x, 1.5, z), q.identity(), sc.set(1, 1, 1)));
+    crowns.push(M4(x, 3 + 2.1 * s, z, rnd() * 6, s, s * 1.1, s)); trunks.push(M4(x, 1.5, z));
   });
-  scene.add(crown, trunk);
+  chunked(new T.IcosahedronGeometry(2.3, 0), mat(0x6e9a52, { flatShading: true }), crowns, .75);
+  chunked(new T.CylinderGeometry(.18, .26, 3, 4, 1, true), mat(0x6b5444), trunks, .45);   // стволы вдали не видны
 
   // въездной знак
   const s = new T.Mesh(new T.PlaneGeometry(18, 4.5), new T.MeshBasicMaterial({ map: textTex(["РОСТОВ-НА-ДОНУ", "Богатяновка"], 512, 128, "#1f4f7a", "#ffffff"), side: DS }));
@@ -1093,9 +1118,7 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
     const cx = cr.x + l.dx * d, cz = cr.z + l.dz * d, yaw = yawOf(l.dx, l.dz);
     for (let o = -l.w / 2 + .6; o <= l.w / 2 - .5; o += 1) zeb.push([cx - l.dz * o, cz + l.dx * o, yaw]);
   }));
-  const zi = new T.InstancedMesh(new T.PlaneGeometry(3, .5).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0xeeeae0 }), Math.min(zeb.length, 5000));
-  zeb.slice(0, 5000).forEach(([x, z, yaw], i) => zi.setMatrixAt(i, m4.compose(V(x, .095, z), q.setFromAxisAngle(yUp0, yaw), one)));
-  scene.add(zi);
+  chunked(new T.PlaneGeometry(3, .5).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0xeeeae0 }), zeb.slice(0, 5000).map(([x, z, yaw]) => M4(x, .095, z, yaw)), .6);
   // светофоры на перекрёстках улиц и магистралей: по столбу на каждую «ногу», смотрят навстречу подъезжающим
   const tl = [];
   cross.filter(cr => cr.major <= 1).slice(0, 70).forEach(cr => cr.legs.slice(0, 4).forEach(l => {
@@ -1104,16 +1127,13 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
     if (solidsNear(x, z).some(b => b.h > .5 && inBox(b, x, z, 1.1))) return;
     tl.push([x, z, yawOf(l.dx, l.dz), Math.abs(l.dx) > Math.abs(l.dz) ? "A" : "B"]);
   }));
-  const tlBody = new T.InstancedMesh(geo([new T.CylinderGeometry(.07, .08, 3.2, 6), 0, 1.6, 0], [new T.BoxGeometry(.3, 1.05, .34), .05, 3.6, 0]), mat(0x2b2d33), tl.length);
-  tl.forEach(([x, z, yaw], i) => tlBody.setMatrixAt(i, m4.compose(V(x, 0, z), q.setFromAxisAngle(yUp0, yaw), one)));
-  scene.add(tlBody);
+  chunked(geo([new T.CylinderGeometry(.07, .08, 3.2, 6), 0, 1.6, 0], [new T.BoxGeometry(.3, 1.05, .34), .05, 3.6, 0]), mat(0x2b2d33), tl.map(([x, z, yaw]) => M4(x, 0, z, yaw)), .6);
   ["A", "B"].forEach(grp => {
     const mine = tl.filter(t => t[3] === grp);
     [[3.92, 0xff3b30], [3.6, 0xffc400], [3.28, 0x3ddc84]].forEach(([y, c]) => {
       const m = new T.MeshBasicMaterial({ color: c }); m.userData.on = new T.Color(c); m.userData.off = new T.Color(c).multiplyScalar(.18);
-      const im = new T.InstancedMesh(new T.CircleGeometry(.12, 8).rotateY(Math.PI / 2).translate(.205, y, 0), m, Math.max(1, mine.length));
-      mine.forEach(([x, z, yaw], i) => im.setMatrixAt(i, m4.compose(V(x, 0, z), q.setFromAxisAngle(yUp0, yaw), one)));
-      im.count = mine.length; scene.add(im); SIGNALS[grp].push(m);
+      chunked(new T.CircleGeometry(.12, 8).rotateY(Math.PI / 2).translate(.205, y, 0), m, mine.map(([x, z, yaw]) => M4(x, 0, z, yaw)), .6);
+      SIGNALS[grp].push(m);
     });
   });
   // фонари вдоль улиц: через 34 м, по очереди с разных сторон, не в домах и не в воде
@@ -1142,11 +1162,7 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
     [new T.BoxGeometry(.55, .1, .24).translate(1.5, 6.92, 0), new T.MeshBasicMaterial({ color: 0xffe2a0 })],
     [new T.PlaneGeometry(11, 11).rotateX(-Math.PI / 2).translate(1.5, .14, 0), new T.MeshBasicMaterial({ map: new T.CanvasTexture(pool), transparent: true, depthWrite: false, blending: T.AdditiveBlending })]
   ];
-  lampParts.forEach(([g, m]) => {
-    const im = new T.InstancedMesh(g, m, Math.max(1, lamps.length));
-    lamps.forEach(([x, z, yaw], i) => im.setMatrixAt(i, m4.compose(V(x, 0, z), q.setFromAxisAngle(yUp0, yaw), one)));
-    im.count = lamps.length; scene.add(im);
-  });
+  lampParts.forEach(([g, m], k) => chunked(g, m, lamps.map(([x, z, yaw]) => M4(x, 0, z, yaw)), k === 2 ? .5 : .8));
   STREET.lamps = lamps.length; STREET.signals = tl.length; STREET.zebras = zeb.length; STREET.crossings = cross.length;
 })();
 function tickSignals(t) {                  // цикл 16 с: у одного направления зелёный, у другого красный
@@ -2107,7 +2123,7 @@ stage.addEventListener("pointerdown", e => { if (!e.target.closest(".dock")) clo
 function syncDock() {
   $("m-cam").textContent = `Камера: ${camMode === "chase" ? "сзади" : "из кабины"}`;
   $("m-assist").textContent = `Ассистент переворота: ${save.assist ? "вкл" : "выкл"}`;
-  $("m-q").textContent = `Качество: ${QUALS[save.quality || "auto"][0]} · ${Math.round(perf.fps)} к/с`;
+  $("m-q").textContent = `Качество: ${QUALS[save.quality || "auto"][0]} · ${Math.round(perf.fps)} к/с · ${Math.round(drawStat.tris / 1000)} тыс. △ · ${drawStat.calls} выз.`;
   $("m-snd").textContent = `Звук: ${save.sound === false ? "выкл" : "вкл"}`;
   $("m-mini").textContent = `Мини-карта: ${save.mini === false ? "выкл" : "вкл"}`;
   $("m-ctrl").textContent = `Управление: ${{ joy: "джойстик", wheel: "руль + педаль", buttons: "кнопки" }[ctrl()]}`;
@@ -2538,7 +2554,9 @@ function render(dt) {
     camera.lookAt(look); camera.fov = 60 + (mode === "free" ? Math.min(14, Math.abs(car.v) * .25) : 0);
   }
   camera.updateProjectionMatrix();
+  cullChunks();
   renderer.render(scene, camera);
+  drawStat.calls = renderer.info.render.calls; drawStat.tris = renderer.info.render.triangles;
 }
 // Плоские слои у земли (асфальт, газоны, вода, разметка, «зебры») лежат в миллиметрах друг над другом.
 // На телефонах точности буфера глубины не хватает, и вдали они мерцают («рябит асфальт»).
@@ -2566,7 +2584,7 @@ function resize() {
 }
 addEventListener("resize", resize);
 
-const perf = { fps: 60, n: 0, acc: 0, low: 0, high: 0, q: MAXQ };
+const perf = { fps: 60, n: 0, acc: 0, low: 0, high: 0, q: MAXQ }, drawStat = { calls: 0, tris: 0 };
 function setQuality(q) {
   perf.q = q; renderer.setPixelRatio(q); resize();
   scene.fog.far = q < 1 ? 420 : 620; camera.far = scene.fog.far + 80; camera.updateProjectionMatrix();
@@ -2575,6 +2593,7 @@ function trackPerf(raw) {
   perf.n++; perf.acc += raw;
   if (perf.acc < 1) return;
   perf.fps = perf.n / perf.acc; perf.n = 0; perf.acc = 0;
+  if (!$("dock-panel").hidden) syncDock();           // цифры качества в «⋯» живые
   if ((save.quality || "auto") !== "auto") return;
   if (perf.fps < 38) { perf.high = 0; if (++perf.low >= 2 && perf.q > .75) { setQuality(Math.max(.75, perf.q - .25)); perf.low = 0; } }
   else if (perf.fps > 55) { perf.low = 0; if (++perf.high >= 5 && perf.q < MAXQ) { setQuality(Math.min(MAXQ, perf.q + .25)); perf.high = 0; } }
@@ -2614,7 +2633,7 @@ setTune(save.tune || 0);
 layerGround();
 startFree();
 if (location.hash === "#test") window.__t = {   // крючок для автотестов
-  info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, fps: perf.fps, pr: renderer.getPixelRatio() }),
+  info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, fps: perf.fps, pr: renderer.getPixelRatio(), chunks: `${chunkStat.shown}/${chunkStat.total}` }),
   car: () => ({ x: car.x, z: car.z, v: car.v, air: free.air, phase }),
   heading: () => car.yaw,
   simTime: () => time,
@@ -2633,6 +2652,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   setGas: v => { gas = v; },
   vy: () => ({ vy: car.vy, air: free.air }),
   carY: () => car.y,
+  scene: () => scene,
   roofs: () => solids.filter(b => b.rings && b.h > 3 && b.h < 14 && b.x1 - b.x0 > 14 && b.z1 - b.z0 > 14).map(b => ({ x: (b.x0 + b.x1) / 2, z: (b.z0 + b.z1) / 2, h: b.h, ok: inRings((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, b.rings) && !hitSolid((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, b.h + .3) })).filter(b => b.ok),
   pads: () => solids.filter(b => b.pad && !hitSolid(b.pad.x, b.pad.z, b.h + .3)).map(b => ({ x: b.pad.x, z: b.pad.z, h: b.h })),
   fast: on => { testFast = on; },

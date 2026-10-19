@@ -69,15 +69,16 @@ const SHOTS = process.env.SHOTS || ".";
   out.autobahn = { ...(await ev(() => __t.car())), done: !!(await M()).autobahn };
 
   // трафик: стоим в полосе — машины сзади тормозят или объезжают, а не проезжают сквозь
-  const lead = (await ev(() => __t.traffic())).map((c, i) => ({ ...c, i })).find(c => Math.abs(c.zt - -56.65) < .1 && c.x > -300 && c.x < 900);
-  const px = lead.x + 60;
-  await ev(x => __t.teleport(x, -56.65, 0), px); await run(100);
+  // любая попутная машина (направление +x) не у края мира: встаём в её полосу в 60 м перед ней
+  const lead = (await ev(() => __t.traffic())).find(c => c.zt > -60 && !c.wreck && c.x > -560 && c.x < 1250);
+  const px = lead.x + 60, lane = lead.zt;
+  await ev(([x, z]) => __t.teleport(x, z, 0), [px, lane]); await run(100);
   let minGap = Infinity, changed = 0;
   const z0 = await ev(() => __t.traffic().map(c => c.zt));
   for (let i = 0; i < 30; i++) {
     await run(300);
     const tr = await ev(() => __t.traffic());
-    tr.forEach((c, k) => { if (Math.abs(c.z - -56.65) < 1.2 && c.x < px && c.x > px - 50) minGap = Math.min(minGap, px - c.x); if (c.zt !== z0[k]) changed++; });
+    tr.forEach((c, k) => { if (Math.abs(c.z - lane) < 1.2 && c.x < px && c.x > px - 50) minGap = Math.min(minGap, px - c.x); if (c.zt !== z0[k]) changed++; });
   }
   out.traffic = { minGapBehind: +minGap.toFixed(1), laneChanges: changed > 0 };
   // авария сверху: падаем на крышу машины в потоке
