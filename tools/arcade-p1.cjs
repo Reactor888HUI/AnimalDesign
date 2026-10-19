@@ -71,6 +71,11 @@ const SHOTS = process.env.SHOTS || ".";
   await p.keyboard.up("ArrowDown");
   out.reverse = { fwdH: camF.y, revH: camR.y, revV: carR.v, higher: camR.y > camF.y + 1 };
 
+  // колёса крутятся, передние поворачивают, стоп-сигналы горят на тормозе
+  await ev(() => __t.teleport(-300, 30, 0)); await p.keyboard.down("ArrowUp"); await p.clock.runFor(1500);
+  const wh0 = await ev(() => __t.wheels()); await p.keyboard.down("ArrowLeft"); await p.clock.runFor(300); const wh1 = await ev(() => __t.wheels());
+  await p.keyboard.up("ArrowLeft"); await p.keyboard.up("ArrowUp"); await p.keyboard.down("ArrowDown"); await p.clock.runFor(700); const wh2 = await ev(() => __t.wheels()); await p.keyboard.up("ArrowDown");
+  out.wheels = { spins: wh0.wa !== 0, steerLeft: wh1.st > .2, brakeLight: wh2.brake > 2 };
   // 5. камера не заходит в дома: машина у стены, задом к дому
   const houses = await ev(() => __t.houses());
   let inside = 0, tried = 0;
@@ -87,7 +92,8 @@ const SHOTS = process.env.SHOTS || ".";
 
   const ok = errs.length === 0 && out.drift.vlAbs > 3 && Math.abs(out.drift.bodyRoll) > 1 && out.pitchAccel > .3 && out.drift.bodyPitch < 0 &&
     out.ctrlLabel.includes("руль") && out.wheel.gasSpeed > 10 && out.wheel.turnedRight && out.pedalBrakeText === "ТОРМОЗ" && out.wheel.hiddenAfter &&
-    out.reverse.higher && out.reverse.revV < -1 && tried > 3 && inside === 0;
+    out.reverse.higher && out.reverse.revV < -1 && tried > 3 && inside === 0 &&
+    out.wheels.spins && out.wheels.steerLeft && out.wheels.brakeLight;
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 2));
   await b.close(); process.exit(ok ? 0 : 1);
 })();

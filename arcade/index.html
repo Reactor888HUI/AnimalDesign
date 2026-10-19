@@ -1039,8 +1039,13 @@ function placeName(x, z) {
     g.setAttribute("position", new T.Float32BufferAttribute(P, 3)); g.setAttribute("normal", new T.Float32BufferAttribute(N, 3));
     g.setAttribute("uv", new T.Float32BufferAttribute(U, 2)); g.setAttribute("color", new T.Float32BufferAttribute(C, 3)); return g;
   };
-  add(wallGeo(walls[0]), new T.MeshStandardMaterial({ map: winTex, emissive: 0xffffff, emissiveMap: emTex, emissiveIntensity: .12, vertexColors: true, roughness: .9, metalness: 0, side: DS }));
-  add(wallGeo(walls[1]), new T.MeshStandardMaterial({ vertexColors: true, roughness: .9, metalness: 0, side: DS }));
+  // затенение у основания стен — в шейдере по высоте (стены уже в мировых координатах): нижние 2,6 м темнеют к земле
+  const groundAO = m => { m.onBeforeCompile = sh => {
+    sh.vertexShader = "varying float vWY;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWY = position.y;");
+    sh.fragmentShader = "varying float vWY;\n" + sh.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\n diffuseColor.rgb *= mix(.5, 1.0, smoothstep(0.0, 2.6, vWY));");
+  }; return m; };
+  add(wallGeo(walls[0]), groundAO(new T.MeshStandardMaterial({ map: winTex, emissive: 0xffffff, emissiveMap: emTex, emissiveIntensity: .12, vertexColors: true, roughness: .9, metalness: 0, side: DS })));
+  add(wallGeo(walls[1]), groundAO(new T.MeshStandardMaterial({ vertexColors: true, roughness: .9, metalness: 0, side: DS })));
   const rg = new T.BufferGeometry(), RP = [], RCc = [];
   for (let i = 0; i < roofs.length; i += 6) { RP.push(roofs[i], roofs[i + 1], roofs[i + 2]); RCc.push(roofs[i + 3], roofs[i + 4], roofs[i + 5]); }
   rg.setAttribute("position", new T.Float32BufferAttribute(RP, 3)); rg.setAttribute("color", new T.Float32BufferAttribute(RCc, 3));
@@ -1442,6 +1447,24 @@ const EIGHT = { ax: 960, bx: 1060, z: 170, r: 50 };      // две петли, �
   const ep = new T.Mesh(new T.BoxGeometry(.4, 8, .4), mat(0x6b6f7c)); ep.position.set(1010, 4, EIGHT.z + 62.3); scene.add(ep);
 })();
 
+/* ---------- запечённые тени домов: солнце 16:30 низко, тени длинные; один прозрачный слой над землёй ---------- */
+(() => {
+  const PX = .6, R = STRIP, W = Math.ceil((R.x1 - R.x0) * PX), Hh = Math.ceil((R.z1 - R.z0) * PX);
+  const c = document.createElement("canvas"); c.width = W; c.height = Hh; const g = c.getContext("2d");
+  g.setTransform(PX, 0, 0, PX, -R.x0 * PX, -R.z0 * PX); g.fillStyle = "#000";
+  const sx = -SUN_DIR.x / SUN_DIR.y, sz = -SUN_DIR.z / SUN_DIR.y;          // сдвиг тени на 1 м высоты
+  solids.forEach(b => {
+    if (!b.rings || b.h < 2) return;
+    const ring = b.arena ? b.outer[0] : b.rings[0], len = Math.min(b.h, 22), n = Math.max(2, Math.ceil(len * 3.1 / 3));
+    for (let k = 0; k <= n; k++) {                                         // «протягиваем» контур вдоль тени
+      const d = len * k / n; g.beginPath();
+      ring.forEach(([x, z], i) => i ? g.lineTo(x + sx * d, z + sz * d) : g.moveTo(x + sx * d, z + sz * d)); g.closePath(); g.fill();
+    }
+  });
+  const t = new T.CanvasTexture(c); t.anisotropy = 4;
+  const m = new T.Mesh(new T.PlaneGeometry(R.x1 - R.x0, R.z1 - R.z0).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: t, transparent: true, opacity: .4, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  m.position.set((R.x0 + R.x1) / 2, .03, (R.z0 + R.z1) / 2); m.userData.dyn = true; scene.add(m);
+})();
 freeze(scene);   // вся неподвижная геометрия мира — несколько склеенных мешей
 // сетка 40 м для препятствий: домов сотни, проверять все на каждом шаге физики дорого
 const SGRID = 40, sgrid = new Map(), skey = (i, j) => i * 4096 + j, STREET = {};
@@ -1736,20 +1759,27 @@ function makeVaz2108() {
   [[X(0) + .034, bumpY, Math.PI / 2, 0], [X(3952) - .028, H(712), -Math.PI / 2, 0]].forEach(([x, y, ry, rz]) => {
     const m = new T.Mesh(new T.PlaneGeometry(.5, .11), plateFace); m.position.set(x, y, 0); m.rotation.set(0, ry, rz, "YXZ"); g.add(m);
   });
-  // колёса 13": шина Ø576, штампованные диски; колея 1400 / 1370
-  const tireM = mat(0x0b0e17), rimM = mat(0xc9ccd2, { metalness: .6, roughness: .35 }), hubM = mat(0x2a2d36);
-  // обвес по выбору (не склеивается со статикой — его включают и выключают): штампованные или литые диски, брызговики, ветровики
-  const opt = { stock: new T.Group(), alloy: new T.Group(), flaps: new T.Group(), visors: new T.Group() };
+  // обвес по выбору (не склеивается со статикой — его включают и выключают): брызговики, ветровики
+  const opt = { flaps: new T.Group(), visors: new T.Group() };
   Object.values(opt).forEach(o => { o.userData.dyn = true; g.add(o); });
-  const alloyM = mat(0x3b3f48, { metalness: .7, roughness: .3 }), spokeM = mat(0xd8dbe2, { metalness: .8, roughness: .25 });
+  // колёса 13": шина Ø576, колея 1400 / 1370. Отдельные узлы: передние поворачиваются, все крутятся.
+  // Каждое колесо целиком — одна сетка с цветами по вершинам (один вызов отрисовки); диски — штампованные, литые, PRO
+  const wheelM = new T.MeshStandardMaterial({ vertexColors: true, roughness: .45, metalness: .3 });
+  const part = (geo, hex) => { const q = geo.index ? geo.toNonIndexed() : geo, c = new T.Color(hex), a = new Float32Array(q.attributes.position.count * 3);
+    for (let i = 0; i < a.length; i += 3) { a[i] = c.r; a[i + 1] = c.g; a[i + 2] = c.b; } q.setAttribute("color", new T.BufferAttribute(a, 3)); q.deleteAttribute("uv"); return q; };
+  const cylG = (r, w, n, dz = 0) => new T.CylinderGeometry(r, r, w, n).rotateX(Math.PI / 2).translate(0, 0, dz);
+  const wheelMesh = parts => new T.Mesh(mergeGeos(parts.map(([geo, hex]) => part(geo, hex))), wheelM);
+  const wheels = [];
   [[XF, .7], [XF, -.7], [XR, .685], [XR, -.685]].forEach(([x, z]) => {
-    const t = new T.Mesh(new T.CylinderGeometry(.288, .288, .165, 20), tireM); t.rotation.x = Math.PI / 2; t.position.set(x, YW, z); g.add(t);
-    const r = new T.Mesh(new T.CylinderGeometry(.165, .165, .175, 16), rimM); r.rotation.x = Math.PI / 2; r.position.set(x, YW, z); opt.stock.add(r);
-    const h = new T.Mesh(new T.CylinderGeometry(.055, .055, .185, 8), hubM); h.rotation.x = Math.PI / 2; h.position.set(x, YW, z); g.add(h);
-    const d = new T.Mesh(new T.CylinderGeometry(.19, .19, .172, 20), alloyM); d.rotation.x = Math.PI / 2; d.position.set(x, YW, z); opt.alloy.add(d);
-    for (let k = 0; k < 5; k++) {                       // пять спиц на внешней стороне
-      const sp = new T.Mesh(new T.BoxGeometry(.045, .3, .02), spokeM); sp.position.set(x, YW, z + Math.sign(z) * .09); sp.rotation.z = k / 5 * Math.PI * 2; opt.alloy.add(sp);
-    }
+    const sd = Math.sign(z), steer = new T.Group(), spin = new T.Group(), w = { steer, spin, front: x > 0 };
+    steer.position.set(x, YW, z); steer.userData.dyn = true; steer.add(spin); g.add(steer);
+    const tire = [[cylG(.288, .165, 20), 0x0b0e17], [cylG(.055, .185, 8), 0x2a2d36]];
+    w.stock = wheelMesh([...tire, [cylG(.165, .175, 16), 0xc9ccd2],                                              // штампованный диск и болты —
+      ...[0, 1, 2, 3].map(k => [new T.BoxGeometry(.03, .03, .02).translate(Math.cos(k * Math.PI / 2) * .1, Math.sin(k * Math.PI / 2) * .1, sd * .09), 0x2a2d36])]);   // видно, что крутится
+    w.alloy = wheelMesh([...tire, [cylG(.19, .172, 20), 0x3b3f48],
+      ...[0, 1, 2, 3, 4].map(k => [new T.BoxGeometry(.045, .3, .02).rotateZ(k / 5 * Math.PI * 2).translate(0, 0, sd * .09), 0xd8dbe2])]);   // пять спиц
+    spin.add(w.stock, w.alloy);
+    wheels.push(w);
     const f = new T.Mesh(new T.BoxGeometry(.012, .2, .2), black); f.position.set(x - (x > 0 ? RF : RR) * 1.08, YW - .07, z * 1.02); opt.flaps.add(f);
   });
   const visorM = new T.MeshStandardMaterial({ color: 0x0e1218, roughness: .2, metalness: .3, transparent: true, opacity: .78, side: T.DoubleSide });
@@ -1759,11 +1789,9 @@ function makeVaz2108() {
   });
   // PRO: широкий обвес в цвет кузова, широкие колёса с хромовыми дисками и фиолетовой серединой, спойлер, неон снизу
   const pro = opt.pro = new T.Group(); pro.userData.dyn = true; g.add(pro);
-  const chromeM = mat(0xd8dce4, { metalness: .35, roughness: .2 }), neonM = new T.MeshBasicMaterial({ color: 0xc552ff, toneMapped: false });
-  [[XF, .74, RF], [XF, -.74, RF], [XR, .725, RR], [XR, -.725, RR]].forEach(([x, z, r]) => {
-    const t = new T.Mesh(new T.CylinderGeometry(.3, .3, .25, 22), tireM); t.rotation.x = Math.PI / 2; t.position.set(x, YW, z); pro.add(t);
-    const d = new T.Mesh(new T.CylinderGeometry(.205, .205, .258, 22), chromeM); d.rotation.x = Math.PI / 2; d.position.set(x, YW, z); pro.add(d);
-    const c = new T.Mesh(new T.CylinderGeometry(.12, .12, .262, 6), neonM); c.rotation.x = Math.PI / 2; c.position.set(x, YW, z); pro.add(c);
+  [[XF, .74, RF], [XF, -.74, RF], [XR, .725, RR], [XR, -.725, RR]].forEach(([x, z, r], i) => {
+    const w = wheels[i], dz = z - Math.sign(z) * (i < 2 ? .7 : .685);           // широкие колёса стоят чуть шире
+    w.pro = wheelMesh([[cylG(.3, .25, 22, dz), 0x0b0e17], [cylG(.205, .258, 22, dz), 0xd8dce4], [cylG(.12, .262, 6, dz), 0xf0a0ff]]); w.spin.add(w.pro);
     const fl = new T.Mesh(new T.CylinderGeometry(r * 1.16, r * 1.16, .16, 14, 1, true, Math.PI / 2, Math.PI), paint);   // расширитель арки
     fl.rotation.x = Math.PI / 2; fl.position.set(x, YW, Math.sign(z) * .86); pro.add(fl);
   });
@@ -1774,7 +1802,7 @@ function makeVaz2108() {
   rg.addColorStop(0, "rgba(176,64,255,.85)"); rg.addColorStop(.6, "rgba(150,40,240,.45)"); rg.addColorStop(1, "rgba(150,40,240,0)"); gg.fillStyle = rg; gg.fillRect(0, 0, 64, 64);
   const glow = new T.Mesh(new T.PlaneGeometry(4.4, 2.4).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: new T.CanvasTexture(gc), transparent: true, depthWrite: false, toneMapped: false }));
   glow.position.y = -.62; pro.add(glow);
-  g.userData.opt = opt;
+  g.userData.opt = opt; g.userData.wheels = wheels; g.userData.redM = redM;
   // сопла снизу — это всё-таки испытательная «восьмёрка»
   const glowM = new T.MeshBasicMaterial({ color: 0x9fe3ff });
   [[1.5, .42], [1.5, -.42], [-1.5, .42], [-1.5, -.42]].forEach(([x, z]) => { const n = new T.Mesh(new T.CylinderGeometry(.11, .11, .05, 10), glowM); n.position.set(x, H(150), z); g.add(n); });
@@ -1787,7 +1815,8 @@ const carObj = makeVaz2108(); scene.add(carObj);
 const TUNES = ["заводской", "брызговики и ветровики", "+ литые диски"];
 function setTune(n) {                          // n = "pro" — широкий обвес режима PRO
   const o = carObj.userData.opt, pro = n === "pro";
-  o.flaps.visible = o.visors.visible = pro || n >= 1; o.alloy.visible = !pro && n >= 2; o.stock.visible = !pro && n < 2; o.pro.visible = pro;
+  o.flaps.visible = o.visors.visible = pro || n >= 1; o.pro.visible = pro;
+  carObj.userData.wheels.forEach(w => { w.stock.visible = !pro && n < 2; w.alloy.visible = !pro && n >= 2; w.pro.visible = pro; });
 }
 const EGGPLANT = { n: "баклажан", c: 0x2c0a44 };
 function setPaint(i) {                         // i < 0 — баклажан режима PRO
@@ -1858,25 +1887,40 @@ function tickTraffic(dt) {
 }
 
 /* ---------- частицы ---------- */
-const puffGeo = new T.SphereGeometry(1, 6, 4), pool = [];
-for (let i = 0; i < 120; i++) {
-  const m = new T.Mesh(puffGeo, new T.MeshBasicMaterial({ color: 0xe6f4ff, transparent: true, opacity: 0, depthWrite: false }));
-  m.visible = false; scene.add(m); pool.push({ m, t: 0, life: 0, v: new T.Vector3(), s: 0 });
-}
+// пар и пыль — мягкие круглые облачка: одна система точек с радиальной текстурой, один вызов отрисовки на все
+const PUFFN = 160, pool = [], puffPos = new Float32Array(PUFFN * 3), puffSize = new Float32Array(PUFFN), puffAlpha = new Float32Array(PUFFN);
+const puffGeo = new T.BufferGeometry();
+puffGeo.setAttribute("position", new T.BufferAttribute(puffPos, 3)); puffGeo.setAttribute("size", new T.BufferAttribute(puffSize, 1)); puffGeo.setAttribute("alpha", new T.BufferAttribute(puffAlpha, 1));
+const puffMat = new T.ShaderMaterial({
+  uniforms: { map: { value: (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(.45, "rgba(255,255,255,.55)"); r.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new T.CanvasTexture(c); })() },
+    scale: { value: 500 }, color: { value: new T.Color(0xe9f3fb) } },
+  vertexShader: "attribute float size; attribute float alpha; varying float vA; uniform float scale;\n" +
+    "void main() { vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = min(400.0, size * scale / max(.5, -mv.z)); gl_Position = projectionMatrix * mv; }",
+  fragmentShader: "uniform sampler2D map; uniform vec3 color; varying float vA;\n" +
+    "void main() { float a = texture2D(map, gl_PointCoord).a * vA; if (a < .01) discard; gl_FragColor = vec4(color, a); }",
+  transparent: true, depthWrite: false,
+});
+const puffPts = new T.Points(puffGeo, puffMat); puffPts.frustumCulled = false; puffPts.renderOrder = 5; puffPts.userData.dyn = true; scene.add(puffPts);
+for (let i = 0; i < PUFFN; i++) pool.push({ p: new T.Vector3(), on: false, t: 0, life: 0, v: new T.Vector3(), s: 0 });
 let pi = 0;
 function puff(p, v, life, s) {
   const q = pool[pi++ % pool.length];
-  q.m.position.copy(p); q.v.copy(v).add(new T.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 2, (Math.random() - .5) * 2));
-  q.t = 0; q.life = life; q.s = s; q.m.visible = true;
+  q.p.copy(p); q.v.copy(v).add(new T.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 2, (Math.random() - .5) * 2));
+  q.t = 0; q.life = life; q.s = s; q.on = true;
 }
 function dust(x, y, z, n) { for (let i = 0; i < n; i++) puff(new T.Vector3(x, y + .3, z), new T.Vector3((Math.random() - .5) * 6, 2, (Math.random() - .5) * 6), .8, .3); }
 function tickPuffs(dt) {
-  for (const q of pool) {
-    if (!q.m.visible) continue;
-    q.t += dt; if (q.t >= q.life) { q.m.visible = false; continue; }
-    q.m.position.addScaledVector(q.v, dt); q.v.multiplyScalar(.96);
-    const k = q.t / q.life; q.m.scale.setScalar(q.s * (1 + k * 2)); q.m.material.opacity = .5 * (1 - k);
-  }
+  puffMat.uniforms.scale.value = renderer.domElement.height / (2 * Math.tan(camera.fov * DEG / 2));
+  pool.forEach((q, i) => {
+    if (q.on) { q.t += dt; if (q.t >= q.life) q.on = false; }
+    if (!q.on) { puffAlpha[i] = 0; puffSize[i] = 0; return; }
+    q.p.addScaledVector(q.v, dt); q.v.multiplyScalar(.96);
+    const k = q.t / q.life;
+    puffPos[i * 3] = q.p.x; puffPos[i * 3 + 1] = q.p.y; puffPos[i * 3 + 2] = q.p.z;
+    puffSize[i] = 2.6 * q.s * (1 + k * 2); puffAlpha[i] = .6 * (1 - k) * Math.min(1, q.t * 12);
+  });
+  puffGeo.attributes.position.needsUpdate = puffGeo.attributes.size.needsUpdate = puffGeo.attributes.alpha.needsUpdate = true;
 }
 
 /* ---------- ряд машин на полигоне ---------- */
@@ -3258,6 +3302,13 @@ function render(dt) {
     carObj.quaternion.setFromRotationMatrix(wallBasis.m); carObj.position.set(car.x + t.n.x * WHEEL, car.y + t.n.y * WHEEL, car.z + t.n.z * WHEEL);
   }
   if (INNER) INNER.anim(dt);
+  {   // колёса крутятся по скорости, передние поворачивают; стоп-сигналы горят при торможении
+    const U = carObj.userData, v = replay ? 0 : mode === "free" ? (free.aero || free.air ? 0 : car.v) : (car.vx || 0);
+    U.wa = ((U.wa || 0) + v * dt / .288) % (Math.PI * 2);
+    U.st = (U.st || 0) + ((phase === "free" && !free.air ? -turn() * .45 : 0) - (U.st || 0)) * Math.min(1, dt * 8);
+    U.wheels.forEach(w => { w.spin.rotation.z = -U.wa; w.steer.rotation.y = w.front ? U.st : 0; });
+    U.redM.emissiveIntensity = !replay && brk() > .1 ? 2.4 : .55;
+  }
   const gh = mode === "free" ? groundAt(car.x, car.z).h : 0;
   const hgt = Math.max(0, car.y - gh);
   shadow.visible = !(mode === "free" && (free.wall || free.tube));
@@ -3460,6 +3511,8 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   hop: () => { free.hopReq = true; free.hopLock = false; },
   key: (k, v) => { input[k] = v; },
   pro: on => startFree(false, on),
+  wheels: () => { const U = carObj.userData; return { wa: U.wa || 0, st: U.st || 0, brake: U.redM.emissiveIntensity }; },
+  puffs: () => pool.filter(q => q.on).length,
   ctl: () => ({ thr: thr(), brk: brk(), turn: turn(), tilt: { ...tilt }, cam: camMode }),
   slalom: () => ({ gates: INNER.gates.map(g => [g.x, g.y, g.z]), s: free.slalom && { ...free.slalom } }),
   setPos: (x, y, z) => { car.x = x; car.y = y; car.z = z; },
