@@ -78,7 +78,7 @@ const SHOTS = process.env.SHOTS || ".";
     const blocked = await ev(([x, z]) => __t.houses().some(b => x > b.x0 - 1.5 && x < b.x1 + 1.5 && z > b.z0 - 1.5 && z < b.z1 + 1.5 && x - b.x1 !== 2.5), [x, z]);
     if (blocked) continue;
     await ev(([x, z]) => __t.teleport(x, z, 0), [x, z]); await p.clock.runFor(1200);
-    const c = await ev(() => __t.cam()); tried++; if (c.inside) inside++;
+    const c = await ev(() => __t.cam()); tried++; if (c.inside) { inside++; console.error("camera inside at", x, z, JSON.stringify(c)); }
     if (tried === 1) await p.screenshot({ path: path.join(SHOTS, "p1-wallcam.png") });
   }
   out.cityCam = { tried, inside };
