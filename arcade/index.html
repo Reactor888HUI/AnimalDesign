@@ -209,6 +209,8 @@ h1 span { color: var(--amber); }
 .lvl .no { font: 800 16px var(--f-display); color: var(--amber); }
 .lvl.alt { border-color: var(--gas); background: rgba(159, 227, 255, .07); }
 .lvl.alt .no { color: var(--gas); }
+.lvl.pro { border-color: #c552ff; background: rgba(197, 82, 255, .14); }
+.lvl.pro .no { color: #ff8ef0; }
 .lvl .nm { font-weight: 600; }
 .lvl .ds { display: block; font-size: 12.5px; color: var(--dim); }
 .lvl .best { font: 12px var(--f-mono); color: var(--gas); white-space: nowrap; }
@@ -1433,6 +1435,51 @@ const solidsNear = (x, z) => sgrid.get(skey(Math.floor(x / SGRID), Math.floor(z 
 const inBox = (b, x, z, pad) => x > b.x0 - pad && x < b.x1 + pad && z > b.z0 - pad && z < b.z1 + pad &&
   (!b.rings || inRings(x, z, b.rings) || (b.outer || b.rings).some(r => lineDist(x, z, r, true) < pad));   // outer — без края проёма (Арена)
 
+/* ---------- PRO «Бесконечный Безлимит»: баклажановые разгоны ---------- */
+// Видны и работают только в режиме PRO: дорожки перед трамплинами и на крышах больших домов, кольца над домами.
+// Наехали на дорожку — скорость 50 м/с; пролетели сквозь кольцо — разгон в полёте.
+const BOOSTS = [], proGroup = new T.Group();
+proGroup.visible = false; proGroup.userData.dyn = true; scene.add(proGroup);
+(() => {
+  const ok = (x, z, y) => !waterAt(x, z) && !solidsNear(x, z).some(b => b.h > y + .5 && inBox(b, x, z, 1));
+  kickers.forEach(k => { const x = k.x - k.fx * 11, z = k.z - k.fz * 11, y = k.y0 || 0; if (ok(x, z, y)) BOOSTS.push({ kind: "pad", x, z, y, yaw: k.yaw }); });
+  // крыши: дорожка-разгон там, где помещается 8×5 м; кольца — над каждым третьим домом повыше. Не больше 40 и 40.
+  const big = solids.filter(b => b.rings && !b.arena && b.h >= 5 && b.h <= 45 && b.x1 - b.x0 > 10 && b.z1 - b.z0 > 10);
+  let nPad = 0, nRing = 0;
+  big.forEach((b, i) => {
+    const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, yaw0 = b.x1 - b.x0 > b.z1 - b.z0 ? 0 : Math.PI / 2;
+    if (i % 3 === 0 && nRing < 40 && inRings(cx, cz, b.rings)) { nRing++; BOOSTS.push({ kind: "ring", x: cx, z: cz, y: b.h + 11, yaw: (i * 1.7) % Math.PI }); }
+    if (nPad >= 40 || (b.pad && Math.hypot(b.pad.x - cx, b.pad.z - cz) < 9)) return;
+    const fx = Math.cos(yaw0), fz = -Math.sin(yaw0);
+    const fits = [[-4.5, -3], [4.5, -3], [4.5, 3], [-4.5, 3], [0, 0]].every(([u, w]) => inRings(cx + fx * u - fz * w, cz + fz * u + fx * w, b.rings));
+    if (fits && !solidsNear(cx, cz).some(o => o !== b && o.h > b.h && inBox(o, cx, cz, 1))) { nPad++; BOOSTS.push({ kind: "pad", x: cx, z: cz, y: b.h, yaw: i % 2 ? yaw0 : yaw0 + Math.PI }); }
+  });
+  const tex = (() => { const c = document.createElement("canvas"); c.width = 128; c.height = 192; const g = c.getContext("2d");
+    g.fillStyle = "#2a1140"; g.fillRect(0, 0, 128, 192); g.strokeStyle = "#ff4fd8"; g.lineWidth = 6; g.shadowColor = "#ff4fd8"; g.shadowBlur = 14; g.strokeRect(6, 6, 116, 180);
+    g.strokeStyle = "#c58cff"; g.lineWidth = 12; g.lineCap = "round"; for (let i = 0; i < 3; i++) { const y = 150 - i * 48; g.beginPath(); g.moveTo(24, y); g.lineTo(64, y - 34); g.lineTo(104, y); g.stroke(); }
+    const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; })();
+  const padGeo = [], ringGeo = [], pg = new T.PlaneGeometry(4.5, 7).rotateX(-Math.PI / 2), tg = new T.TorusGeometry(3.6, .34, 5, 20);
+  BOOSTS.forEach(o => {
+    if (o.kind === "pad") padGeo.push(pg.toNonIndexed().applyMatrix4(M4(o.x, o.y + .06, o.z, o.yaw - Math.PI / 2)));
+    else [0, Math.PI / 2].forEach(a => ringGeo.push(tg.toNonIndexed().applyMatrix4(M4(o.x, o.y, o.z, o.yaw + a))));   // два кольца крест-накрест — видно с любой стороны
+    o.t = -9;
+  });
+  if (padGeo.length) proGroup.add(new T.Mesh(mergeGeos(padGeo), new T.MeshBasicMaterial({ map: tex, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 })));
+  if (ringGeo.length) proGroup.add(new T.Mesh(mergeGeos(ringGeo), new T.MeshBasicMaterial({ color: 0xc552ff, toneMapped: false })));
+})();
+function proBoost(airborne) {
+  for (const o of BOOSTS) {
+    if (time - o.t < 1.5) continue;
+    const hit = o.kind === "pad" ? !airborne && Math.abs(car.y - o.y) < 1.5 && Math.hypot(car.x - o.x, car.z - o.z) < 3.6
+      : Math.hypot(car.x - o.x, car.y + .6 - o.y, car.z - o.z) < 3.8;
+    if (!hit) continue;
+    o.t = time; car.v = Math.max(car.v, 50); if (free.proA) free.proA.boost = 2.5;
+    free.score += 50; save.freeBest = Math.max(save.freeBest, free.score); persist();
+    for (let i = 0; i < 10; i++) puff(new T.Vector3(car.x, car.y + .5, car.z), new T.Vector3((Math.random() - .5) * 6, 2 + Math.random() * 3, (Math.random() - .5) * 6), .6, .35);
+    sfx.whoosh(); queueToast("🍆 Баклажановый разгон!  +50", "good", 1100);
+  }
+}
+
 /* ---------- улицы Ростова: фонари, светофоры, «зебры» ---------- */
 const SIGNALS = { A: [], B: [] };          // материалы сигналов двух направлений перекрёстка
 (() => {
@@ -2062,17 +2109,19 @@ function hitSolid(x, z, y) {
   return null;
 }
 
-function startFree(toast = true) {
+function startFree(toast = true, pro = false) {
   mode = "free"; stopReplay(); hideLesson();
   $("ov-menu").hidden = $("ov-res").hidden = true;
   L = FREE; buildLevel(); freshCar();
   car.x = SPAWN.x; car.z = SPAWN.z; car.yaw = SPAWN.yaw;
   if (/^#(side|rear|front)$/.test(location.hash)) { car.x = -400; car.z = 180; }   // чертёжные виды — на пустом месте
-  Object.assign(free, { air: false, airT: 0, cork: false, ringBonus: 0, safe: { ...SPAWN }, safeT: 0, gh: 0, hopLock: false, wall: null, aero: null, tube: null, lap: null });
+  Object.assign(free, { air: false, airT: 0, cork: false, ringBonus: 0, safe: { ...SPAWN }, safeT: 0, gh: 0, hopLock: false, wall: null, aero: null, tube: null, lap: null, pro, proA: null });
+  proGroup.visible = pro;
   assistOn = save.assist;
   phase = "free";
   if (joyMode()) joyHintUntil = performance.now() + 6000;
-  if (toast) showToast("Трюк-парк — справа, Ростов — слева. «⋯» — карта и режимы", "", 4500);
+  if (toast) showToast(pro ? "PRO ∞: баллоны не кончаются. ПРЫГ — взлёт и вверх, газ — вперёд, руль — поворот. Фиолетовые — баклажановые разгоны"
+    : "Трюк-парк — справа, Ростов — слева. «⋯» — карта и режимы", "", 5000);
 }
 /* ---------- присоски: езда по стене Ростов Арены ---------- */
 // С разгона (больше 10 м/с) въезжаете в стену — турбины переходят на всасывание, машина едет по фасаду.
@@ -2092,7 +2141,7 @@ function stepWall(dt) {
   w.th = Math.max(-.8, Math.min(.8, w.th - st * 1.0 * dt));
   if (Math.abs(st) < .05) w.th *= Math.pow(.45, dt);              // без руля едем горизонтально
   gas = Math.max(0, gas - 6 * dt);
-  const sag = w.v < 15 ? (15 - w.v) * .9 : 0, vs = w.v * Math.cos(w.th), vy = w.v * Math.sin(w.th) - sag;
+  const sag = w.v < 15 && !free.pro ? (15 - w.v) * .9 : 0, vs = w.v * Math.cos(w.th), vy = w.v * Math.sin(w.th) - sag;
   w.s += w.dir * vs * dt; w.y += vy * dt; w.dist += vs * dt;
   if (w.y > A.H - 1.2) { w.y = A.H - 1.2; if (w.th > 0) w.th = 0; }
   const p = w.p = A.at(w.s);
@@ -2106,7 +2155,7 @@ function stepWall(dt) {
   if (!input.hop) free.hopLock = false;
   if (w.y <= .7 && vy <= 0) return wallLeave("ground");
   if (jump && !free.hopLock) { free.hopLock = true; return wallLeave("jump"); }
-  if (gas <= 0 || w.v < 6) return wallLeave("fall");
+  if (!free.pro && (gas <= 0 || w.v < 6)) return wallLeave("fall");   // в PRO присоски держат сколько угодно
 }
 function wallLeave(how) {
   const w = free.wall, p = w.p; free.wall = null;
@@ -2119,6 +2168,45 @@ function wallLeave(how) {
   }
   if (how === "ground") { car.y = 0; free.air = false; return; }
   car.y = Math.max(0, w.y - WHEEL); takeoff(false); car.vy = how === "jump" ? 6 : 0;
+}
+/* ---------- PRO: полёт как в аэротрубе по всей карте ---------- */
+// Газ — вперёд, тормоз — назад, руль — поворот, ПРЫГ (держать) — вверх, отпустили — плавно вниз до посадки.
+// Баллоны не кончаются; о дома машина не бьётся, а отскакивает; в стену Арены — присоски.
+function stepProAir(dt) {
+  const th = thr(), bk = brk(), st = turn(), A = free.proA || (free.proA = { alt: car.y + Math.max(0, car.vy) ** 2 / (2 * G) * .9, boost: 0 });
+  free.airT += dt; gas = 100;
+  car.yaw -= st * 1.9 * dt;
+  const cruise = A.boost > 0 ? 52 : 32; A.boost = Math.max(0, A.boost - dt);
+  if (th) car.v += (cruise * th - car.v) * Math.min(1, dt * 1.2);
+  else if (bk) car.v += (-12 * bk - car.v) * Math.min(1, dt * 1.4);
+  else car.v *= Math.pow(A.boost > 0 ? .97 : .85, dt);
+  if (input.hop || free.hopReq) A.alt = Math.min(160, Math.max(A.alt, car.y) + 12 * dt); else A.alt -= 4 * dt;
+  free.hopReq = false;
+  const g = groundAt(car.x, car.z, car.y), floor = g.h + (waterAt(car.x, car.z) ? 2 : 0);
+  if (A.alt < floor) A.alt = floor - .6;
+  car.vy += ((A.alt - car.y) * 2.2 - car.vy) * Math.min(1, dt * 2.5);
+  const yPrev = car.y, nx = car.x + Math.cos(car.yaw) * car.v * dt, nz = car.z - Math.sin(car.yaw) * car.v * dt;
+  car.y += car.vy * dt;
+  const sol = hitSolid(nx, nz, car.y);
+  if (sol && sol.arena && car.y < ARENA.H - 2 && Math.abs(car.v) > 4) { free.proA = null; return wallAttach(); }
+  if (sol || nx < WORLD.x0 || nx > WORLD.x1 || nz < WORLD.z0 || nz > WORLD.z1) {
+    car.v = -car.v * .3; if (!free.bumpCd) { showToast("Бум! Выше — ПРЫГ", "bad", 1000); sfx.thump(.4); free.bumpCd = 1; }
+  } else { car.x = nx; car.z = nz; }
+  free.bumpCd = Math.max(0, (free.bumpCd || 0) - dt);
+  car.roll += (st * 28 - car.roll) * Math.min(1, dt * 4);
+  car.pitch += (-(th - bk) * .12 + car.vy * .012 - car.pitch) * Math.min(1, dt * 4);
+  if (Math.random() < .6) {
+    const ang = car.yaw + Math.floor(Math.random() * 4) * Math.PI / 2, dx = Math.cos(ang), dz = -Math.sin(ang);
+    puff(new T.Vector3(car.x + dx * 1.9, car.y + .5, car.z + dz * 1.9), new T.Vector3(dx * 7, -5, dz * 7), .35, .25);
+  }
+  for (const r of rings) if (!r.got && Math.hypot(car.x - r.x, car.y + .6 - r.y, car.z - r.z) < 2.9) { r.got = true; r.m.material.color.setHex(0x6fdc8c); free.ringBonus += 300; showToast("Кольцо +300", "good", 1200); sfx.ring(); }
+  proBoost(true);
+  const gl = groundAt(car.x, car.z, yPrev);
+  if (car.y <= gl.h) {                              // посадка — дальше обычная «восьмёрка»; на руле — сразу в занос
+    free.proA = null; car.roll = 0; car.pitch = 0; car.vy = Math.max(car.vy, -3);
+    landFree(gl);
+    if (!free.air && phase === "free" && Math.abs(st) > .3 && car.v > 12) car.vl = st * Math.min(9, car.v * .3);
+  }
 }
 /* ---------- аэротруба и трубы внутри Арены ---------- */
 // Аэротруба: магниты держат машину над чашей, газ не кончается. Газ / тормоз — вперёд / назад, руль — поворот,
@@ -2282,6 +2370,7 @@ function stepFree(dt) {
     }
     return;
   }
+  if (free.pro) gas = 100;                          // PRO: баллоны не кончаются
   if (free.wall) return stepWall(dt);
   if (free.aero) return stepAero(dt);
   if (free.tube) return stepTube(dt);
@@ -2296,6 +2385,7 @@ function stepFree(dt) {
   }
   if (!free.air) {
     BURST.ready = true; BURST.t = 0;
+    if (free.pro) proBoost(false);
     const th = thr(), bk = brk();
     if (th) car.v += 10 * th * (1 - .7 * Math.max(0, car.v) / VMAXF) * dt;
     if (bk) car.v = car.v > .5 ? car.v - 16 * bk * dt : Math.max(-9 * bk, car.v - 5 * bk * dt);
@@ -2308,7 +2398,7 @@ function stepFree(dt) {
     // занос: кузов поворачивает сразу, а скорость догоняет его настолько, насколько держат шины.
     // Тормоз на скорости в повороте срывает заднюю ось; на песке сцепление хуже.
     const sand = isSand(car.x, car.z);
-    const grip = (bk > .4 && Math.abs(car.v) > 14 ? 5 : 19) * (sand ? .7 : 1);
+    const grip = (bk > .4 && Math.abs(car.v) > 14 ? 5 : 19) * (sand ? .7 : 1) * (free.pro ? .75 : 1);   // в PRO заносит охотнее
     car.vl = (car.vl || 0) - car.v * yawRate * dt;
     car.vl -= Math.sign(car.vl) * Math.min(Math.abs(car.vl), grip * dt);
     if (Math.abs(car.vl) > 1) car.v -= Math.sign(car.v) * Math.abs(car.vl) * .12 * dt;
@@ -2387,6 +2477,7 @@ function stepFree(dt) {
     return;
   }
   // воздух
+  if (free.pro) return stepProAir(dt);
   free.airT += dt;
   car.vy -= G * dt;
   free.gh = groundAt(car.x, car.z, car.y).h;
@@ -2484,6 +2575,8 @@ function renderMenu() {
   $("levels").innerHTML = `
     <button class="lvl alt" type="button" data-i="free"><span class="no">⌂</span>
       <span><span class="nm">Свободная езда: Ростов, автобан, трюки</span><span class="ds">Трюк-парк, трамплин через автобан, «Восьмёрка», задания. Рекорд: ${save.freeBest}</span></span><span class="best"></span></button>
+    <button class="lvl alt pro" type="button" data-i="pro"><span class="no">∞</span>
+      <span><span class="nm">PRO: Бесконечный Безлимит 🍆</span><span class="ds">Вся карта, баллоны не кончаются: летите как в аэротрубе сколько держите ПРЫГ, присоски — сколько угодно. Баклажановые разгоны перед трамплинами и на крышах.</span></span><span class="best"></span></button>
     <button class="lvl alt" type="button" data-i="train"><span class="no">◎</span>
       <span><span class="nm">Полигон управления</span><span class="ds">Пять коротких уроков: газ, подушка, переворот, посадка, прыжок.</span></span>
       <span class="best">${save.trained ? "пройден" : ""}</span></button>` +
@@ -2497,7 +2590,7 @@ function renderMenu() {
 $("levels").addEventListener("click", e => {
   const b = e.target.closest(".lvl"); if (!b || b.disabled) return;
   const v = b.dataset.i;
-  v === "free" ? startFree() : v === "train" ? startTraining(0) : start(+v);
+  v === "free" ? startFree() : v === "pro" ? startFree(true, true) : v === "train" ? startTraining(0) : start(+v);
 });
 function openMenu() { closeDock(); renderMenu(); $("ov-menu").hidden = false; }
 $("menu-close").onclick = () => { $("ov-menu").hidden = true; };
@@ -2700,7 +2793,7 @@ let garageUntil = location.hash === "#garage" ? Infinity : 0;
 $("m-garage").onclick = () => { closeDock(); garageUntil = performance.now() + 8000; showToast("Осмотр: 8 секунд", "", 1500); };
 $("m-paint").onclick = () => { save.paint = ((save.paint || 0) + 1) % PAINTS.length; persist(); setPaint(save.paint); syncDock(); };
 function restart() {
-  if (mode === "free") { free.score = 0; startFree(false); }
+  if (mode === "free") { free.score = 0; startFree(false, free.pro); }
   else if (mode === "train") startTraining(di);
   else start(L.i);
 }
@@ -2804,7 +2897,8 @@ $("m-go").innerHTML = GO.map(([n], i) => `<button type="button" data-g="${i}">${
 $("m-go").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   const [n, x, z, yaw] = GO[+b.dataset.g];
-  if (mode !== "free") startFree(false);
+  if (mode !== "free") startFree(false, false);
+  free.proA = null;
   car.x = x; car.z = z; car.yaw = yaw; car.y = 0; car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0;
   free.air = false; free.wall = null; free.aero = null; free.tube = null; free.lap = null; free.safe = { x, z, yaw }; phase = "free"; camPos.set(x - 9, 3.2, z);
   zoneAt = -1; closeDock(); showToast(`${n}. Джойстик вверх — поехали`, "good", 2500);
@@ -2994,7 +3088,7 @@ function ui() {
   $("h-speed").textContent = Math.round(speed * 3.6);
   $("h-alt").textContent = inAir ? `высота ${Math.max(0, car.y - (mode === "free" ? free.gh : 0)).toFixed(1)} м` : "";
   if (Math.round(gas) !== lastGasShown) { $("h-gas").style.width = `${gas}%`; $("h-gas").style.background = gas > 25 ? "var(--gas)" : "var(--bad)"; lastGasShown = Math.round(gas); }
-  $("h-top").textContent = replay ? "" : mode === "free" ? (free.lap ? `Круг ${(time - free.lap.t0).toFixed(1)} с · ворота ${free.lap.n}/${ARENA.gates.length}` : `Очки ${free.score}`) : mode === "train" ? "" : `${L.i + 1}. ${L.name}`;
+  $("h-top").textContent = replay ? "" : mode === "free" ? (free.lap ? `Круг ${(time - free.lap.t0).toFixed(1)} с · ворота ${free.lap.n}/${ARENA.gates.length}` : `${free.pro ? "PRO ∞ · " : ""}Очки ${free.score}`) : mode === "train" ? "" : `${L.i + 1}. ${L.name}`;
   const freeGround = mode === "free" && !free.air;
   const jm = joyMode();
   $("b-left").hidden = $("b-right").hidden = $("b-thrust").hidden = jm;
@@ -3256,6 +3350,9 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   lap: () => free.lap && { ...free.lap },
   hop: () => { free.hopReq = true; free.hopLock = false; },
   key: (k, v) => { input[k] = v; },
+  pro: on => startFree(false, on),
+  boosts: () => BOOSTS.map(o => ({ kind: o.kind, x: o.x, z: o.z, y: o.y, yaw: o.yaw })),
+  proState: () => ({ pro: !!free.pro, flying: !!free.proA, gas, alt: free.proA && free.proA.alt }),
   inner: () => INNER && { pad: INNER.pad, padE: INNER.padE, slide0: INNER.slide.frame(0), slideLen: INNER.slide.len, flowLen: INNER.flow.len, aero: free.aero && { ...free.aero }, tube: free.tube && { s: free.tube.s, v: free.tube.v, laps: free.tube.laps, flow: !!free.tube.path.flow, lift: !!free.tube.lift } },
   teleport(x, z, yaw, y = 0) { car.x = x; car.z = z; car.yaw = yaw; car.y = y; car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0; car.vl = car.bodyRoll = car.bodyPitch = 0; free.air = false; free.wall = null; free.aero = null; free.tube = null; free.lap = null; phase = "free"; camPos.set(x, y + 4, z); zoneAt = -1; }
 };

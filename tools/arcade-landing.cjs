@@ -44,7 +44,7 @@ const path = require("path");
   out.title = await p.title();
   const [d1, d2, d3, d4] = out.drops;
   const ok = !errs.length && [d1, d2, d3].every(d => d.burst === 1 && d.impact <= 6 && !crashed(d) && d.phase === "free" && !d.air) && crashed(d4) && d4.burst === 1 &&
-    out.sideRoof.impact <= 6 && Math.abs(out.sideRoof.y - out.sideRoof.h) < .3 && out.disabled === 0 && out.items === 7 && /^Уровень 5/.test(out.level5) && out.title === "Восьмёрка Баклажан";
+    out.sideRoof.impact <= 6 && Math.abs(out.sideRoof.y - out.sideRoof.h) < .3 && out.disabled === 0 && out.items === 8 && /^Уровень 5/.test(out.level5) && out.title === "Восьмёрка Баклажан";
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 2));
   await b.close(); process.exit(ok ? 0 : 1);
 })();
