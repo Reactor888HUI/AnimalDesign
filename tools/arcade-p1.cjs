@@ -78,7 +78,7 @@ const SHOTS = process.env.SHOTS || ".";
     // стоим в 1,5 м перед стеной x1 и смотрим от дома (по +x)
     const z = (hb.z0 + hb.z1) / 2, x = hb.x1 + 2.5;
     const blocked = await ev(([x, z]) => __t.houses().some(b => x > b.x0 - 1.5 && x < b.x1 + 1.5 && z > b.z0 - 1.5 && z < b.z1 + 1.5 && x - b.x1 !== 2.5), [x, z]);
-    if (blocked) continue;
+    if (blocked || await ev(([x, z]) => __t.solidAt(x, z) || __t.solidAt(x + 3, z), [x, z])) continue;   // и низкие постройки рядом
     await ev(([x, z]) => __t.teleport(x, z, 0), [x, z]); await p.clock.runFor(1200);
     const c = await ev(() => __t.cam()); tried++; if (c.inside) { inside++; console.error("camera inside at", x, z, JSON.stringify(c)); }
     if (tried === 1) await p.screenshot({ path: path.join(SHOTS, "p1-wallcam.png") });

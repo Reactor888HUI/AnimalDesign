@@ -1,6 +1,8 @@
 """Выгрузка OpenStreetMap (.osm) → данные карты для «Восьмёрки Баклажан».
 
-Запуск: python3 -I tools/osm-to-game.py arcade/refs/rostov-center.osm arcade/index.html
+Запуск: python3 -I tools/osm-to-game.py arcade/refs/rostov-center.osm arcade/refs/rostov-arena.osm arcade/index.html
+Можно несколько выгрузок: система координат берётся по первой (чтобы старая карта не сдвинулась),
+данные объединяются по id OpenStreetMap, обрезка — по общей рамке всех выгрузок.
 Пишет JSON между маркерами /*OSM-DATA*/ … /*/OSM-DATA*/ в index.html.
 
 Координаты игры: метры, x — вдоль автобана, z — поперёк, «север» карты смотрит на автобан (+z).
@@ -10,11 +12,11 @@
 import sys, math, json, re, hashlib
 import xml.etree.ElementTree as ET
 
-SRC, DST = sys.argv[1], sys.argv[2]
+SRCS, DST = sys.argv[1:-1], sys.argv[-1]
 X_CENTER, Z_TOP = 280.0, -82.0          # середина полосы по x и её «верхний» край у автобана
 
-root = ET.parse(SRC).getroot()
-bd = root.find("bounds").attrib
+roots = [ET.parse(f).getroot() for f in SRCS]
+bd = roots[0].find("bounds").attrib                     # якорь системы координат — первая выгрузка
 LA0, LA1, LO0, LO1 = (float(bd[k]) for k in ("minlat", "maxlat", "minlon", "maxlon"))
 KX = 111320 * math.cos(math.radians((LA0 + LA1) / 2)); KY = 110574
 W, H = (LO1 - LO0) * KX, (LA1 - LA0) * KY
@@ -22,10 +24,19 @@ W, H = (LO1 - LO0) * KX, (LA1 - LA0) * KY
 def local(lat, lon): return ((lon - LO0) * KX, (lat - LA0) * KY)
 def game(e, n): return (X_CENTER - (e - W / 2), Z_TOP - (H - n))
 
-nodes = {n.get("id"): (local(float(n.get("lat")), float(n.get("lon"))), {t.get("k"): t.get("v") for t in n.findall("tag")}) for n in root.iter("node")}
-ways = {}
-for w in root.iter("way"):
-    ways[w.get("id")] = ([x.get("ref") for x in w.findall("nd")], {t.get("k"): t.get("v") for t in w.findall("tag")})
+# рамка обрезки — объединение рамок всех выгрузок (в локальных метрах якоря)
+_bs = [r.find("bounds").attrib for r in roots]
+CX0 = min(local(float(b["minlat"]), float(b["minlon"]))[0] for b in _bs); CX1 = max(local(float(b["maxlat"]), float(b["maxlon"]))[0] for b in _bs)
+CY0 = min(local(float(b["minlat"]), float(b["minlon"]))[1] for b in _bs); CY1 = max(local(float(b["maxlat"]), float(b["maxlon"]))[1] for b in _bs)
+
+nodes, ways, rels = {}, {}, {}
+for root in roots:                                      # объединяем по id: что уже есть — не трогаем
+    for n in root.iter("node"):
+        if n.get("id") not in nodes: nodes[n.get("id")] = (local(float(n.get("lat")), float(n.get("lon"))), {t.get("k"): t.get("v") for t in n.findall("tag")})
+    for w in root.iter("way"):
+        if w.get("id") not in ways: ways[w.get("id")] = ([x.get("ref") for x in w.findall("nd")], {t.get("k"): t.get("v") for t in w.findall("tag")})
+    for r in root.iter("relation"):
+        if r.get("id") not in rels: rels[r.get("id")] = r
 
 # --- отсечение по рамке выгрузки
 def clip_poly(pts):
@@ -40,7 +51,7 @@ def clip_poly(pts):
         return out
     def ix(x0): return lambda a, b: (x0, a[1] + (b[1] - a[1]) * (x0 - a[0]) / (b[0] - a[0]))
     def iy(y0): return lambda a, b: (a[0] + (b[0] - a[0]) * (y0 - a[1]) / (b[1] - a[1]), y0)
-    for inside, inter in ((lambda p: p[0] >= 0, ix(0)), (lambda p: p[0] <= W, ix(W)), (lambda p: p[1] >= 0, iy(0)), (lambda p: p[1] <= H, iy(H))):
+    for inside, inter in ((lambda p: p[0] >= CX0, ix(CX0)), (lambda p: p[0] <= CX1, ix(CX1)), (lambda p: p[1] >= CY0, iy(CY0)), (lambda p: p[1] <= CY1, iy(CY1))):
         if not pts: break
         pts = clip(pts, inside, inter)
     return pts
@@ -51,7 +62,7 @@ def clip_line(pts):
     for a, b in zip(pts, pts[1:]):
         t0, t1, dx, dy = 0.0, 1.0, b[0] - a[0], b[1] - a[1]
         ok = True
-        for p, q in ((-dx, a[0]), (dx, W - a[0]), (-dy, a[1]), (dy, H - a[1])):
+        for p, q in ((-dx, a[0] - CX0), (dx, CX1 - a[0]), (-dy, a[1] - CY0), (dy, CY1 - a[1])):
             if p == 0:
                 if q < 0: ok = False; break
             else:
@@ -110,7 +121,7 @@ def seed(s): return int(hashlib.md5(s.encode()).hexdigest()[:8], 16) / 0xfffffff
 # --- мультиполигоны: переносим их теги на «сборные» объекты
 areas_src = []   # (tags, outer_ref_rings, inner_ref_rings, id)
 used_ways = set()
-for rel in root.iter("relation"):
+for rel in rels.values():
     t = {x.get("k"): x.get("v") for x in rel.findall("tag")}
     if t.get("type") != "multipolygon": continue
     outer = [ways[m.get("ref")][0] for m in rel.findall("member") if m.get("type") == "way" and m.get("ref") in ways and m.get("role") != "inner"]
@@ -160,7 +171,8 @@ AREA_KIND = [
     ("k", lambda t: t.get("amenity") == "parking" or t.get("highway") == "pedestrian" or t.get("place") == "square"),
     ("c", lambda t: t.get("landuse") in ("construction", "industrial", "railway", "brownfield")),
 ]
-out = {"b": [], "a": [], "r": [], "l": [], "t": [], "z": [], "p": [], "n": [], "bounds": [round(v * 10) for v in game(0, 0) + game(W, H)]}
+out = {"b": [], "a": [], "r": [], "l": [], "t": [], "z": [], "p": [], "n": [], "bounds": [round(v * 10) for v in game(0, 0) + game(W, H)],
+       "clip": [round(v * 10) for v in game(CX0, CY0) + game(CX1, CY1)]}
 names = {}
 def name_idx(n):
     if n not in names: names[n] = len(names); out["n"].append(n)
@@ -205,7 +217,7 @@ for wid, (refs, t) in ways.items():
                     k = i * 7 / L if L else 0
                     out["t"] += enc([(a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k)])
 for (p, t) in nodes.values():
-    if t.get("natural") == "tree" and 0 <= p[0] <= W and 0 <= p[1] <= H: out["t"] += enc([p])
+    if t.get("natural") == "tree" and CX0 <= p[0] <= CX1 and CY0 <= p[1] <= CY1: out["t"] += enc([p])
 
 js = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
 html = open(DST, encoding="utf8").read()

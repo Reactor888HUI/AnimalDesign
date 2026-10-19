@@ -1,5 +1,5 @@
 // Ростов Арена: присоски (въезд в стену с разгона, подъём, езда по кругу, прыжок со стены, задание «300 м по стене»),
-// круг по трассе вокруг Арены через все ворота по порядку. Запуск: PW=$(npm root -g)/playwright node tools/arcade-arena.cjs
+// круг по трассе вокруг Арены через все ворота по порядку; мега-трамплины на крышу, чаша-рампа, прыжок с крыши над главным входом. Запуск: PW=$(npm root -g)/playwright node tools/arcade-arena.cjs
 const { chromium } = require(process.env.PW || "playwright");
 const path = require("path");
 (async () => {
@@ -46,7 +46,38 @@ const path = require("path");
   for (const k of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]) await p.keyboard.up(k);
   await run(1500);
   out.lap = { started: lapSeen, waypoints: `${wi}/${way.length}`, seconds: +t.toFixed(1), best: await ev(() => JSON.parse(localStorage.getItem("baklan3d-v1")).arenaLap || null) };
-  const ok = !!(!errs.length && out.attached && out.climbed && out.rodeMeters > 150 && out.jumpedOff && out.landed && out.wallMission && out.lap.started && out.lap.best);
+  // мега-трамплины: разгон с места, газ отпускаем в воздухе — каждый сажает на крышу (29 м)
+  out.megas = [];
+  for (const m of A.megas) {
+    const d = Math.min(m[3] - 5, 75);
+    await ev(([x, z, y]) => __t.teleport(x, z, y), [m[0] - Math.cos(m[2]) * d, m[1] + Math.sin(m[2]) * d, m[2]]);
+    await p.keyboard.down("ArrowUp");
+    let cm, top = 0;
+    for (let i = 0; i < 80; i++) { await run(150); cm = await ev(() => __t.car()); top = Math.max(top, cm.y); if (cm.air) await p.keyboard.up("ArrowUp"); if (top > 20 && !cm.air) break; }
+    await p.keyboard.up("ArrowUp");
+    out.megas.push({ top: +top.toFixed(1), y: +cm.y.toFixed(1), onRoof: !cm.air && cm.phase === "free" && Math.abs(cm.y - 29) < .1 });
+  }
+  out.roofMission = !!(await ev(() => __t.missions())).arenaRoof;
+  // чаша: с поля по трибунам на крышу (газ в сторону главного входа)
+  const [kx, kz, ky] = A.roofKick;
+  await ev(([x, z, y]) => __t.teleport(x, z, y), [A.C[0], A.C[1], Math.atan2(-(kz - A.C[1]), kx - A.C[0])]);
+  await p.keyboard.down("ArrowUp");
+  let top = 0; for (let i = 0; i < 40 && top < 29; i++) { await run(150); top = Math.max(top, (await ev(() => __t.car())).y); }
+  await p.keyboard.up("ArrowUp");
+  out.bowlToRoof = top >= 29;
+  // крыша: разгон к трамплину над главным входом, в полёте — бочка, посадка внизу
+  await ev(([x, z, y]) => { __t.teleport(x, z, y, 29); __t.setCar({ v: 22 }); }, [kx - Math.cos(ky) * 22, kz + Math.sin(ky) * 22, ky]);
+  await p.keyboard.down("ArrowUp");
+  let jump = null, cj;
+  for (let i = 0; i < 60; i++) {
+    await run(150); cj = await ev(() => __t.car());
+    if (cj.air && !jump) { jump = { y: +cj.y.toFixed(1), fromRoof: cj.fromRoof }; await p.keyboard.up("ArrowUp"); await ev(() => __t.spin(360)); }
+    if (jump && !cj.air) break;
+  }
+  await p.keyboard.up("ArrowUp"); await run(1500);
+  out.roofJump = { ...jump, landedY: +cj.y.toFixed(1), phase: (await ev(() => __t.car())).phase, mission: !!(await ev(() => __t.missions())).arenaJump };
+  const ok = !!(!errs.length && out.megas.length >= 2 && out.megas.every(m => m.onRoof) && out.roofMission && out.bowlToRoof &&
+    out.roofJump.fromRoof && out.roofJump.mission && out.roofJump.phase === "free" && out.attached && out.climbed && out.rodeMeters > 150 && out.jumpedOff && out.landed && out.wallMission && out.lap.started && out.lap.best);
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 2));
   await b.close(); process.exit(ok ? 0 : 1);
 })();
