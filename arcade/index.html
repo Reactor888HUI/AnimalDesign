@@ -71,7 +71,15 @@ h1 span { color: var(--amber); }
 .dock-panel .board li.me { color: #9fe3ff; }
 .dock-panel .board-note { font-size: 11.5px; color: var(--dim); }
 .hud-replay { position: absolute; z-index: 3; top: 48px; left: 50%; transform: translateX(-50%); border: 1px solid var(--amber); background: rgba(13, 18, 32, .85); color: var(--amber); font: 700 13px var(--f-display); padding: 7px 14px; border-radius: 999px; }
-.dock-panel .lbl { font: 600 11px var(--f-mono); color: var(--dim); letter-spacing: .05em; text-transform: uppercase; }
+.dock-panel .lbl { font: 600 11px var(--f-mono); color: var(--dim); letter-spacing: .05em; text-transform: uppercase; margin-top: 4px; }
+.dock-panel .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dock-panel .modes button { text-align: center; padding: 8px 4px; }
+.dock-panel .modes button.on { border-color: var(--amber); color: var(--amber); font-weight: 700; }
+.dock-panel .modes button[data-m="pro"] { border-color: #c552ff; }
+.dock-panel .modes button[data-m="pro"].on { color: #ff8ef0; background: rgba(197, 82, 255, .16); }
+.howto { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: 12px/1.45 var(--f-body); color: var(--text); }
+.howto summary { cursor: pointer; font-weight: 700; color: var(--gas); }
+.howto p { margin: 6px 0 0; } .howto b { color: var(--amber); }
 
 /* прибор крена: только в воздухе */
 .hud.tr {
@@ -105,13 +113,15 @@ h1 span { color: var(--amber); }
 .dock-panel .stat { font: 12px var(--f-mono); color: var(--dim); }
 
 /* тосты и подсказки */
-.toast {
-  position: absolute; z-index: 3; top: 50px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 120px);
-  padding: 7px 14px; border-radius: 16px; background: rgba(13,18,32,.85); border: 1px solid var(--amber);
-  font: 700 14px/1.35 var(--f-body); color: var(--amber); text-align: center; pointer-events: none;
+.toast {   /* короткая полупрозрачная строка вверху; в движении — ещё прозрачнее */
+  position: absolute; z-index: 3; top: 48px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 110px);
+  padding: 3px 12px; border-radius: 10px; background: rgba(13,18,32,.38); border: 0;
+  font: 700 13px/1.3 var(--f-body); color: var(--amber); text-align: center; pointer-events: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,.85); transition: opacity .25s;
 }
-.toast.good { border-color: var(--ok); color: var(--ok); }
-.toast.bad { border-color: var(--bad); color: var(--bad); }
+.toast.moving { opacity: .6; background: rgba(13,18,32,.2); }
+.toast.good { color: var(--ok); }
+.toast.bad { color: var(--bad); }
 .coach {
   position: absolute; z-index: 2; left: 50%; bottom: 88px; transform: translateX(-50%);
   padding: 7px 14px; border-radius: 999px; background: rgba(13,18,32,.85); max-width: calc(100% - 24px);
@@ -248,7 +258,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
   .mini canvas { width: 84px; height: 84px; }
   .hud.tr { top: 50px; right: 6px; width: 92px; padding: 4px; }
   .dial svg { width: 72px; height: 72px; }
-  .toast { top: 46px; max-width: calc(100% - 260px); font-size: 13px; }
+  .toast { top: 46px; max-width: calc(100% - 260px); font-size: 12px; }
   .joy-hint { top: 50%; width: min(360px, calc(100% - 220px)); font-size: 13px; }
   .tb.hop-big { min-width: 84px; height: 64px; }
   .lesson { bottom: 8px; left: 50%; width: min(380px, calc(100% - 260px)); }
@@ -267,7 +277,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
   .tb.wide { min-width: 88px; }
   .coach { bottom: 80px; font-size: 13px; }
   .lesson { bottom: 76px; }
-  .toast { font-size: 13px; max-width: calc(100% - 24px); top: 214px; }
+  .toast { font-size: 12px; max-width: calc(100% - 150px); top: 46px; }
 }
 </style>
 
@@ -311,7 +321,11 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
       <button class="dock-btn cam" id="cam-btn" type="button" aria-label="Сменить вид">ВИД</button>
       <button class="dock-btn" id="dock-btn" type="button" aria-label="Меню" aria-expanded="false">⋯</button>
       <div class="dock-panel" id="dock-panel" hidden>
-        <button type="button" id="m-modes" class="main">Режимы и уровни</button>
+        <div class="lbl">Режим</div>
+        <div class="modes" id="m-mode">
+          <button type="button" data-m="free">Свободная езда</button><button type="button" data-m="pro">PRO ∞ 🍆</button>
+          <button type="button" data-m="train">Полигон</button><button type="button" id="m-modes">Уровни…</button>
+        </div>
         <div class="lbl">Куда ехать</div>
         <div class="go" id="m-go"></div>
         <canvas id="map" width="300" height="440" aria-label="Карта"></canvas>
@@ -322,17 +336,28 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <div class="lbl" id="m-board-h" hidden>Рекорды игроков</div>
         <ol class="board" id="m-board" hidden></ol>
         <div class="board-note" id="m-board-note" hidden></div>
-        <div class="lbl">Настройки</div>
+        <details class="howto"><summary>Как играть</summary>
+          <p><b>Езда.</b> Джойстик (палец по экрану) вверх — газ, вниз — тормоз, влево / вправо — руль. Тормоз в повороте — занос.</p>
+          <p><b>Прыжок.</b> ПРЫГ — сопла подбрасывают машину. В воздухе джойстик крутит её; у земли держите газ — баллон смягчит посадку.</p>
+          <p><b>Присоски.</b> С разгона въезжайте в стену Арены: влево — вверх, вправо — вниз, ПРЫГ — оттолкнуться.</p>
+          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — бесконечный поток (газ — турбо, руль — по стенке, ПРЫГ — выход); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее.</p>
+          <p><b>PRO ∞.</b> Баллоны не кончаются: держите ПРЫГ — летите вверх, газ — вперёд, отпустили — плавно вниз. Фиолетовые дорожки и кольца — разгоны.</p>
+          <p><b>Клавиатура.</b> ↑ газ, ↓ тормоз, ← → руль и вращение, Пробел — прыжок, C — камера, R — заново, M — меню.</p>
+          <p><b>Вид и наклон.</b> Кнопка «ВИД» — сзади, дальняя, из кабины. «Наклон телефона» — руль наклоном; положение при включении — ноль, от себя — газ, на себя — тормоз.</p>
+        </details>
+        <div class="lbl">Вид и управление</div>
         <button type="button" id="m-cam">Камера: сзади</button>
         <button type="button" id="m-tilt">Наклон телефона: выкл</button>
-        <button type="button" id="m-assist">Ассистент переворота: вкл</button>
-        <button type="button" id="m-snd">Звук: вкл</button>
-        <button type="button" id="m-q">Качество: авто</button>
-        <button type="button" id="m-mini">Мини-карта: вкл</button>
         <button type="button" id="m-ctrl">Управление: джойстик</button>
+        <button type="button" id="m-assist">Ассистент переворота: вкл</button>
+        <div class="lbl">Машина</div>
         <button type="button" id="m-paint">Цвет: белая</button>
         <button type="button" id="m-tune">Обвес: заводской</button>
         <button type="button" id="m-garage">Осмотреть машину</button>
+        <div class="lbl">Игра</div>
+        <button type="button" id="m-snd">Звук: вкл</button>
+        <button type="button" id="m-q">Качество: авто</button>
+        <button type="button" id="m-mini">Мини-карта: вкл</button>
         <button type="button" id="m-restart">Заново</button>
       </div>
     </div>
@@ -400,29 +425,6 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
     </div>
   </div>
 
-  <section class="help">
-    <div>
-      <h3>Езда</h3>
-      <ul>
-        <li><b>Джойстик:</b> коснитесь экрана где угодно и ведите пальцем. Вверх — газ (чем дальше, тем сильнее), вниз — тормоз и задний ход, влево и вправо — руль.</li>
-        <li>Старые кнопки ГАЗ / СТОП / ◀ ▶ включаются в «⋯» → «Управление».</li>
-        <li><b>ПРЫГ</b> — прыжок на соплах с места или на ходу. Газ в баллонах восстанавливается на земле.</li>
-      </ul>
-    </div>
-    <div>
-      <h3>В воздухе</h3>
-      <ul>
-        <li>Джойстик <b>влево и вправо</b> крутит машину бочкой. Каждый полный оборот — очки.</li>
-        <li>Джойстик <b>вверх</b> держит подушку: машина падает медленнее и садится мягче.</li>
-        <li>Кольца в воздухе дают бонус. Садиться нужно на колёса.</li>
-        <li><b>Посадочный баллон</b> срабатывает сам у самой земли — даже без газа: «пш-ш», облако пара, мягкая посадка. Один раз за прыжок.</li>
-      </ul>
-    </div>
-    <div>
-      <h3>Клавиатура</h3>
-      <p><kbd>↑</kbd> газ, <kbd>↓</kbd> тормоз, <kbd>←</kbd> <kbd>→</kbd> руль и вращение, <kbd>Пробел</kbd> прыжок, <kbd>C</kbd> камера, <kbd>R</kbd> заново, <kbd>M</kbd> меню.</p>
-    </div>
-  </section>
 
   <footer>Прототип по мотивам показа летающего родстера 15 октября 2026 года. Машина — своя низкополигональная модель «восьмёрки» по заводским чертежам. Карта Ростова-на-Дону: © участники OpenStreetMap; понтонный мост через Дон — игровой.</footer>
 </div>
@@ -1681,7 +1683,8 @@ function makeVaz2108() {
   const box = (w, h, d, m, x, y, z, ry = 0, rz = 0) => { const b = new T.Mesh(new T.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.rotation.set(0, ry, rz); g.add(b); return b; };
   const headM = new T.MeshStandardMaterial({ color: 0xfff6dc, emissive: 0xfff1c8, emissiveIntensity: .9, roughness: .2 });
   const amberM = new T.MeshStandardMaterial({ color: 0xff9a2a, emissive: 0xff8a1a, emissiveIntensity: .5 });
-  const redM = new T.MeshStandardMaterial({ color: 0xb01020, emissive: 0xff2030, emissiveIntensity: .45 });
+  const redM = new T.MeshStandardMaterial({ color: 0x6a0206, emissive: 0x9a0008, emissiveIntensity: .55, roughness: .3 });   // насыщенный красный, не розовый
+  const ribM = mat(0x2a0306, { roughness: .4 });
   const plateM = mat(0xf2f2f2);
   // перед: наклонная панель фар и решётки (наклон ~30° от вертикали)
   const nose = Math.atan2(X(43) - X(150), H(810) - H(622));
@@ -1701,9 +1704,12 @@ function makeVaz2108() {
   [-1, 1].forEach(sd => {
     box(.4, bumpH, .06, black, X(0) - .25, bumpY, sd * .81);
     box(.32, H(585) - H(300), .06, black, X(4006) + .2, (H(300) + H(585)) / 2, sd * .81);
-    // задние фонари на задней панели (наклон ~5°)
-    box(.03, .15, .5, redM, X(3952) - .01, H(715), sd * .5, 0, .08);
-    box(.032, .15, .1, amberM, X(3952) - .011, H(715), sd * .3, 0, .08);
+    // задние фонари по чертежу: красный блок снаружи, жёлтый поворотник ближе к центру, с заходом на бок; между ними — номер
+    box(.03, .16, .37, redM, X(3952) - .01, H(715), sd * .585, 0, .08);
+    box(.032, .16, .085, amberM, X(3952) - .011, H(715), sd * .355, 0, .08);
+    [-.035, .035].forEach(dy => box(.034, .008, .37, ribM, X(3952) - .006 - dy * .08, H(715) + dy, sd * .585, 0, .08));   // рёбра рассеивателя
+    box(.1, .16, .03, redM, X(3935), H(715), sd * .79, -sd * .5, .08);
+    box(.022, .012, .3, mat(0x9aa0a6), X(3952) - .004, H(815), sd * .52, 0, .08);                 // накладки-щели на двери багажника
     // двери, молдинг, ручка, зеркало
     [X(1180), X(2600)].forEach(x => box(.008, yBelt - .02 - yBot(X(2000)), .004, black, x, (yBelt - .02 + yBot(X(2000))) / 2, sd * .828));
     box(X(560) - X(3560) - .1, .06, .012, black, (X(560) + X(3560)) / 2, H(430), sd * .832);
@@ -1712,8 +1718,10 @@ function makeVaz2108() {
     box(.06, .03, .1, black, X(1360), H(990), sd * .8);
     box(.02, .015, .46, black, X(1080), H(1000), sd * .1 - .22, .18);         // дворники
   });
-  box(.02, .05, .05, mat(0x8fb0ff, { metalness: .8, roughness: .2 }), X(3952) - .012, H(760), 0, 0, .08);   // значок между фонарями
-  box(.02, .11, .5, plateM, X(4006) - .006, (H(300) + H(585)) / 2, 0);                                      // номер на бампере
+  box(.02, .05, .05, mat(0x8fb0ff, { metalness: .8, roughness: .2 }), X(3952) - .012, H(815), 0, 0, .08);   // значок и замок над номером
+  box(.03, .13, .54, black, X(3952) - .006, H(712), 0, 0, .08);                                              // ниша номера между фонарями
+  box(.04, .045, 1.36, black, X(3884) - .03, H(948), 0);                                                     // уплотнитель под стеклом двери
+  box(.3, .014, .02, black, X(3700), H(1010), .05, 0, -1.0);                                                 // задний дворник
   // номерные знаки: вымышленный номер, буквы — только те, что бывают на номерах
   const pc = document.createElement("canvas"); pc.width = 512; pc.height = 112;
   const pg = pc.getContext("2d");
@@ -1725,8 +1733,8 @@ function makeVaz2108() {
   pg.font = "bold 18px Arial, sans-serif"; pg.fillText("RUS", 450, 90);
   const plateTex = new T.CanvasTexture(pc); plateTex.encoding = T.sRGBEncoding; plateTex.anisotropy = 4;
   const plateFace = new T.MeshBasicMaterial({ map: plateTex });
-  [[X(0) + .034, bumpY, Math.PI / 2], [X(4006) - .018, (H(300) + H(585)) / 2, -Math.PI / 2]].forEach(([x, y, ry]) => {
-    const m = new T.Mesh(new T.PlaneGeometry(.5, .11), plateFace); m.position.set(x, y, 0); m.rotation.y = ry; g.add(m);
+  [[X(0) + .034, bumpY, Math.PI / 2, 0], [X(3952) - .028, H(712), -Math.PI / 2, 0]].forEach(([x, y, ry, rz]) => {
+    const m = new T.Mesh(new T.PlaneGeometry(.5, .11), plateFace); m.position.set(x, y, 0); m.rotation.set(0, ry, rz, "YXZ"); g.add(m);
   });
   // колёса 13": шина Ø576, штампованные диски; колея 1400 / 1370
   const tireM = mat(0x0b0e17), rimM = mat(0xc9ccd2, { metalness: .6, roughness: .35 }), hubM = mat(0x2a2d36);
@@ -1749,6 +1757,23 @@ function makeVaz2108() {
     const xm = (X(1880) + X(2454)) / 2, v = new T.Mesh(new T.BoxGeometry(X(1880) - X(2454) + .06, .075, .008), visorM);
     v.position.set(xm, yWin - .005, sd * (sideZ(xm, yWin) + .035)); v.rotation.x = -sd * .45; opt.visors.add(v);
   });
+  // PRO: широкий обвес в цвет кузова, широкие колёса с хромовыми дисками и фиолетовой серединой, спойлер, неон снизу
+  const pro = opt.pro = new T.Group(); pro.userData.dyn = true; g.add(pro);
+  const chromeM = mat(0xd8dce4, { metalness: .35, roughness: .2 }), neonM = new T.MeshBasicMaterial({ color: 0xc552ff, toneMapped: false });
+  [[XF, .74, RF], [XF, -.74, RF], [XR, .725, RR], [XR, -.725, RR]].forEach(([x, z, r]) => {
+    const t = new T.Mesh(new T.CylinderGeometry(.3, .3, .25, 22), tireM); t.rotation.x = Math.PI / 2; t.position.set(x, YW, z); pro.add(t);
+    const d = new T.Mesh(new T.CylinderGeometry(.205, .205, .258, 22), chromeM); d.rotation.x = Math.PI / 2; d.position.set(x, YW, z); pro.add(d);
+    const c = new T.Mesh(new T.CylinderGeometry(.12, .12, .262, 6), neonM); c.rotation.x = Math.PI / 2; c.position.set(x, YW, z); pro.add(c);
+    const fl = new T.Mesh(new T.CylinderGeometry(r * 1.16, r * 1.16, .16, 14, 1, true, Math.PI / 2, Math.PI), paint);   // расширитель арки
+    fl.rotation.x = Math.PI / 2; fl.position.set(x, YW, Math.sign(z) * .86); pro.add(fl);
+  });
+  [-1, 1].forEach(sd => { const sk = new T.Mesh(new T.BoxGeometry(XF - XR - (RF + RR) * 1.15, .14, .1), paint); sk.position.set((XF + XR) / 2 + (RR - RF) * .5, H(215), sd * .86); pro.add(sk); });
+  const sp = new T.Mesh(new T.BoxGeometry(.32, .04, 1.3), paint); sp.position.set(X(3150), H(1420), 0); sp.rotation.z = .12; pro.add(sp);
+  [-1, 1].forEach(sd => { const st = new T.Mesh(new T.BoxGeometry(.08, .07, .04), black); st.position.set(X(3150), H(1390), sd * .5); pro.add(st); });
+  const gc = document.createElement("canvas"); gc.width = gc.height = 64; const gg = gc.getContext("2d"), rg = gg.createRadialGradient(32, 32, 4, 32, 32, 32);
+  rg.addColorStop(0, "rgba(176,64,255,.85)"); rg.addColorStop(.6, "rgba(150,40,240,.45)"); rg.addColorStop(1, "rgba(150,40,240,0)"); gg.fillStyle = rg; gg.fillRect(0, 0, 64, 64);
+  const glow = new T.Mesh(new T.PlaneGeometry(4.4, 2.4).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: new T.CanvasTexture(gc), transparent: true, depthWrite: false, toneMapped: false }));
+  glow.position.y = -.62; pro.add(glow);
   g.userData.opt = opt;
   // сопла снизу — это всё-таки испытательная «восьмёрка»
   const glowM = new T.MeshBasicMaterial({ color: 0x9fe3ff });
@@ -1760,13 +1785,14 @@ function makeVaz2108() {
 }
 const carObj = makeVaz2108(); scene.add(carObj);
 const TUNES = ["заводской", "брызговики и ветровики", "+ литые диски"];
-function setTune(n) {
-  const o = carObj.userData.opt;
-  o.flaps.visible = o.visors.visible = n >= 1; o.alloy.visible = n >= 2; o.stock.visible = n < 2;
+function setTune(n) {                          // n = "pro" — широкий обвес режима PRO
+  const o = carObj.userData.opt, pro = n === "pro";
+  o.flaps.visible = o.visors.visible = pro || n >= 1; o.alloy.visible = !pro && n >= 2; o.stock.visible = !pro && n < 2; o.pro.visible = pro;
 }
-function setPaint(i) {
-  const p = PAINTS[i % PAINTS.length];
-  carObj.userData.paint.color.setHex(p.c);
+const EGGPLANT = { n: "баклажан", c: 0x2c0a44 };
+function setPaint(i) {                         // i < 0 — баклажан режима PRO
+  const p = i < 0 ? EGGPLANT : PAINTS[i % PAINTS.length];
+  carObj.userData.paint.color.setHex(p.c); carObj.userData.paint.roughness = i < 0 ? .85 : .38; carObj.userData.paint.metalness = i < 0 ? .05 : .25;   // тёмный баклажан без белого блика
   const hex = "#" + p.c.toString(16).padStart(6, "0");
   document.querySelectorAll("#d-car .paint").forEach(el => el.setAttribute(el.tagName === "path" ? "stroke" : "fill", hex));
 }
@@ -2066,7 +2092,7 @@ function completeMission(id, extra = "") {
 function slalomTick() {          // аэро-слалом: кольца по порядку, время — вверху экрана
   const G = INNER.gates, S = free.slalom, near = i => Math.hypot(car.x - G[i].x, car.y + .6 - G[i].y, car.z - G[i].z) < 4.6;
   const paint = n => G.forEach((g, i) => g.m.material.color.setHex(i < n ? 0x6fdc8c : i === n ? 0xffe14d : 0x5a3b8a));
-  if (!S) { if (near(0)) { free.slalom = { n: 1, t0: time }; paint(1); sfx.ring(); queueToast("Аэро-слалом! Жёлтое кольцо — следующее", "good", 1800); } else if (!G.painted) { paint(0); G.painted = true; } return; }
+  if (!S) { if (near(0)) { free.slalom = { n: 1, t0: time }; paint(1); sfx.ring(); queueToast("Аэро-слалом", "good", 1300); } else if (!G.painted) { paint(0); G.painted = true; } return; }
   if (time - S.t0 > 90) { free.slalom = null; paint(0); queueToast("Слалом: время вышло", "", 1500); return; }
   if (!near(S.n)) return;
   S.n++; sfx.ring(); paint(S.n);
@@ -2098,7 +2124,7 @@ function missionTick() {
     }
   }
   if (Math.abs(car.z - ZA) > 18) free.ab = null;
-  else if (!free.ab && car.x > -200 && car.x < -185 && car.v > 5) { free.ab = { t0: time }; queueToast("Заезд: время пошло! Финиш — знак через 1200 м", "", 1800); }
+  else if (!free.ab && car.x > -200 && car.x < -185 && car.v > 5) { free.ab = { t0: time }; queueToast("Заезд: время пошло", "", 1500); }
   else if (free.ab && car.x >= 1000) {
     const t = time - free.ab.t0; free.ab = null;
     if (t <= 30) completeMission("autobahn", ` (${t.toFixed(1)} с)`); else queueToast(`Автобан за ${t.toFixed(1)} с — нужно быстрее 30 с`, "bad", 2500);
@@ -2142,19 +2168,21 @@ function hitSolid(x, z, y) {
   return null;
 }
 
+function applyLook() {                         // в PRO — баклажан с широким обвесом, иначе — как выбрано в «⋯»
+  const pro = mode === "free" && free.pro;
+  setPaint(pro ? -1 : save.paint || 0); setTune(pro ? "pro" : save.tune || 0);
+}
 function startFree(toast = true, pro = false) {
   mode = "free"; stopReplay(); hideLesson();
   $("ov-menu").hidden = $("ov-res").hidden = true;
   L = FREE; buildLevel(); freshCar();
   car.x = SPAWN.x; car.z = SPAWN.z; car.yaw = SPAWN.yaw;
-  if (/^#(side|rear|front)$/.test(location.hash)) { car.x = -400; car.z = 180; }   // чертёжные виды — на пустом месте
+  if (/^#(side|rear|front|corner)(-pro)?$/.test(location.hash)) { car.x = -400; car.z = 180; if (/-pro$/.test(location.hash)) pro = true; }   // чертёжные виды — на пустом месте
   Object.assign(free, { air: false, airT: 0, cork: false, ringBonus: 0, safe: { ...SPAWN }, safeT: 0, gh: 0, hopLock: false, wall: null, aero: null, tube: null, lap: null, pro, proA: null });
-  proGroup.visible = pro;
+  proGroup.visible = pro; applyLook();
   assistOn = save.assist;
   phase = "free";
-  if (joyMode()) joyHintUntil = performance.now() + 6000;
-  if (toast) showToast(pro ? "PRO ∞: баллоны не кончаются. ПРЫГ — взлёт и вверх, газ — вперёд, руль — поворот. Фиолетовые — баклажановые разгоны"
-    : "Трюк-парк — справа, Ростов — слева. «⋯» — карта и режимы", "", 5000);
+  if (toast) showToast(pro ? "PRO ∞ · Бесконечный Безлимит" : "Свободная езда", "", 1800);
 }
 /* ---------- присоски: езда по стене Ростов Арены ---------- */
 // С разгона (больше 10 м/с) въезжаете в стену — турбины переходят на всасывание, машина едет по фасаду.
@@ -2166,7 +2194,7 @@ function wallAttach() {
   free.wall = { s: nr.s, y: Math.max(1.2, Math.min(A.H - 2, car.y + WHEEL)), v: Math.max(12, Math.abs(car.v) * Math.max(.75, Math.abs(along))), dir: along >= 0 ? 1 : -1,
     th: free.air ? Math.max(-.5, Math.min(.5, Math.atan2(car.vy || 0, Math.abs(car.v) + 1))) : .3, dist: 0, paid: 0, p };
   free.air = false; car.vy = 0; car.roll = 0; car.om = 0; car.pitch = 0; car.vl = 0; car.bodyRoll = car.bodyPitch = 0;
-  sfx.burst(); queueToast("Присоски! Влево — вверх, вправо — вниз, ПРЫГ — оттолкнуться", "good", 2600);
+  sfx.burst(); queueToast("Присоски!", "good", 1400);
 }
 function stepWall(dt) {
   const w = free.wall, A = ARENA, th = thr(), bk = brk(), st = turn();
@@ -2223,7 +2251,7 @@ function stepProAir(dt) {
   const sol = hitSolid(nx, nz, car.y);
   if (sol && sol.arena && car.y < ARENA.H - 2 && Math.abs(car.v) > 4) { free.proA = null; return wallAttach(); }
   if (sol || nx < WORLD.x0 || nx > WORLD.x1 || nz < WORLD.z0 || nz > WORLD.z1) {
-    car.v = -car.v * .3; if (!free.bumpCd) { showToast("Бум! Выше — ПРЫГ", "bad", 1000); sfx.thump(.4); free.bumpCd = 1; }
+    car.v = -car.v * .3; if (!free.bumpCd) { showToast("Бум!", "bad", 900); sfx.thump(.4); free.bumpCd = 1; }
   } else { car.x = nx; car.z = nz; }
   free.bumpCd = Math.max(0, (free.bumpCd || 0) - dt);
   car.roll += (st * 28 - car.roll) * Math.min(1, dt * 4);
@@ -2248,7 +2276,7 @@ function stepProAir(dt) {
 function aeroStart(fromTube) {
   free.aero = { alt: Math.max(car.y + 6, 12), vf: fromTube ? Math.min(24, Math.abs(car.v)) : 0, t: 0 };
   free.air = false; car.vy = fromTube ? 4 : 7; car.om = 0; car.roll = 0; car.vl = 0; car.bodyRoll = car.bodyPitch = 0;
-  sfx.burst(); queueToast("Аэротруба! Газ — вперёд, руль — поворот, ПРЫГ — вверх. Выход — опуститься в стороне от «888»", "good", 3600);
+  sfx.burst(); queueToast("Аэротруба «888»", "good", 1500);
 }
 function stepAero(dt) {
   const a = free.aero, A = ARENA, th = thr(), bk = brk(), st = turn();
@@ -2290,7 +2318,7 @@ function tubeStart(path, lift) {
   free.tube = { path, s: s0, v: Math.max(path.flow ? 30 : 14, Math.abs(car.v)), th: 0, spin: 0, laps: 0, dist: 0, f: new T.Vector3(1, 0, 0), n: new T.Vector3(0, 1, 0),
     lift: lift ? { t: 0, x: car.x, y: car.y, z: car.z } : null };
   free.air = false; car.vy = 0; car.roll = 0; car.om = 0; car.vl = 0; car.bodyRoll = car.bodyPitch = 0;
-  sfx.burst(); queueToast(path.flow ? "Баклажановый поток! Газ — турбо, руль — по стенке, ПРЫГ — выйти в аэрополёт" : "Горка-труба! Руль — по стенке, газ — быстрее", "good", 3000);
+  sfx.burst(); queueToast(path.flow ? "Баклажановый поток 🍆" : "Горка-труба", "good", 1500);
 }
 function stepTube(dt) {
   const t = free.tube, P = t.path, th = thr(), bk = brk(), st = turn();
@@ -2504,7 +2532,7 @@ function stepFree(dt) {
     }
     if (free.stuckT >= 3 && time - (free.stuckHintAt ?? -99) > 20) {   // не чаще раза в 20 секунд
       free.stuckHintAt = time; free.stuckT = 0;
-      showToast("Застряли? Нажмите «⋯» → «Куда ехать», машина перенесётся", "", 3500);
+      showToast("Застряли? «⋯» → «Куда ехать»", "", 2500);
     }
     free.safeT += dt;
     if (free.safeT > 1 && car.y < .05 && Math.abs(car.v) > 1 && !hitSolid(car.x, car.z, 0)) { free.safe = { x: car.x, z: car.z, yaw: car.yaw }; free.safeT = 0; }
@@ -2631,7 +2659,7 @@ function openMenu() { closeDock(); renderMenu(); $("ov-menu").hidden = false; }
 $("menu-close").onclick = () => { $("ov-menu").hidden = true; };
 function hideLesson() { $("lesson").hidden = true; $("ov-brief").hidden = true; clearInterval(briefTimer); }
 function start(i) {
-  mode = "level"; hideLesson(); stopReplay(); reset(i); $("ov-menu").hidden = true; $("ov-res").hidden = true;
+  mode = "level"; hideLesson(); stopReplay(); applyLook(); reset(i); $("ov-menu").hidden = true; $("ov-res").hidden = true;
   showToast(`Уровень ${i + 1}: ${LEVELS[i].name}. ${LEVELS[i].desc}`, "", 3000);
 }
 $("r-again").onclick = () => mode === "train" ? startTraining(DRILLS.length - 1) : start(L.i);
@@ -2643,7 +2671,7 @@ $("rp-skip").onclick = () => endReplay();
 /* ---------- уроки ---------- */
 let lessonOpenUntil = 0;
 function startTraining(i) {
-  mode = "train"; di = i; stopReplay();
+  mode = "train"; di = i; stopReplay(); applyLook();
   $("ov-menu").hidden = true; $("ov-res").hidden = true;
   L = { name: "Полигон", cars: 0, i: -1 }; buildLevel(); freshCar();
   assistOn = save.assist;
@@ -2802,7 +2830,10 @@ $("dock-panel").addEventListener("scroll", () => { dockCloseAt = performance.now
 stage.addEventListener("pointerdown", e => { if (!e.target.closest(".dock")) closeDock(); });
 function syncDock() {
   $("m-cam").textContent = `Камера: ${CAMS[camMode]}`;
-  $("m-tilt").textContent = `Наклон телефона: ${tilt.on ? "вкл" : "выкл"}`;
+  $("m-tilt").textContent = !tilt.on ? "Наклон телефона: выкл" : !tilt.seen ? "Наклон: вкл · датчик молчит" :
+    `Наклон: вкл · руль ${tilt.x >= 0 ? "+" : ""}${tilt.x.toFixed(1)} · газ ${tilt.y >= 0 ? "+" : ""}${tilt.y.toFixed(1)}`;
+  const cur = mode === "free" ? (free.pro ? "pro" : "free") : mode === "train" ? "train" : "";
+  document.querySelectorAll("#m-mode button[data-m]").forEach(b => b.classList.toggle("on", b.dataset.m === cur));
   $("m-assist").textContent = `Ассистент переворота: ${save.assist ? "вкл" : "выкл"}`;
   $("m-q").textContent = `Качество: ${QUALS[save.quality || "auto"][0]} · ${Math.round(perf.fps)} к/с · ${Math.round(drawStat.tris / 1000)} тыс. △ · ${drawStat.calls} выз.`;
   $("m-snd").textContent = `Звук: ${save.sound === false ? "выкл" : "вкл"}`;
@@ -2819,6 +2850,10 @@ function syncDock() {
     : mode === "train" ? `Полигон · урок ${di + 1}` : `Уровень ${L.i + 1}: ${L.name}`;
 }
 $("m-modes").onclick = openMenu;
+$("m-mode").addEventListener("click", e => {          // быстрый выбор режима
+  const m = e.target.closest("button[data-m]")?.dataset.m; if (!m) return;
+  closeDock(); m === "pro" ? startFree(true, true) : m === "free" ? startFree() : startTraining(0);
+});
 $("m-tune").onclick = () => { save.tune = ((save.tune || 0) + 1) % TUNES.length; persist(); setTune(save.tune); syncDock(); };
 $("m-replay").onclick = startFreeReplay;
 $("b-replay").onclick = () => { replayBtnUntil = 0; startFreeReplay(); };
@@ -2826,23 +2861,35 @@ const CAMS = { chase: "сзади", far: "дальняя", cockpit: "из каб
 function nextCam() { const k = Object.keys(CAMS); camMode = k[(k.indexOf(camMode) + 1) % k.length]; save.cam = camMode; persist(); syncDock(); showToast(`Вид: ${CAMS[camMode]}`, "", 1000); }
 $("m-cam").onclick = nextCam; $("cam-btn").onclick = nextCam;
 // наклон телефона: влево / вправо — руль, от себя — газ (в полёте — вперёд), на себя — тормоз. Положение при включении — ноль.
-const tilt = { on: false, x: 0, y: 0, y0: null, seen: 0 };
+const tilt = { on: false, x: 0, y: 0, y0: null, seen: 0, src: "", tOri: 0 };
+const dzt = (v, d) => Math.abs(v) < d ? 0 : Math.max(-1, Math.min(1, (v - Math.sign(v) * d) / (1 - d)));
+const scrAngle = () => { const a = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0; return ((a % 360) + 360) % 360; };
+function tiltSet(x, y, src) {                       // x — наклон вбок (вправо +, ~1 при 24°), y — от себя / на себя
+  if (tilt.y0 == null || tilt.src !== src) tilt.y0 = y;
+  tilt.src = src; tilt.x = dzt(x, .08); tilt.y = dzt(tilt.y0 - y, .12); tilt.seen++;
+}
+// основной источник — ориентация (углы), запасной — акселерометр с гравитацией: он есть почти на всех Android
 addEventListener("deviceorientation", e => {
   if (!tilt.on || e.beta == null || e.gamma == null) return;
-  const ang = (screen.orientation && screen.orientation.angle) ?? window.orientation ?? 0;
-  const a = ((ang % 360) + 360) % 360, x = a === 90 ? e.beta : a === 270 ? -e.beta : e.gamma, y = a === 90 ? -e.gamma : a === 270 ? e.gamma : e.beta;
-  if (tilt.y0 == null) tilt.y0 = y;
-  const dzt = (v, d) => Math.abs(v) < d ? 0 : Math.max(-1, Math.min(1, (v - Math.sign(v) * d) / (1 - d)));
-  tilt.x = dzt(x / 24, .08); tilt.y = dzt((tilt.y0 - y) / 18, .12); tilt.seen++;
+  const a = scrAngle(), x = a === 90 ? e.beta : a === 270 ? -e.beta : e.gamma, y = a === 90 ? -e.gamma : a === 270 ? e.gamma : e.beta;
+  tilt.tOri = performance.now(); tiltSet(x / 24, y / 18, "ori");
+});
+addEventListener("devicemotion", e => {
+  const g = e.accelerationIncludingGravity;
+  if (!tilt.on || !g || g.x == null || performance.now() - tilt.tOri < 600) return;
+  const k = /iPhone|iPad|iPod/.test(navigator.userAgent) ? -1 : 1, gx = k * g.x / 9.8, gy = k * g.y / 9.8, a = scrAngle();
+  const x = a === 90 ? gy : a === 270 ? -gy : -gx, y = a === 90 ? gx : a === 270 ? -gx : gy;      // вправо вниз — руль вправо
+  tiltSet(x / .4, y / .3, "acc");
 });
 async function setTilt(on) {
   if (on && typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
     try { if (await DeviceOrientationEvent.requestPermission() !== "granted") on = false; } catch (e) { on = false; }
+    try { if (typeof DeviceMotionEvent !== "undefined" && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); } catch (e) {}
   }
-  Object.assign(tilt, { on, x: 0, y: 0, y0: null, seen: 0 }); save.tilt = on; persist(); syncDock();
+  Object.assign(tilt, { on, x: 0, y: 0, y0: null, seen: 0, src: "" }); save.tilt = on; persist(); syncDock();
   if (!on) return;
-  showToast("Наклон: держите телефон удобно — это ноль. Влево / вправо — руль, от себя — газ, на себя — тормоз", "", 3500);
-  setTimeout(() => { if (tilt.on && !tilt.seen) { tilt.on = false; save.tilt = false; persist(); syncDock(); showToast("Датчик наклона не отвечает на этом устройстве", "bad", 2500); } }, 2000);
+  showToast("Наклон включён", "", 1200);
+  setTimeout(() => { if (tilt.on && !tilt.seen) showToast("Датчик наклона молчит — откройте игру в браузере Chrome", "bad", 3000); }, 2500);
 }
 $("m-tilt").onclick = () => setTilt(!tilt.on);
 $("m-assist").onclick = () => { save.assist = !save.assist; persist(); assistOn = save.assist && !(L && L.noAssist); syncDock(); };
@@ -3153,7 +3200,7 @@ function ui() {
   $("b-brake").hidden = jm || mode !== "free";
   $("b-hop").hidden = mode !== "free";
   $("b-hop").classList.toggle("hop-big", jm);
-  $("joy-hint").hidden = !jm || now > joyHintUntil || !$("dock-panel").hidden || !$("ov-menu").hidden || !$("ov-brief").hidden || !$("ov-res").hidden;
+  $("joy-hint").hidden = mode === "free" || !jm || now > joyHintUntil || !$("dock-panel").hidden || !$("ov-menu").hidden || !$("ov-brief").hidden || !$("ov-res").hidden;
   $("l-sub").textContent = $("r-sub").textContent = freeGround ? "руль" : "крутить";
   $("thrust-sub").textContent = (mode === "free" ? !free.air : phase === "run" || (phase === "brief" && briefPhase === "run")) ? "разгон" : "подушка";
   $("h-air").classList.toggle("off", !inAir);
@@ -3175,7 +3222,7 @@ function ui() {
     const d = DRILLS[di];
     if (phase !== "brief" && phase !== "lesson-done" && $("ov-res").hidden) c = { t: "", k: di === DRILLS.length - 1 ? (coachHint() || {}).k : (d.hint ? d.hint.call(d) : null) };
   } else if (mode === "level" && L.coach && $("ov-res").hidden && $("ov-menu").hidden && !replay) c = coachHint();
-  else if (mode === "free" && free.air && car.y - free.gh < 6 && -car.vy > CLEAN_V - 2) c = { t: "Земля близко — держите ГАЗ", k: "thrust" };
+  // в свободной езде подсказок на экране нет — всё в «⋯» → «Как играть»
   const JOYTXT = ctrl() === "wheel" ? { thrust: "Правая половина — газ", rl: "Руль влево", rr: "Руль вправо" } : { thrust: "Джойстик вверх — газ", rl: "Джойстик влево", rr: "Джойстик вправо" };
   const hk = c ? c.k : null;
   let ct = c ? c.t : "";
@@ -3186,6 +3233,7 @@ function ui() {
   if (ct !== lastCoach) { lastCoach = ct; coachSince = now; $("coach").textContent = ct; }
   $("coach").hidden = !ct || now - coachSince > 3000;
   if (now > toastUntil && toastQ.length) showToast(...toastQ.shift());
+  $("toast").classList.toggle("moving", mode === "free" && (Math.abs(car.v) > 3 || free.air || !!free.aero || !!free.tube || !!free.wall));
   if (!$("toast").hidden && now > toastUntil) $("toast").hidden = true;
   $("b-replay").hidden = !(mode === "free" && !replay && now < replayBtnUntil && free.bestRec);
   if (!$("dock-panel").hidden) { if (now > dockCloseAt) closeDock(); else { drawMap(); syncDock(); } }
@@ -3222,10 +3270,10 @@ function render(dt) {
     const okX = mode === "free" ? !hitSolid(lx, lz, .5) : lx > row[row.length - 1].x1 + HALF;
     marker.position.set(lx, groundAt(lx, lz).h + .18, lz); marker.material.color.setHex(okX ? 0x6fdc8c : 0xff6b5e);
   }
-  const dbg = location.hash === "#side" ? [0, 0, 1] : location.hash === "#rear" ? [-1, 0, 0] : location.hash === "#front" ? [1, 0, 0] : null;
+  const dh = location.hash.replace("-pro", ""), dbg = dh === "#side" ? [0, 0, 1] : dh === "#rear" ? [-1, 0, 0] : dh === "#front" ? [1, 0, 0] : dh === "#corner" ? [-.7, .25, .7] : null;
   if (dbg) {   // чертёжные виды для сверки с чертежом
     carObj.visible = true;
-    camera.position.set(car.x + dbg[0] * 80, car.y + .05, car.z + dbg[2] * 80); camera.up.set(0, 1, 0);
+    camera.position.set(car.x + dbg[0] * 80, car.y + .05 + dbg[1] * 80, car.z + dbg[2] * 80); camera.up.set(0, 1, 0);
     camera.lookAt(car.x, car.y + .05, car.z); camera.fov = 3.4;
   } else if (performance.now() < garageUntil) {
     carObj.visible = true;

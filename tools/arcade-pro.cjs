@@ -40,8 +40,19 @@ const path = require("path");
   await p.keyboard.up("ArrowUp"); await p.keyboard.down("ArrowDown"); await run(4000); await p.keyboard.up("ArrowDown"); await run(6000);
   const w2 = (await ev(() => __t.arena())).wall; out.wall = { attached: !!w, stillOn: !!w2, v: w2 && +w2.v.toFixed(1), gas: (await ps()).gas };
   await p.screenshot({ path: path.join(process.env.SHOTS || ".", "pro-wall.png") });
+  // быстрые кнопки режимов в «⋯» и запасной датчик наклона (акселерометр), баклажановая машина в PRO
+  await p.click("#dock-btn"); await run(200); await p.click('#m-mode button[data-m="free"]'); await run(300);
+  out.quick = { free: !(await ps()).pro };
+  await p.click("#dock-btn"); await run(200); await p.click('#m-mode button[data-m="pro"]'); await run(300);
+  out.quick.pro = (await ps()).pro;
+  await p.click("#dock-btn"); await run(200); await p.click("#m-tilt"); await run(200);
+  const motion = (x, y, z) => ev(([x, y, z]) => dispatchEvent(new DeviceMotionEvent("devicemotion", { accelerationIncludingGravity: { x, y, z } })), [x, y, z]);
+  await motion(0, 7.5, 6.3); await motion(-4, 5.5, 6.3); const c1 = await ev(() => __t.ctl());
+  out.acc = { src: c1.tilt.src, turn: +c1.turn.toFixed(2), thr: +c1.thr.toFixed(2) };
+  await p.click("#m-tilt"); await p.click("#dock-btn");
   const ok = !errs.length && out.boosts.pads >= 10 && out.boosts.roofPads >= 5 && out.boosts.rings >= 10 && out.menu.pro && out.hud.startsWith("PRO") &&
-    out.fly.flying && out.fly.y > 30 && out.fly.gas === 100 && out.land.landed && out.land.driftVl > 2 && out.boost.vmax > 45 && out.wall.attached && out.wall.stillOn;
+    out.fly.flying && out.fly.y > 30 && out.fly.gas === 100 && out.land.landed && out.land.driftVl > 2 && out.boost.vmax > 45 && out.wall.attached && out.wall.stillOn &&
+    out.quick.free && out.quick.pro && out.acc.src === "acc" && out.acc.turn > .3 && out.acc.thr > .3;
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 2));
   await b.close(); process.exit(ok ? 0 : 1);
 })();
