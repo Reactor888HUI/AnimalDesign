@@ -36,8 +36,10 @@ const path = require("path");
   await p2.goto("file://" + path.resolve(__dirname, "../arcade/index.html") + "#test");
   await p2.clock.runFor(1200);
   await p2.evaluate(() => { __t.fast(true); __t.teleport(700, -1050, Math.PI / 2); });
-  await p2.keyboard.down("ArrowUp"); await p2.clock.runFor(5000); await p2.keyboard.up("ArrowUp");   // задание «мост» → очки → запись
+  await p.close();
+  await p2.keyboard.down("ArrowUp"); await p2.clock.runFor(8000); await p2.keyboard.up("ArrowUp");   // задание «мост» → очки → запись
   await p2.clock.runFor(5000);
+  out.boardMissions = await p2.evaluate(() => __t.missions()); out.boardCar = await p2.evaluate(() => __t.car());
   out.boardWrites = await p2.evaluate(() => window.__writes.map(w => ({ path: w.path, best: w.data.best })));
   await p2.click("#dock-btn"); await p2.clock.runFor(300);
   out.boardText = await p2.$eval("#m-board", e => e.innerText.replace(/\s+/g, " "));

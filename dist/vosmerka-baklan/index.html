@@ -540,7 +540,7 @@ renderer.domElement.className = "gl";
 stage.insertBefore(renderer.domElement, stage.firstChild);
 $("loading").remove();
 const scene = new T.Scene();
-const camera = new T.PerspectiveCamera(60, 1, 0.3, 1400);
+const camera = new T.PerspectiveCamera(60, 1, 0.5, 1400);
 (() => {
   const c = document.createElement("canvas"); c.width = 2; c.height = 256;
   const g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 0, 256);
@@ -960,8 +960,9 @@ function placeName(x, z) {
   const s = new T.Mesh(new T.PlaneGeometry(18, 4.5), new T.MeshBasicMaterial({ map: textTex(["РОСТОВ-НА-ДОНУ", "Богатяновка"], 512, 128, "#1f4f7a", "#ffffff"), side: DS }));
   s.position.set(240, 9, -84); scene.add(s);
   const sp = new T.Mesh(new T.BoxGeometry(.4, 9, .4), mat(0x6b6f7c)); sp.position.set(240, 4.5, -84.2); scene.add(sp);
-  const bs = new T.Mesh(new T.PlaneGeometry(12, 3), new T.MeshBasicMaterial({ map: textTex(["Понтонный мост"], 512, 128, "#2b2438", "#ffb347"), side: DS }));
+  const bs = new T.Mesh(new T.PlaneGeometry(12, 3), new T.MeshBasicMaterial({ map: textTex(["Понтонный мост"], 512, 128, "#2b2438", "#ffb347") }));
   bs.position.set(BRIDGE.x, 6, BRIDGE.z0 + 6); scene.add(bs);
+  const bs2 = bs.clone(); bs2.rotation.y = Math.PI; bs2.position.set(BRIDGE.x, 6, BRIDGE.z1 - 6); scene.add(bs2);   // и с левого берега
 })();
 
 /* ---------- трюк-парк и трамплины ---------- */
@@ -1668,7 +1669,7 @@ function sink(w) {                           // заехали или упали
   const name = ZONES.find(z => inPoly(car.x, car.z, z.ring) && /Дон|канал|Акватор/.test(z.name))?.name || "Дон";
   for (let i = 0; i < 20; i++) puff(new T.Vector3(car.x, .3, car.z), new T.Vector3((Math.random() - .5) * 8, 5 + Math.random() * 4, (Math.random() - .5) * 8), 1, .4);
   sfx.thump(1); sfx.whoosh();
-  phase = "fcrash"; tPhase = 0; free.air = false; car.v = 0; car.vy = 0; car.floor = -1.2; car.spin = 0;
+  phase = "fcrash"; tPhase = 0; free.air = false; car.v = 0; car.vy = 0; car.floor = -.35; car.spin = 0;
   showToast(`Искупались: ${name}. Возвращаем на берег`, "bad", 2600);
 }
 function freeCrash(reason) {
@@ -2471,8 +2472,8 @@ function render(dt) {
     let want, tight = false;
     if (mode === "free") {
       const rev = !air && car.v < -1;                                   // задний ход: камера выше и ближе, видно, куда едем
-      const back = air ? 12 : rev ? 7 : 9 + Math.abs(car.v) * .05;
-      want = new T.Vector3(car.x - fx * back, car.y + (air ? 5 : rev ? 5.2 : 3.2), car.z - fz * back);
+      const back = air ? 10 : rev ? 6.5 : 7.2 + Math.abs(car.v) * .045;          // ближе — машина на экране крупнее
+      want = new T.Vector3(car.x - fx * back, car.y + (air ? 4.3 : rev ? 4.8 : 2.7), car.z - fz * back);
       // не залезать в дома: ищем первое здание на отрезке «машина → камера», ставим камеру перед ним
       // и смотрим подальше вперёд — если дом прямо за машиной, получается вид поверх капота
       const from = new T.Vector3(car.x, car.y + 1.2, car.z);
@@ -2494,6 +2495,25 @@ function render(dt) {
   }
   camera.updateProjectionMatrix();
   renderer.render(scene, camera);
+}
+// Плоские слои у земли (асфальт, газоны, вода, разметка, «зебры») лежат в миллиметрах друг над другом.
+// На телефонах точности буфера глубины не хватает, и вдали они мерцают («рябит асфальт»).
+// Поэтому такие слои рисуются первыми, строго снизу вверх и без записи глубины — порядок решает, кто сверху.
+function layerGround() {
+  const flatOnes = [], box = new T.Box3(), m4 = new T.Matrix4();
+  scene.updateMatrixWorld(true);
+  scene.children.forEach(o => {
+    if (!o.isMesh || o.material.transparent) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.copy(o.geometry.boundingBox);
+    if (o.isInstancedMesh) { if (!o.count) return; o.getMatrixAt(0, m4); box.applyMatrix4(m4); }
+    box.applyMatrix4(o.matrixWorld);
+    if (box.max.y - box.min.y < .06 && box.max.y < .25 && box.min.y > -.05) flatOnes.push([box.max.y, o]);
+  });
+  flatOnes.sort((a, b) => a[0] - b[0]).forEach(([, o], i) => {
+    o.material = o.material.clone(); o.material.depthWrite = false; o.material.polygonOffset = false; o.renderOrder = -1000 + i;
+  });
+  return flatOnes.length;
 }
 function resize() {
   const w = stage.clientWidth, h = stage.clientHeight;
@@ -2546,6 +2566,7 @@ resize();
 if ((save.quality || "auto") !== "auto") setQuality(QUALS[save.quality][1]);
 setPaint(save.paint || 0);
 setTune(save.tune || 0);
+layerGround();
 startFree();
 if (location.hash === "#test") window.__t = {   // крючок для автотестов
   info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, fps: perf.fps, pr: renderer.getPixelRatio() }),
@@ -2557,6 +2578,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   cam: () => { const c = camera.position; return { x: c.x, y: c.y, z: c.z, inside: solidsNear(c.x, c.z).some(b => b.h > c.y && inBox(b, c.x, c.z, 0)) }; },
   houses: () => solids.filter(b => b.h > 8).map(b => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, h: b.h })),
   roads: () => ROADS.filter(r => r.c <= 3).map(r => r.pts),
+  layers: () => scene.children.filter(o => o.renderOrder < -900).length,
   street: () => ({ ...STREET }),
   tune: n => { save.tune = n; setTune(n); },
   signals: () => ["A", "B"].map(g => SIGNALS[g].map(m => m.color.getHexString())),

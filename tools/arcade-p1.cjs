@@ -17,6 +17,7 @@ const SHOTS = process.env.SHOTS || ".";
 
   // 1. занос: разгон по автобану, потом руль + тормоз
   await ev(() => { localStorage.clear(); });
+  await ev(() => __t.fast(true));                 // физика заноса — без отставания из-за медленного программного рендера
   await p.keyboard.down("ArrowUp"); await p.clock.runFor(4500);
   out.speedBefore = (await ev(() => __t.car())).v;
   await p.keyboard.down("ArrowLeft"); await p.keyboard.down("ArrowDown"); await p.clock.runFor(400);
@@ -28,6 +29,7 @@ const SHOTS = process.env.SHOTS || ".";
   await p.clock.runFor(2500);
   out.driftAfter = await ev(() => __t.drift());
   out.sound = await ev(() => __t.sound());
+  await ev(() => __t.fast(false));
 
   // 2. при разгоне нос приподнимается (при торможении — клюёт, см. drift.bodyPitch)
   await ev(() => __t.teleport(-60, -46.25, 0));
