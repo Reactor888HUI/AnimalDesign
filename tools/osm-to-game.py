@@ -1,4 +1,4 @@
-"""Выгрузка OpenStreetMap (.osm) → данные карты для «Восьмёрки Баклан».
+"""Выгрузка OpenStreetMap (.osm) → данные карты для «Восьмёрки Баклажан».
 
 Запуск: python3 -I tools/osm-to-game.py arcade/refs/rostov-center.osm arcade/index.html
 Пишет JSON между маркерами /*OSM-DATA*/ … /*/OSM-DATA*/ в index.html.

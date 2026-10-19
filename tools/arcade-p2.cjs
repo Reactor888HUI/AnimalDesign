@@ -42,7 +42,7 @@ const SHOTS = process.env.SHOTS || ".";
   for (const [x, y, z] of [[349, 6.4, 0], [397, 12.4, 30], [527, 21.4, -15]]) { await ev(([x, y, z]) => { __t.teleport(x, z, 0); __t.setCar({ y, vy: 0, v: 14, air: true }); }, [x, y, z]); await run(2500); }
   out.rings3 = !!(await M()).rings3;
   // две бочки: посадка ровно с накрученными 720°
-  await ev(() => { __t.teleport(-300, 150, 0); __t.setCar({ y: 6, vy: 0, v: 5, air: true }); __t.spin(720); }); await run(1500);
+  await ev(() => { __t.teleport(-300, 150, 0); __t.setCar({ y: 6, vy: 0, v: 5, air: true }); __t.spin(720); }); await run(3000);
   out.barrel2 = !!(await M()).barrel2;
   // «Восьмёрка»: едем по точкам двух петель
   await ev(() => __t.teleport(1010, 172, -Math.PI / 2));
