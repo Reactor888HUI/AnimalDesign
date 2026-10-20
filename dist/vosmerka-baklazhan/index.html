@@ -120,6 +120,11 @@ h1 span { color: var(--amber); }
 .dock-panel .stat { font: 12px var(--f-mono); color: var(--dim); }
 
 /* тосты и подсказки */
+/* линии скорости по краям экрана: CSS поверх 3D, видеокарте почти бесплатно; яркость задаёт ui() по скорости */
+.speedfx { position: absolute; inset: -10%; pointer-events: none; opacity: 0; z-index: 1;
+  background: repeating-conic-gradient(from 3deg at 50% 46%, rgba(255,255,255,.0) 0deg 4deg, rgba(255,255,255,.5) 4.4deg, rgba(255,255,255,0) 5deg 9deg);
+  -webkit-mask: radial-gradient(ellipse 60% 55% at 50% 46%, transparent 55%, #000 100%); mask: radial-gradient(ellipse 60% 55% at 50% 46%, transparent 55%, #000 100%); }
+.speedfx.pro { background: repeating-conic-gradient(from 3deg at 50% 46%, rgba(200,120,255,0) 0deg 4deg, rgba(210,130,255,.6) 4.4deg, rgba(200,120,255,0) 5deg 9deg); }
 .toast {   /* короткая полупрозрачная строка вверху; в движении — ещё прозрачнее */
   position: absolute; z-index: 3; top: 48px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 110px);
   padding: 3px 12px; border-radius: 10px; background: rgba(13,18,32,.38); border: 0;
@@ -296,6 +301,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
 
   <div class="stage" id="stage">
     <div class="loading" id="loading">Загружаю город…</div>
+    <div class="speedfx" id="speedfx"></div>
 
     <div class="hud tl"><span class="sp" id="h-speed">0</span><span class="u">км/ч</span><span class="alt" id="h-alt"></span><i class="mgas"><b id="h-gas"></b></i></div>
     <div class="hud top" id="h-top"></div>
@@ -2299,8 +2305,10 @@ function makeVaz2108() {
     fl.rotation.x = Math.PI / 2; fl.position.set(x, YW, Math.sign(z) * .86); pro.add(fl);
   });
   [-1, 1].forEach(sd => { const sk = new T.Mesh(new T.BoxGeometry(XF - XR - (RF + RR) * 1.15, .14, .1), paint); sk.position.set((XF + XR) / 2 + (RR - RF) * .5, H(215), sd * .86); pro.add(sk); });
-  const sp = new T.Mesh(new T.BoxGeometry(.32, .04, 1.3), paint); sp.position.set(X(3150), H(1420), 0); sp.rotation.z = .12; pro.add(sp);
-  [-1, 1].forEach(sd => { const st = new T.Mesh(new T.BoxGeometry(.08, .07, .04), black); st.position.set(X(3150), H(1390), sd * .5); pro.add(st); });
+  // спойлер на кромке крыши: крыло в цвет кузова с приподнятой задней кромкой и чёрными торцевыми пластинами
+  const sp = new T.Mesh(new T.BoxGeometry(.3, .028, 1.16), paint); sp.position.set(X(3120), H(1430), 0); sp.rotation.z = -.14; pro.add(sp);
+  const lip = new T.Mesh(new T.BoxGeometry(.03, .05, 1.16), black); lip.position.set(X(3120) - .15, H(1430) + .035, 0); pro.add(lip);
+  [-1, 1].forEach(sd => { const st = new T.Mesh(new T.BoxGeometry(.36, .1, .022), black); st.position.set(X(3120), H(1410), sd * .59); pro.add(st); });
   const gc = document.createElement("canvas"); gc.width = gc.height = 64; const gg = gc.getContext("2d"), rg = gg.createRadialGradient(32, 32, 4, 32, 32, 32);
   rg.addColorStop(0, "rgba(176,64,255,.85)"); rg.addColorStop(.6, "rgba(150,40,240,.45)"); rg.addColorStop(1, "rgba(150,40,240,0)"); gg.fillStyle = rg; gg.fillRect(0, 0, 64, 64);
   const glow = new T.Mesh(new T.PlaneGeometry(4.4, 2.4).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: new T.CanvasTexture(gc), transparent: true, depthWrite: false, toneMapped: false }));
@@ -2364,12 +2372,26 @@ marker.rotation.x = -Math.PI / 2; scene.add(marker);
 const traffic = [];
 const LANES = [[ZA + 3.35, 1], [ZA + 6.85, 1], [ZA + 10.35, 1], [ZA - 3.35, -1], [ZA - 6.85, -1], [ZA - 10.35, -1]];
 const TRAFFIC_N = 18;
-const trafficParts = [
-  [new T.BoxGeometry(4.4, .8, 1.8), mat(0xffffff, { roughness: .5 }), 0, .7, true],     // кузов, цвет по машине
-  [new T.BoxGeometry(2.2, .6, 1.6), mat(0x2a3348, { roughness: .3 }), -.22, 1.4],
-  [new T.BoxGeometry(.05, .2, 1.4), new T.MeshBasicMaterial({ color: 0xff3a3a }), -2.21, .8],
-  [new T.BoxGeometry(.05, .2, 1.4), new T.MeshBasicMaterial({ color: 0xfff1d0 }), 2.21, .8]
-].map(([geo, m, ox, oy, tint]) => { const im = new T.InstancedMesh(geo, m, TRAFFIC_N); im.userData = { ox, oy }; if (tint) im.userData.tint = true; scene.add(im); return im; });
+// машины потока: седан — кузов профилем (капот, лобовое, крыша, заднее стекло) в цвет машины + детали с цветами по вершинам
+// (стёкла, колёса, фары, фонари, бамперы); две сетки на весь поток — два вызова отрисовки
+const trafficParts = (() => {
+  const prof = (pts, w, bevel) => { const sh = new T.Shape(pts.map(([x, y]) => new T.Vector2(x, y))); const g = new T.ExtrudeGeometry(sh, { depth: w, bevelEnabled: bevel, bevelSize: .06, bevelThickness: .06, bevelSegments: 1 }); g.translate(0, 0, -w / 2); return g; };   // ExtrudeGeometry и так без индекса
+  const body = prof([[-2.2, .32], [2.2, .32], [2.27, .72], [1.25, .86], [.62, 1.36], [-1.0, 1.38], [-1.72, .95], [-2.26, .84]], 1.62, true);
+  body.deleteAttribute("uv");
+  const tint = (geo, hex) => { const g = geo.index ? geo.toNonIndexed() : geo, c = new T.Color(hex), a = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) { a[i] = c.r; a[i + 1] = c.g; a[i + 2] = c.b; } g.setAttribute("color", new T.BufferAttribute(a, 3)); if (g.attributes.uv) g.deleteAttribute("uv"); return g; };
+  const glass = prof([[1.29, .84], [.63, 1.42], [-1.03, 1.42], [-1.79, .93]], 1.7, false);
+  const parts = [tint(glass, 0x1f2838)];
+  [[1.33, .78], [1.33, -.78], [-1.38, .78], [-1.38, -.78]].forEach(([x, z]) => parts.push(tint(new T.CylinderGeometry(.33, .33, .24, 12).rotateX(Math.PI / 2).translate(x, .33, z), 0x15161a)));
+  const lights = [];                                                                                    // фары и фонари — без освещения, горят всегда (ночью видно)
+  [-1, 1].forEach(sd => {
+    lights.push(tint(new T.BoxGeometry(.06, .16, .42).translate(2.29, .64, sd * .55), 0xfff1d0));
+    lights.push(tint(new T.BoxGeometry(.06, .16, .4).translate(-2.3, .74, sd * .56), 0xd8262c));
+  });
+  parts.push(tint(new T.BoxGeometry(.18, .18, 1.66).translate(2.28, .38, 0), 0x2a2c31), tint(new T.BoxGeometry(.18, .18, 1.66).translate(-2.29, .4, 0), 0x2a2c31));   // бамперы
+  return [[body, mat(0xffffff, { roughness: .45, metalness: .2 }), true], [mergeGeos(parts), new T.MeshStandardMaterial({ vertexColors: true, roughness: .4, metalness: .1 }), false],
+    [mergeGeos(lights), new T.MeshBasicMaterial({ vertexColors: true, toneMapped: false }), false]]
+    .map(([geo, m, tinted]) => { geo.computeVertexNormals(); const im = new T.InstancedMesh(geo, m, TRAFFIC_N); im.userData = { ox: 0, oy: 0 }; if (tinted) im.userData.tint = true; scene.add(im); return im; });
+})();
 (() => {
   const lanes = LANES;
   const cols = [0x7f8fa8, 0xc9cfdb, 0x3a4a6a, 0x9aa1a8, 0x5d6b85, 0xe8ecf5, 0x6a2a35], c = new T.Color();
@@ -3819,8 +3841,17 @@ function coachHint() {
 }
 const btnFor = { thrust: $("b-thrust"), rl: $("b-left"), rr: $("b-right") };
 let lastHint = "", lastCoach = "", coachSince = 0, lastGasShown = -1;
+const speedFx = { el: null, o: 0, a: 0 };
+function speedLines() {          // от ~140 км/ч; в потоке и в катапульте — сильнее, в PRO и потоке — баклажановые
+  const el = speedFx.el || (speedFx.el = $("speedfx")); if (!el) return;
+  const v = mode !== "free" || replay ? 0 : free.tube ? free.tube.v : free.cat ? 60 : Math.hypot(car.v, free.air ? car.vy : 0);
+  const o = Math.max(0, Math.min(.75, (v - 38) / 40));
+  if (Math.abs(o - speedFx.o) > .02) { speedFx.o = o; el.style.opacity = o.toFixed(2); }
+  if (o > 0) { speedFx.a = (speedFx.a + 2.3) % 9; el.style.transform = `rotate(${speedFx.a.toFixed(1)}deg)`; }   // лучи «бегут»
+  el.classList.toggle("pro", !!(free.pro || free.tube));
+}
 function ui() {
-  const now = performance.now();
+  const now = performance.now(); speedLines();
   const inAir = phase === "air" || phase === "ramp" || phase === "drill" || phase === "fcork" || (mode === "free" && free.air);
   const speed = mode === "free" ? Math.abs(car.v) : phase === "run" || phase === "ramp" ? car.v : Math.hypot(car.vx, phase === "air" ? car.vy : 0);
   $("h-speed").textContent = Math.round(speed * 3.6);
