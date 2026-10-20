@@ -1,4 +1,4 @@
-// Шоу «Восьмёрка»: бот проезжает 3 круга по восьмёрке (очки за трассу растут, есть итог и рекорд), дрифт даёт свои очки,
+// Дрифт-трек 888 (шоу «Восьмёрка»): на треке — дрифтовый руль (вращение пальцем, больше оборота) и широкая резина; бот проезжает 3 круга по восьмёрке (очки за трассу растут, есть итог и рекорд), дрифт даёт свои очки,
 // срыв (закрутило) сжигает очки шоу. Запуск: PW=$(npm root -g)/playwright node tools/arcade-eight.cjs
 const { chromium } = require(process.env.PW || "playwright");
 const path = require("path");
@@ -33,6 +33,20 @@ const path = require("path");
     for (const k of keys) await p.keyboard.up(k);
     return { t: +t.toFixed(1), points: n, seenShow, maxMult };
   };
+  await ev(() => __t.teleport(1010, 150, -Math.PI / 2)); await run(300);
+  out.kit = await ev(() => __t.driftKit());
+  // дрифтовый руль: ведём «палец» по кругу вокруг руля по часовой — руль вправо больше чем на пол-оборота, машина рулит вправо
+  {
+    await ev(() => __t.fast(false));
+    const bx = await p.$eval("#dwheel", e => { const b = e.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2, b.width]; });
+    const R = bx[2] * .42, pt = a => [bx[0] + Math.cos(a) * R, bx[1] + Math.sin(a) * R];
+    await p.mouse.move(...pt(-Math.PI / 2)); await p.mouse.down();
+    for (let a = -Math.PI / 2; a <= Math.PI * 1.1; a += .25) { await p.mouse.move(...pt(a)); await run(20); }
+    out.wheelHeld = { ...(await ev(() => __t.driftKit())), turn: (await ev(() => __t.ctl())).turn };
+    await p.mouse.up(); await run(1500);
+    out.wheelBack = (await ev(() => __t.driftKit())).ang;
+    await ev(() => __t.fast(true));
+  }
   await ev(() => __t.teleport(1010, 150, -Math.PI / 2));
   out.drive = await drive(3, 17);
   await run(1500);
@@ -40,6 +54,7 @@ const path = require("path");
   out.best = await ev(() => __t.showBest());
   out.card = await p.$eval("#showcard", e => e.hidden ? "" : e.innerText.replace(/\s+/g, " "));
   out.top = await p.textContent("#h-top");
+  out.badge = (await ev(() => __t.driftKit())).badge;
   // дрифт и срыв: после финиша 6 с паузы, затем снова на старт, разгон до перекрёстка, занос и «закрутило»
   await run(7000);
   await ev(() => __t.teleport(1010, 150, -Math.PI / 2)); await ev(() => __t.setCar({ v: 15 })); await run(1500);
@@ -49,7 +64,7 @@ const path = require("path");
   await ev(() => __t.setCar({ v: 10, vl: 16 })); await run(300);
   out.spin = await ev(() => __t.show());
   await p.screenshot({ path: path.join(process.env.SHOTS || ".", "eight-spin.png") });
-  const ok = !errs.length && out.drive.seenShow && out.drive.maxMult >= 3 && out.best > 500 && /ШОУ/.test(out.card) &&
+  const ok = !errs.length && out.kit.on && out.kit.ui && out.kit.wheels.every(Boolean) && out.wheelHeld.ang > 200 && out.wheelHeld.turn > .5 && Math.abs(out.wheelBack) < 5 && out.badge && out.drive.seenShow && out.drive.maxMult >= 3 && out.best > 500 && /ТРЕК 888/.test(out.card) &&
     out.started && out.drift > 0 && out.spin && out.spin.spins === 1 && out.spin.clean === 0 && out.spin.drift === 0;
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 2));
   await b.close(); process.exit(ok ? 0 : 1);

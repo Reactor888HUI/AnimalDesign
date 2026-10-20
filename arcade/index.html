@@ -118,6 +118,10 @@ h1 span { color: var(--amber); }
   background: repeating-conic-gradient(from 3deg at 50% 46%, rgba(255,255,255,.0) 0deg 4deg, rgba(255,255,255,.5) 4.4deg, rgba(255,255,255,0) 5deg 9deg);
   -webkit-mask: radial-gradient(ellipse 60% 55% at 50% 46%, transparent 55%, #000 100%); mask: radial-gradient(ellipse 60% 55% at 50% 46%, transparent 55%, #000 100%); }
 .speedfx.pro { background: repeating-conic-gradient(from 3deg at 50% 46%, rgba(200,120,255,0) 0deg 4deg, rgba(210,130,255,.6) 4.4deg, rgba(200,120,255,0) 5deg 9deg); }
+/* дрифтовый руль на треке 888: глубокий «подонный» руль 350 мм, три спицы с отверстиями, метка «12 часов», кнопка 888 */
+.dwheel { position: absolute; left: 12px; bottom: 92px; width: 160px; height: 160px; z-index: 3; pointer-events: none; opacity: .92; filter: drop-shadow(0 6px 10px rgba(0,0,0,.45)); }
+.dwheel svg { width: 100%; height: 100%; display: block; }
+.dwheel .deg { position: absolute; left: 0; right: 0; bottom: -18px; text-align: center; font: 700 12px Golos Text, system-ui, sans-serif; color: #ffc93c; text-shadow: 0 1px 2px #000; }
 /* итог шоу «Восьмёрка»: яркая карточка по центру, сама исчезает; касаний не перехватывает */
 .showcard { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.9); z-index: 6; pointer-events: none; min-width: 250px; max-width: 86%;
   padding: 14px 20px 16px; border-radius: 18px; text-align: center; color: #fff; background: linear-gradient(160deg, rgba(70,24,110,.92), rgba(30,14,52,.92));
@@ -306,6 +310,18 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
     <div class="loading" id="loading">Загружаю город…</div>
     <div class="speedfx" id="speedfx"></div>
     <div class="showcard" id="showcard" hidden></div>
+    <div class="dwheel" id="dwheel" hidden><svg id="dwheel-svg" viewBox="-100 -100 200 200" aria-hidden="true">
+      <circle r="90" fill="none" stroke="#18181c" stroke-width="20"/>
+      <circle r="90" fill="none" stroke="#2c2c33" stroke-width="2" stroke-dasharray="3 5"/>
+      <circle r="79" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="5"/>
+      <g fill="#34343b" stroke="#1e1e23" stroke-width="2">
+        <path d="M-24,-8 L-80,-14 L-80,14 L-24,14 Z"/><path d="M24,-8 L80,-14 L80,14 L24,14 Z"/><path d="M-12,20 L-16,80 L16,80 L12,20 Z"/>
+      </g>
+      <g fill="#0d0d10"><circle cx="-62" cy="0" r="5.5"/><circle cx="-44" cy="1" r="5"/><circle cx="62" cy="0" r="5.5"/><circle cx="44" cy="1" r="5"/><circle cx="0" cy="62" r="5.5"/><circle cx="0" cy="44" r="5"/></g>
+      <rect x="-7" y="-101" width="14" height="22" rx="2" fill="#ffc93c"/>
+      <circle r="27" fill="#232327"/><circle r="20" fill="#4a1d6e" stroke="#ffc93c" stroke-width="2"/>
+      <text y="5.5" text-anchor="middle" font-size="15" font-weight="900" fill="#ffc93c" font-family="Golos Text, Arial, sans-serif">888</text>
+    </svg><div class="deg" id="dwheel-deg"></div></div>
 
     <div class="hud tl"><span class="sp" id="h-speed">0</span><span class="u">км/ч</span><span class="alt" id="h-alt"></span><i class="mgas"><b id="h-gas"></b></i></div>
     <div class="hud top" id="h-top"></div>
@@ -357,7 +373,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
           <p><b>Езда.</b> Джойстик (палец по экрану) вверх — газ, вниз — тормоз, влево / вправо — руль. Тормоз в повороте — занос.</p>
           <p><b>Прыжок.</b> ПРЫГ — сопла подбрасывают машину. В воздухе джойстик крутит её; у земли держите газ — баллон смягчит посадку.</p>
           <p><b>Присоски.</b> С разгона въезжайте в стену Арены: влево — вверх, вправо — вниз, ПРЫГ — оттолкнуться.</p>
-          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или сам после 5 кругов; разогнался к концу 5-го круга до 216 км/ч — катапульта над крышей с двойной бочкой); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее. <b>Шоу «Восьмёрка»</b> (две петли у трибун): проезд старта под аркой — начало, 3 круга. Очки за езду по асфальту — множитель до ×5, пока не съезжаете; занос — очки дрифта; закрутило или авария — все очки шоу сгорают. В конце — итог, звёзды, рекорд, фейерверк.</p>
+          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или сам после 5 кругов; разогнался к концу 5-го круга до 216 км/ч — катапульта над крышей с двойной бочкой); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее. <b>Дрифт-трек 888</b> (две петли «Восьмёрки»): на треке — дрифтовый руль (крутите пальцем по кругу, больше оборота в каждую сторону) и широкая резина; проезд старта под аркой — начало, 3 круга, указатели — по ходу. Очки за езду по асфальту — множитель до ×5, пока не съезжаете; занос — очки дрифта; закрутило или авария — все очки шоу сгорают. В конце — итог, звёзды, рекорд, фейерверк; прошли трек — наклейка «888» на крыше.</p>
           <p><b>PRO ∞.</b> Баллоны не кончаются: держите ПРЫГ — летите вверх, газ — вперёд, отпустили — плавно вниз. Фиолетовые дорожки и кольца — разгоны.</p>
           <p><b>Клавиатура.</b> ↑ газ, ↓ тормоз, ← → руль и вращение, Пробел — прыжок, C — камера, R — заново, M — меню.</p>
           <p><b>Вид и наклон.</b> Кнопка «ВИД» — сзади, дальняя, из кабины. «Наклон телефона» — руль наклоном; положение при включении — ноль, от себя — газ, на себя — тормоз.</p>
@@ -1865,7 +1881,7 @@ const INNER = ARENA && (() => {
 })();
 
 /* новые трюк-зоны: четверть трубы, стена с кольцом, трамплин через автобан, трасса «Восьмёрка» */
-const EIGHT = { ax: 960, bx: 1060, z: 170, r: 50 };      // две петли, перекрёсток в (1010, 170)
+const EIGHT = { ax: 960, bx: 1060, z: 170, r: 50, hw: 7.5 };      // две петли, перекрёсток в (1010, 170); hw — полуширина асфальта (15 м)
 (() => {
   flat(130, 100, under(0x8a8a86), 690, 15, .02);
   kicker(645, 10, 0, 11, 7, 8, 0x6b4a8a, true); ring(672, 19, 10);
@@ -1881,92 +1897,87 @@ const EIGHT = { ax: 960, bx: 1060, z: 170, r: 50 };      // две петли, �
   os.position.set(860, 6, 24); scene.add(os);
   // «Восьмёрка»: две асфальтовые петли, ворота на дальних точках и старт на перекрёстке
   const ringM = under(0x34313a);
-  [EIGHT.ax, EIGHT.bx].forEach(cx => { const m = new T.Mesh(new T.RingGeometry(EIGHT.r - 5, EIGHT.r + 5, 72), ringM); m.rotation.x = -Math.PI / 2; m.position.set(cx, .05, EIGHT.z); scene.add(m); });
-  flat(10, 1.2, new T.MeshBasicMaterial({ color: 0xf2efe6 }), 1010, EIGHT.z, .03);
+  [EIGHT.ax, EIGHT.bx].forEach(cx => { const m = new T.Mesh(new T.RingGeometry(EIGHT.r - EIGHT.hw, EIGHT.r + EIGHT.hw, 96), ringM); m.rotation.x = -Math.PI / 2; m.position.set(cx, .05, EIGHT.z); scene.add(m); });
   const gate = (x, z, rot) => {
     const g = new T.Group(), post = mat(0xffb347);
-    [-6, 6].forEach(o => { const p = new T.Mesh(new T.BoxGeometry(.4, 5, .4), post); p.position.set(o, 2.5, 0); g.add(p); });
-    const bar = new T.Mesh(new T.BoxGeometry(12.4, .5, .4), post); bar.position.y = 5; g.add(bar);
+    [-9, 9].forEach(o => { const p = new T.Mesh(new T.BoxGeometry(.4, 5, .4), post); p.position.set(o, 2.5, 0); g.add(p); });
+    const bar = new T.Mesh(new T.BoxGeometry(18.4, .5, .4), post); bar.position.y = 5; g.add(bar);
     g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
   };
   gate(EIGHT.ax - EIGHT.r, EIGHT.z, 0); gate(EIGHT.bx + EIGHT.r, EIGHT.z, 0); gate(1010, EIGHT.z, 0);
   // вывеска над стартом (на арке из лампочек), видна с обеих сторон
-  const esM = new T.MeshBasicMaterial({ map: textTex(["ШОУ «ВОСЬМЁРКА»", "3 круга · держи трассу · дрифт"], 512, 128, "#2b2438", "#ffc93c") });
-  [0, Math.PI].forEach(ry => { const es = new T.Mesh(new T.PlaneGeometry(13, 3.2), esM); es.position.set(1010, 11.2, EIGHT.z); es.rotation.y = ry; scene.add(es); });   // две стороны — без зеркального текста
+  const esM = new T.MeshBasicMaterial({ map: textTex(["ДРИФТ-ТРЕК 888", "3 круга · держи трассу · дрифт"], 512, 128, "#2b2438", "#ffc93c") });
+  [0, Math.PI].forEach(ry => { const es = new T.Mesh(new T.PlaneGeometry(13, 3.2), esM); es.position.set(1010, 13.2, EIGHT.z); es.rotation.y = ry; scene.add(es); });   // две стороны — без зеркального текста
   // асфальт петель — тёмный, с зерном (было бледно-сиреневым)
   ringM.color.setHex(0x2b2a30); { const g = grainTex.clone(); g.repeat.set(16, 16); g.needsUpdate = true; ringM.map = g; }
 })();
 
-/* ---------- шоу «Восьмёрка»: парк аттракционов для тачки — трибуны со зрителями, гирлянды, арка, табло, фейерверк ---------- */
+/* ---------- дрифт-трек 888 (шоу «Восьмёрка»): праздничная площадка — бордюры, стрелки и шевроны, арка, гирлянды, шары, табло, фейерверк ---------- */
 const SHOW = (() => {
-  const { ax, bx, z: cz, r } = EIGHT, X0 = 1010, crossD = (x, z) => Math.hypot(x - X0, z - cz);
+  const { ax, bx, z: cz, r, hw } = EIGHT, X0 = 1010, crossD = (x, z) => Math.hypot(x - X0, z - cz);
+  const ringD = (x, z) => Math.min(Math.abs(Math.hypot(x - ax, z - cz) - r), Math.abs(Math.hypot(x - bx, z - cz) - r));
   // красно-белые бордюры по кромкам петель; у перекрёстка — разрыв, чтобы не перечёркивать соседнюю петлю
-  [ax, bx].forEach(cx => [r - 5.2, r + 5.2].forEach(rr => {
-    const N = 120;
+  [ax, bx].forEach(cx => [r - hw - .2, r + hw + .2].forEach(rr => {
+    const N = 140;
     for (let i = 0; i < N; i++) {
       const a0 = i / N * Math.PI * 2, a1 = (i + 1) / N * Math.PI * 2, P = (a, d) => [cx + Math.cos(a) * (rr + d), .075, cz + Math.sin(a) * (rr + d)];
-      const m = P((a0 + a1) / 2, 0); if (crossD(m[0], m[2]) < 26) continue;   // петли касаются: ~20 м асфальт общий
-      festQuadUp(P(a0, -.45), P(a0, .45), P(a1, .45), P(a1, -.45), i % 2 ? "#f4f2ec" : "#e2323c");
+      const m = P((a0 + a1) / 2, 0); if (crossD(m[0], m[2]) < 30 || ringD(m[0], m[2]) < hw - .5) continue;   // петли касаются: асфальт у перекрёстка общий
+      festQuadUp(P(a0, -.5), P(a0, .5), P(a1, .5), P(a1, -.5), i % 2 ? "#f4f2ec" : "#e2323c");
     }
   }));
-  // шахматная линия старта на перекрёстке
-  for (let i = 0; i < 16; i++) for (let j = 0; j < 2; j++) {
-    const x = X0 - 4.8 + i * .6, z = cz - .6 + j * .6;
+  // шахматная линия старта на перекрёстке — во всю ширину
+  for (let i = 0; i < 25; i++) for (let j = 0; j < 2; j++) {
+    const x = X0 - hw + i * .6, z = cz - .6 + j * .6;
     festQuadUp([x, .08, z], [x + .6, .08, z], [x + .6, .08, z + .6], [x, .08, z + .6], (i + j) % 2 ? "#111114" : "#f4f2ec");
   }
-  // арка из лампочек над стартовыми воротами (столбы ворот — ±6 м по x, перекладина на 5 м)
-  { const pts = []; for (let k = 0; k <= 40; k++) { const a = Math.PI * k / 40; pts.push([X0 + Math.cos(a) * 6, 5.3 + Math.sin(a) * 4.2, cz]); } festBulbs(pts); }
-  { const pts = []; for (let y = .6; y <= 5; y += .55) [-6, 6].forEach(o => pts.push([X0 + o, y, cz + .25])); festBulbs(pts, ["#ffc93c", "#ff3b6b"]); }
-  // трибуны: 4 ряда, полосатый тент на столбах, твёрдые; лицом к трассе
-  const crowd = [];
-  const stand = (zc, face) => {      // face: +1 — трибуна южнее трассы и смотрит на север (+z)
-    const len = 110, tiers = 4, dep = .95, rise = .6, z0 = zc;           // z0 — передний край
-    for (let t = 0; t < tiers; t++) {
-      const h = rise * (t + 1), zt = z0 - face * (t + .5) * dep;
-      festPut(new T.BoxGeometry(len, h, dep).translate(X0, h / 2, zt), t % 2 ? "#e9e6df" : "#3d7fd0");
-      for (let x = X0 - len / 2 + .8; x < X0 + len / 2 - .6; x += 1.15) if (((x * 7.3 + t * 3.1) % 1 + 1) % 1 > .12) crowd.push([x + (((x * 13.7) % .3) - .15), h, zt]);
-    }
-    const zb = z0 - face * tiers * dep, hb = rise * tiers;
-    festPut(new T.BoxGeometry(len, hb + 3.2, .3).translate(X0, (hb + 3.2) / 2, zb - face * .15), "#cfc9be");          // задняя стенка
-    for (let x = X0 - len / 2; x <= X0 + len / 2 + .1; x += 11) { festPole(x, z0 + face * .2, hb + 3.6, 0, "#e9e6df"); }
-    for (let i = 0; i < len / 3; i++) {                                   // тент: полосы красная/белая, наклон к трассе
-      const x = X0 - len / 2 + i * 3 + 1.5, g = new T.BoxGeometry(3, .08, tiers * dep + 1.4);
-      g.rotateX(face * .22); festPut(g.translate(x, hb + 3.4, z0 - face * (tiers * dep / 2 - .3)), i % 2 ? "#f4f2ec" : "#e2323c");
-    }
-    const lights = []; for (let x = X0 - len / 2 + .5; x < X0 + len / 2; x += .9) lights.push([x, hb + 3.05, z0 + face * .45]);
-    festBulbs(lights);                                                    // лампочки по кромке тента
-    addSolid(X0 - len / 2, X0 + len / 2, z0, zb - face * .3, hb + 3.6, "трибуну");
+  // указатели: белые стрелки-шевроны на асфальте по ходу (петля A — против часовой, петля B — по часовой)
+  const arrow = (x, z, dx, dz) => {        // шеврон «>» длиной 3 м поперёк дороги 4 м
+    const nx = -dz, nz = dx, A = (u, w) => [x + dx * u + nx * w, .085, z + dz * u + nz * w];
+    festQuadUp(A(-.8, -2.2), A(-.2, -2.2), A(1.2, 0), A(.6, 0), "#f4f2ec");
+    festQuadUp(A(.6, 0), A(1.2, 0), A(-.2, 2.2), A(-.8, 2.2), "#f4f2ec");
   };
-  stand(cz - r - 12, 1); stand(cz + r + 12, -1);
-  // гирлянды флажков на столбах вокруг петель (кроме перекрёстка и мест перед трибунами)
-  [ax, bx].forEach((cx, li) => {
-    const poles = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, x = cx + Math.cos(a) * (r + 9), z = cz + Math.sin(a) * (r + 9); if (crossD(x, z) > 22 && Math.abs(z - cz) < r + 3 && Math.min(Math.abs(Math.hypot(x - ax, z - cz) - r), Math.abs(Math.hypot(x - bx, z - cz) - r)) > 8.5) poles.push([x, z]); }   // не на асфальте соседней петли
+  [[ax, 1], [bx, -1]].forEach(([cx, dir]) => {
+    for (let k = 0; k < 12; k++) {
+      const a = k / 12 * Math.PI * 2 + Math.PI / 12, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+      if (crossD(x, z) < 30) continue;
+      arrow(x, z, -Math.sin(a) * dir, Math.cos(a) * dir);
+    }
+  });
+  // шевроны на внешней стороне петель — жёлто-чёрные щиты «поворот» по ходу движения
+  [[ax, 1], [bx, -1]].forEach(([cx, dir]) => {
+    for (let k = 0; k < 10; k++) {
+      const a = k / 10 * Math.PI * 2, x = cx + Math.cos(a) * (r + hw + 2.6), z = cz + Math.sin(a) * (r + hw + 2.6);
+      if (crossD(x, z) < 34 || ringD(x, z) < hw + 1.5) continue;
+      const tx = -Math.sin(a) * dir, tz = Math.cos(a) * dir, nx = -Math.cos(a), nz = -Math.sin(a);   // ход и нормаль к центру петли
+      const P = (u, y) => [x + tx * u + nx * .02, y, z + tz * u + nz * .02];
+      festPole(x - tx * .9, z - tz * .9, 2.4); festPole(x + tx * .9, z + tz * .9, 2.4);
+      festPut(new T.BoxGeometry(2.4, 1, .06).lookAt(new T.Vector3(nx, 0, nz)).translate(x, 1.9, z), "#ffc93c");
+      for (const o of [-.6, .2]) { festTri(P(o - .35, 2.3), P(o + .25, 1.9), P(o - .35, 1.5), "#151517"); festTri(P(o - .35, 2.3), P(o - .05, 2.3), P(o + .25, 1.9), "#151517"); festTri(P(o - .35, 1.5), P(o + .25, 1.9), P(o - .05, 1.5), "#151517"); }
+    }
+  });
+  // арка из лампочек над стартовыми воротами (столбы ворот — ±9 м по x, перекладина на 5 м)
+  { const pts = []; for (let k = 0; k <= 52; k++) { const a = Math.PI * k / 52; pts.push([X0 + Math.cos(a) * 9, 5.3 + Math.sin(a) * 5.2, cz]); } festBulbs(pts); }
+  { const pts = []; for (let y = .6; y <= 5; y += .55) [-9, 9].forEach(o => pts.push([X0 + o, y, cz + .25])); festBulbs(pts, ["#ffc93c", "#ff3b6b"]); }
+  // гирлянды флажков на столбах вокруг петель (не у перекрёстка и не на асфальте соседней петли)
+  [ax, bx].forEach(cx => {
+    const poles = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, x = cx + Math.cos(a) * (r + hw + 5), z = cz + Math.sin(a) * (r + hw + 5); if (crossD(x, z) > 30 && ringD(x, z) > hw + 3) poles.push([x, z]); }
     poles.forEach(([x, z]) => festPole(x, z, 5.2));
-    for (let k = 1; k < poles.length; k++) { const [x0, z0] = poles[k - 1], [x1, z1] = poles[k]; if (Math.hypot(x1 - x0, z1 - z0) < 26) festBunting([x0, 5, z0], [x1, 5, z1]); }
+    for (let k = 1; k < poles.length; k++) { const [x0, z0] = poles[k - 1], [x1, z1] = poles[k]; if (Math.hypot(x1 - x0, z1 - z0) < 30) festBunting([x0, 5, z0], [x1, 5, z1]); }
   });
   // воздушные шары у дальних ворот
-  [[ax - r, cz], [bx + r, cz]].forEach(([gx, gz], gi) => [-6, 6].forEach(o => {
+  [[ax - r, cz], [bx + r, cz]].forEach(([gx, gz], gi) => [-9, 9].forEach(o => {
     for (let b = 0; b < 4; b++) {
       const x = gx + (b % 2 - .5) * .7, y = 6.2 + b * .55 + (b % 2) * .3, z = gz + o + (b > 1 ? .5 : -.5);
       festPut(new T.SphereGeometry(.5, 8, 6).scale(1, 1.2, 1).translate(x, y, z), FEST_COLS[(b + gi * 2 + (o > 0 ? 1 : 0)) % FEST_COLS.length]);
       festPut(new T.CylinderGeometry(.01, .01, y - 5, 3).translate((x + gx) / 2, (y + 5) / 2 - .5, z), "#e9e6df");
     }
   }));
-  // зрители: тела и головы — по одному вызову; подпрыгивают в шейдере (фаза — у каждого своя), сильнее, когда «ревут»
-  const U = { uT: { value: 0 }, uCheer: { value: .15 } };
-  const bob = m => { m.onBeforeCompile = sh => { sh.uniforms.uT = U.uT; sh.uniforms.uCheer = U.uCheer;
-    sh.vertexShader = "attribute float aPhase;\nuniform float uT;\nuniform float uCheer;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n transformed.y += abs(sin(uT * (6.0 + aPhase) + aPhase * 7.0)) * uCheer * .45;"); }; return m; };
-  const ph = new Float32Array(crowd.length).map((_, i) => ((i * 0.6180339) % 1) * 3);
-  const mk = (geo, m) => { geo.setAttribute("aPhase", new T.InstancedBufferAttribute(ph, 1)); const im = new T.InstancedMesh(geo, bob(m), crowd.length); im.userData.dyn = true; im.frustumCulled = false; scene.add(im); return im; };
-  const bodies = mk(new T.BoxGeometry(.42, .72, .3).translate(0, .36, 0), new T.MeshLambertMaterial({ color: 0xffffff }));
-  const heads = mk(new T.OctahedronGeometry(.17, 0).scale(1, 1.15, 1).translate(0, .9, 0), new T.MeshLambertMaterial({ color: new T.Color("#e3b58f").convertSRGBToLinear() }));
-  const m4 = new T.Matrix4(), c = new T.Color();
-  crowd.forEach(([x, y, z], i) => { m4.makeTranslation(x, y, z); bodies.setMatrixAt(i, m4); heads.setMatrixAt(i, m4); bodies.setColorAt(i, c.set(FEST_COLS[(i * 7) % FEST_COLS.length]).convertSRGBToLinear()); });
-  // табло над северной трибуной: живой счёт шоу и рекорд
+  // табло на столбах за северной петлёй: живой счёт и рекорд
   const bc = document.createElement("canvas"); bc.width = 512; bc.height = 192; const bg = bc.getContext("2d"), btex = new T.CanvasTexture(bc); btex.encoding = T.sRGBEncoding;
   const board = new T.Mesh(new T.PlaneGeometry(16, 6), new T.MeshBasicMaterial({ map: btex, toneMapped: false, side: T.DoubleSide }));
-  board.position.set(X0, 9.8, cz + r + 12 + 4.6); board.userData.dyn = true; scene.add(board);
-  festPole(X0 - 7.5, cz + r + 12 + 4.7, 7, 0, "#3a3a40"); festPole(X0 + 7.5, cz + r + 12 + 4.7, 7, 0, "#3a3a40");
+  const BZ = cz + r + hw + 9;
+  board.position.set(X0, 9.8, BZ); board.userData.dyn = true; scene.add(board);
+  festPole(X0 - 7.5, BZ + .1, 7, 0, "#3a3a40"); festPole(X0 + 7.5, BZ + .1, 7, 0, "#3a3a40");
   let boardKey = "";
   function drawBoard(lines, hot) {
     const k = lines.join("|") + hot; if (k === boardKey) return; boardKey = k;
@@ -1976,7 +1987,7 @@ const SHOW = (() => {
     lines.forEach((t, i) => { bg.fillStyle = i ? "#ffffff" : "#ffc93c"; bg.font = `bold ${i ? 40 : 34}px Golos Text, Arial, sans-serif`; bg.fillText(t, 256, 40 + i * 52); });
     btex.needsUpdate = true;
   }
-  drawBoard(["ШОУ «ВОСЬМЁРКА»", "3 круга: трасса + дрифт", "рекорд " + (save.eightShowBest || 0)], false);
+  drawBoard(["ДРИФТ-ТРЕК 888", "3 круга: трасса + дрифт", "рекорд " + (save.eightShowBest || 0)], false);
   // фейерверк: точки с цветами, вспышки над трибунами
   const FN = 360, fpos = new Float32Array(FN * 3), fcol = new Float32Array(FN * 3), fv = new Float32Array(FN * 3), flife = new Float32Array(FN), fbase = new Float32Array(FN * 3);
   const fg = new T.BufferGeometry(); fg.setAttribute("position", new T.BufferAttribute(fpos, 3)); fg.setAttribute("color", new T.BufferAttribute(fcol, 3));
@@ -1984,7 +1995,7 @@ const SHOW = (() => {
   fw.frustumCulled = false; fw.userData.dyn = true; fw.visible = false; scene.add(fw);
   let fi = 0, fwT = 0, fwQueue = 0;
   function burst(at) {
-    const x = at ? at[0] : X0 + (Math.random() - .5) * 120, y = at ? at[1] : 22 + Math.random() * 14, z = at ? at[2] : cz + (Math.random() < .5 ? -1 : 1) * (r + 20 + Math.random() * 10);
+    const x = at ? at[0] : X0 + (Math.random() - .5) * 120, y = at ? at[1] : 22 + Math.random() * 14, z = at ? at[2] : cz + (Math.random() < .5 ? -1 : 1) * (r + 14 + Math.random() * 10);
     const col = new T.Color(FEST_COLS[Math.floor(Math.random() * FEST_COLS.length)]).convertSRGBToLinear();
     for (let k = 0; k < 60; k++) {
       const i = fi++ % FN, a = Math.random() * Math.PI * 2, b = Math.acos(Math.random() * 2 - 1), sp = 9 + Math.random() * 4;
@@ -1993,16 +2004,12 @@ const SHOW = (() => {
     }
     fw.visible = true;
   }
-  let cheerT = .15;
   return {
-    U, drawBoard,
-    cheer(k = 1) { cheerT = Math.max(cheerT, k); },
+    drawBoard,
     fireworks(n = 8) { fwQueue += n; },
     salute(x, y, z, n = 3) { for (let i = 0; i < n; i++) burst([x + (Math.random() - .5) * 12, y + Math.random() * 5, z + (Math.random() - .5) * 12]); },   // салют над крутым трюком где угодно
     tick(dt) {
-      const near = Math.hypot(camera.position.x - X0, camera.position.z - cz) < 500;   // толпа и табло — только вблизи
-      bodies.visible = heads.visible = board.visible = near;
-      U.uT.value += dt; cheerT = Math.max(.15, cheerT - dt * .35); U.uCheer.value += (cheerT - U.uCheer.value) * Math.min(1, dt * 4);
+      board.visible = Math.hypot(camera.position.x - X0, camera.position.z - cz) < 500;   // табло — только вблизи
       if (fwQueue > 0 && (fwT -= dt) <= 0) { burst(); fwQueue--; fwT = .35 + Math.random() * .3; }
       if (!fw.visible) return;
       let alive = 0;
@@ -2486,6 +2493,24 @@ function makeVaz2108() {
     const fl = new T.Mesh(new T.CylinderGeometry(r * 1.16, r * 1.16, .16, 14, 1, true, Math.PI / 2, Math.PI), paint);   // расширитель арки
     fl.rotation.x = Math.PI / 2; fl.position.set(x, YW, Math.sign(z) * .86); pro.add(fl);
   });
+  // дрифт-трек 888: широкая резина и дрифтовые диски — полированная глубокая полка, бронзовые спицы, фиолетовый колпачок
+  wheels.forEach((w, i) => {
+    const sd = i % 2 ? -1 : 1, dz = sd * .035, face = sd * .142 + dz;
+    w.drift = wheelMesh([[cylG(.302, .27, 22, dz), 0x101114], [cylG(.222, .276, 22, dz), 0xdfe2e8], [cylG(.205, .28, 20, dz), 0x26282e],
+      ...[0, 1, 2, 3, 4, 5].map(k => [new T.BoxGeometry(.05, .37, .02).rotateZ(k / 6 * Math.PI).translate(0, 0, face), 0xb8893e]),
+      [cylG(.055, .29, 8, dz), 0x9b4dff]]);
+    w.drift.visible = false; w.spin.add(w.drift);
+  });
+  // наклейка «888» на крыше — награда за дрифт-трек 888 (видна, если трек пройден)
+  {
+    const bc = document.createElement("canvas"); bc.width = 256; bc.height = 128; const bg = bc.getContext("2d");
+    bg.fillStyle = "#2c0a44"; bg.beginPath(); bg.roundRect ? bg.roundRect(6, 6, 244, 116, 26) : bg.rect(6, 6, 244, 116); bg.fill();
+    bg.lineWidth = 8; bg.strokeStyle = "#ffc93c"; bg.stroke();
+    bg.font = "900 92px Golos Text, Arial, sans-serif"; bg.textAlign = "center"; bg.textBaseline = "middle"; bg.lineWidth = 10; bg.strokeStyle = "#ff3b6b"; bg.strokeText("888", 128, 70); bg.fillStyle = "#ffc93c"; bg.fillText("888", 128, 70);
+    const bt = new T.CanvasTexture(bc); bt.encoding = T.sRGBEncoding; bt.anisotropy = 4;
+    const badge = new T.Mesh(new T.PlaneGeometry(.72, .36).rotateX(-Math.PI / 2).rotateY(-Math.PI / 2), new T.MeshLambertMaterial({ map: bt, transparent: true }));
+    badge.position.set((X(1950) + X(2500)) / 2, H(1402) + .012, 0); badge.userData.dyn = true; badge.visible = false; opt.badge = badge; g.add(badge);
+  }
   [-1, 1].forEach(sd => { const sk = new T.Mesh(new T.BoxGeometry(XF - XR - (RF + RR) * 1.15, .14, .1), paint); sk.position.set((XF + XR) / 2 + (RR - RF) * .5, H(215), sd * .86); pro.add(sk); });
   // спойлер на кромке крыши: крыло в цвет кузова с приподнятой задней кромкой и чёрными торцевыми пластинами
   const sp = new T.Mesh(new T.BoxGeometry(.3, .028, 1.16), paint); sp.position.set(X(3120), H(1430), 0); sp.rotation.z = -.14; pro.add(sp);
@@ -2516,10 +2541,10 @@ const carObj = makeVaz2108(); scene.add(carObj);
   carObj.add(beam);
 }
 const TUNES = ["заводской", "брызговики и ветровики", "+ литые диски"];
-function setTune(n) {                          // n = "pro" — широкий обвес режима PRO
-  const o = carObj.userData.opt, pro = n === "pro";
-  o.flaps.visible = o.visors.visible = pro || n >= 1; o.pro.visible = pro;
-  carObj.userData.wheels.forEach(w => { w.stock.visible = !pro && n < 2; w.alloy.visible = !pro && n >= 2; w.pro.visible = pro; });
+function setTune(n) {                          // n = "pro" — широкий обвес режима PRO; на дрифт-треке 888 — широкая резина и дрифтовые диски
+  const o = carObj.userData.opt, pro = n === "pro", dk = !pro && mode === "free" && !!free.driftKit;
+  o.flaps.visible = o.visors.visible = pro || n >= 1; o.pro.visible = pro; o.badge.visible = !!save.badge888;
+  carObj.userData.wheels.forEach(w => { w.stock.visible = !pro && !dk && n < 2; w.alloy.visible = !pro && !dk && n >= 2; w.pro.visible = pro; w.drift.visible = dk; });
 }
 const EGGPLANT = { n: "баклажан", c: 0x2c0a44 };
 // отражения неба в стёклах машины: небо-купол текущего времени суток → PMREM
@@ -2889,7 +2914,7 @@ const MISSIONS = [
   { id: "slide", t: "Горка-труба: с крыши Арены до поля", pts: 500 },
   { id: "flow3", t: "Баклажановый поток: три круга", pts: 700 },
   { id: "flowShot", t: "Катапульта: 5 кругов в потоке быстрее 216 км/ч", pts: 1000 },
-  { id: "eightShow", t: "Шоу «Восьмёрка»: 3 круга, от 3000 очков", pts: 900 },
+  { id: "eightShow", t: "Дрифт-трек 888: 3 круга, от 3000 очков", pts: 900 },
   { id: "slalom", t: "Аэро-слалом: восемь колец вокруг аэротрубы по порядку", pts: 800 }
 ];
 const toastQ = [];
@@ -2917,11 +2942,11 @@ function slalomTick() {          // аэро-слалом: кольца по п�
 // ---------- шоу «Восьмёрка»: 3 круга; очки за езду по трассе (множитель растёт, пока не съезжаешь) и за дрифт;
 // закрутило (занос больше ~46°) или авария — все очки шоу сгорают; в конце — итог, рекорд, фейерверк и рёв трибун
 const SHOW_LAPS = 3, SHOW_SPIN = .8, SHOW_DRIFT = .23;   // углы заноса, рад: дрифт от ~13°, срыв от ~46°
-function onEightTrack(x, z) { return Math.min(Math.abs(Math.hypot(x - EIGHT.ax, z - EIGHT.z) - EIGHT.r), Math.abs(Math.hypot(x - EIGHT.bx, z - EIGHT.z) - EIGHT.r)) < 5.6; }
+function onEightTrack(x, z) { return Math.min(Math.abs(Math.hypot(x - EIGHT.ax, z - EIGHT.z) - EIGHT.r), Math.abs(Math.hypot(x - EIGHT.bx, z - EIGHT.z) - EIGHT.r)) < EIGHT.hw + .6; }
 function showBurn(why) {
   const s = free.show; if (!s) return;
   const lost = Math.round(s.clean + s.drift); s.clean = s.drift = 0; s.mult = 1; s.onT = 0; s.spins++;
-  queueToast(`${why}! Очки шоу сгорели${lost ? ` (−${lost})` : ""}`, "bad", 2200); sfx.ooh(); SHOW.cheer(.9);
+  queueToast(`${why}! Очки шоу сгорели${lost ? ` (−${lost})` : ""}`, "bad", 2200);
 }
 function spinOut() {        // закрутило: машина крутится на месте, скорость гаснет
   free.spinT = .9; free.spinDir = Math.sign(car.vl || 1); car.v *= .35; car.vl = 0; sfx.crash(); dust(car.x, car.y, car.z, 10);
@@ -2936,11 +2961,13 @@ function showFinish() {
   free.show = null; free.showCd = time + 6; free.score += total; save.freeBest = Math.max(save.freeBest, free.score); if (rec) save.eightShowBest = total; persist();
   const stars = total >= 6000 ? 3 : total >= 3500 ? 2 : total >= 1500 ? 1 : 0;
   if (total >= 3000) completeMission("eightShow");
-  showCard(`<div class="t">ШОУ «ВОСЬМЁРКА» · ${SHOW_LAPS} КРУГА</div><div class="big">${total.toLocaleString("ru")}</div>` +
+  showCard(`<div class="t">ДРИФТ-ТРЕК 888 · ${SHOW_LAPS} КРУГА</div><div class="big">${total.toLocaleString("ru")}</div>` +
     `<div class="row"><span>Чистая езда</span><b>${Math.round(s.clean).toLocaleString("ru")}</b></div><div class="row"><span>Дрифт</span><b>${Math.round(s.drift).toLocaleString("ru")}</b></div>` +
     `<div class="row"><span>Срывов</span><b>${s.spins}</b></div><div class="stars">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</div>` +
-    (rec ? `<div class="rec">Новый рекорд! Было ${prev.toLocaleString("ru")}</div>` : `<div class="row"><span>Рекорд</span><b>${prev.toLocaleString("ru")}</b></div>`));
-  SHOW.fireworks(stars * 5 + 6); SHOW.cheer(1); sfx.cheer(1.2);
+    (rec ? `<div class="rec">Новый рекорд! Было ${prev.toLocaleString("ru")}</div>` : `<div class="row"><span>Рекорд</span><b>${prev.toLocaleString("ru")}</b></div>`) +
+    (save.badge888 ? "" : `<div class="rec">Награда: наклейка «888» на крышу</div>`));
+  SHOW.fireworks(stars * 5 + 6); sfx.cheer(1.2);
+  if (!save.badge888) { save.badge888 = true; persist(); applyLook(); queueToast("Награда: наклейка «888» на крыше!", "good", 3200); }
   SHOW.drawBoard([`ИТОГ ${total.toLocaleString("ru")}  ${"★".repeat(stars)}`, `чисто ${Math.round(s.clean)} · дрифт ${Math.round(s.drift)}`, `рекорд ${(save.eightShowBest || 0).toLocaleString("ru")}`], true);
 }
 function eightShow() {
@@ -2950,7 +2977,7 @@ function eightShow() {
   if (!s) {
     if (hit === "x" && !free.air && Math.abs(car.v) > 5 && time > (free.showCd || 0)) {
       free.show = { lap: 0, seq: "x", last: "x", clean: 0, drift: 0, mult: 1, multShown: 1, onT: 0, offWarn: false, t0: time, spins: 0, boardT: 0 };
-      queueToast(`Шоу «Восьмёрка»: ${SHOW_LAPS} круга! Держи трассу, дрифтуй — не закрутись`, "good", 2600); SHOW.cheer(.8); sfx.cheer(.6);
+      queueToast(`Дрифт-трек 888: ${SHOW_LAPS} круга! Держи трассу, дрифтуй — не закрутись`, "good", 2600);
     }
     return;
   }
@@ -2958,7 +2985,7 @@ function eightShow() {
   if (hit && hit !== s.last) {      // круг: перекрёсток → дальние ворота одной петли → перекрёсток → другой → перекрёсток
     s.last = hit; s.seq = s.seq ? s.seq + hit : hit === "x" ? "x" : "";
     if (/^x[ab]x[ab]x$/.test(s.seq) && s.seq[1] !== s.seq[3]) {
-      s.lap++; s.seq = "x"; SHOW.cheer(1); sfx.cheer(.8);
+      s.lap++; s.seq = "x"; sfx.cheer(.6);
       if (s.lap >= SHOW_LAPS) return showFinish();
       queueToast(`Круг ${s.lap} из ${SHOW_LAPS}!`, "good", 1500);
     } else if (!/^x([ab](x([ab]x?)?)?)?$/.test(s.seq)) s.seq = hit === "x" ? "x" : "";   // сбились с порядка ворот — круг заново, очки остаются
@@ -2974,9 +3001,9 @@ function eightShow() {
   s.offWarn = false;
   if (v < 5) return;
   s.onT += dt; s.mult = Math.min(5, 1 + Math.floor(s.onT / 5));
-  if (slip > SHOW_DRIFT && v > 12) { s.drift += (12 + Math.abs(car.vl) * 4) * dt * s.mult; SHOW.cheer(.55); }
+  if (slip > SHOW_DRIFT && v > 12) { s.drift += (12 + Math.abs(car.vl) * 4) * dt * s.mult; }
   else s.clean += v * dt * .5 * s.mult;
-  if (s.mult > s.multShown) { s.multShown = s.mult; queueToast(`Держишь трассу — множитель ×${s.mult}`, "good", 1200); SHOW.cheer(.7); }
+  if (s.mult > s.multShown) { s.multShown = s.mult; queueToast(`Держишь трассу — множитель ×${s.mult}`, "good", 1200); }
 }
 function missionTick() {
   if (INNER && phase === "free") slalomTick();
@@ -3524,7 +3551,7 @@ function landFree(g) {
   free.score += pts;
   save.freeBest = Math.max(save.freeBest, free.score); save.trickBest = Math.max(save.trickBest, pts); persist();
   showToast(`${parts.join(" · ")}  +${pts}`, q === "clean" ? "good" : "", 2600);
-  if (barrels > 0 || free.cork || pts >= 800) { SHOW.salute(car.x, car.y + 10, car.z, Math.min(5, 2 + barrels)); sfx.cheer(.5); }   // праздник: салют над крутым трюком
+  if (barrels > 0 || free.cork || pts >= 800) { SHOW.salute(car.x, car.y + 10, car.z, Math.min(5, 2 + barrels)); }   // праздник: салют над крутым трюком
   if (pts > (free.bestPts || 0) && !free.pend) free.pend = { pts, from: free.takeoffT - 1, until: time + .8 };   // лучший трюк — сохраним для повтора
 }
 
@@ -4040,14 +4067,28 @@ const joy = { id: null, x: 0, y: 0 }, JOY_R = 60;
 const ctrl = () => save.ctrl || "joy";                       // joy | wheel | buttons
 const joyMode = () => ctrl() !== "buttons";                 // любой сенсорный режим без кнопок
 const wheel = { id: null, steer: 0, ox: 0 }, pedal = { id: null, gas: 0, brake: 0, oy: 0 };
+// дрифтовый руль трека 888: крутят пальцем по кругу вокруг руля, ход — чуть больше оборота в каждую сторону; отпустили — сам в центр
+const DRIFT_LOCK = 400, dwheel = { id: null, ang: 0, last: 0 };
+const driftUI = () => mode === "free" && !!free.driftKit && joyMode();
 const dz = v => Math.abs(v) < .14 ? 0 : (v - Math.sign(v) * .14) / .86;
 const thr = () => Math.max(input.thrust ? 1 : 0, dz(Math.max(0, joy.y)), pedal.gas, tilt.on ? Math.max(0, tilt.y) : 0);          // газ / подушка 0…1
 const brk = () => Math.max(input.brake ? 1 : 0, dz(Math.max(0, -joy.y)), pedal.brake, tilt.on ? Math.max(0, -tilt.y) : 0);        // тормоз 0…1
-const turn = () => Math.max(-1, Math.min(1, (input.rr ? 1 : 0) - (input.rl ? 1 : 0) + dz(joy.x) + wheel.steer + (tilt.on ? tilt.x : 0)));   // вправо +
+const turn = () => Math.max(-1, Math.min(1, (input.rr ? 1 : 0) - (input.rl ? 1 : 0) + dz(joy.x) + wheel.steer + (driftUI() ? dwheel.ang / DRIFT_LOCK : 0) + (tilt.on ? tilt.x : 0)));   // вправо +
 let joyHintUntil = performance.now() + 7000;
 stage.addEventListener("pointerdown", e => {
   if (!joyMode() || e.target.closest("button, .ov, .dock, .lesson")) return;
   const r = stage.getBoundingClientRect();
+  if (driftUI()) {                                           // трек 888: левая половина — дрифтовый руль (вращение пальцем), правая — педаль
+    joyHintUntil = 0;
+    if (e.clientX - r.left < r.width / 2 && dwheel.id === null) {
+      const b = $("dwheel").getBoundingClientRect(); dwheel.id = e.pointerId; dwheel.last = Math.atan2(e.clientY - (b.top + b.height / 2), e.clientX - (b.left + b.width / 2));
+    } else if (e.clientX - r.left >= r.width / 2 && pedal.id === null) {
+      pedal.id = e.pointerId; pedal.oy = e.clientY; pedal.gas = 1; pedal.brake = 0;
+      const el = $("pedal"); el.style.left = `${e.clientX - r.left}px`; el.style.top = `${e.clientY - r.top}px`; el.hidden = false; el.textContent = "ГАЗ";
+    } else return;
+    stage.setPointerCapture?.(e.pointerId);
+    return;
+  }
   if (ctrl() === "wheel") {                                  // левая половина — руль, правая — педаль
     joyHintUntil = 0;
     if (e.clientX - r.left < r.width / 2 && wheel.id === null) {
@@ -4066,6 +4107,13 @@ stage.addEventListener("pointerdown", e => {
   stage.setPointerCapture?.(e.pointerId);
 });
 stage.addEventListener("pointermove", e => {
+  if (e.pointerId === dwheel.id) {                           // угол пальца вокруг центра руля — накапливаем (можно крутить больше оборота)
+    const b = $("dwheel").getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+    if (Math.hypot(e.clientX - cx, e.clientY - cy) < 18) return;      // у самого центра угол скачет
+    const a = Math.atan2(e.clientY - cy, e.clientX - cx); let d = a - dwheel.last; d = Math.atan2(Math.sin(d), Math.cos(d)); dwheel.last = a;
+    dwheel.ang = Math.max(-DRIFT_LOCK, Math.min(DRIFT_LOCK, dwheel.ang + d / DEG));
+    return;
+  }
   if (e.pointerId === wheel.id) {
     wheel.steer = Math.max(-1, Math.min(1, (e.clientX - wheel.ox) / 70));
     $("wheel").style.transform = `rotate(${wheel.steer * 100}deg)`;
@@ -4084,6 +4132,7 @@ stage.addEventListener("pointermove", e => {
   $("joy-knob").style.transform = `translate(${dx}px, ${dy}px)`;
 });
 const joyEnd = e => {
+  if (e.pointerId === dwheel.id) { dwheel.id = null; return; }
   if (e.pointerId === wheel.id) { wheel.id = null; wheel.steer = 0; $("wheel").hidden = true; $("wheel").style.transform = ""; return; }
   if (e.pointerId === pedal.id) { pedal.id = null; pedal.gas = pedal.brake = 0; $("pedal").hidden = true; $("pedal").classList.remove("brake"); return; }
   if (e.pointerId !== joy.id) return;
@@ -4136,6 +4185,20 @@ function coachHint() {
 }
 const btnFor = { thrust: $("b-thrust"), rl: $("b-left"), rr: $("b-right") };
 let lastHint = "", lastCoach = "", coachSince = 0, lastGasShown = -1;
+// трек 888: на площадке «Восьмёрки» — дрифтовый руль, широкая резина и дрифтовые диски; уехал — всё как было
+function driftKitTick(dt) {
+  const want = mode === "free" && !free.pro && !replay && Math.abs(car.x - 1010) < 140 && Math.abs(car.z - EIGHT.z) < 95;
+  if (want !== !!free.driftKit) {
+    free.driftKit = want; applyLook(); dwheel.ang = 0; dwheel.id = null;
+    if (want) queueToast(joyMode() ? "Трек 888: дрифтовый руль — крутите пальцем по кругу; широкая резина" : "Трек 888: широкая резина и дрифтовые диски", "good", 2600);
+  }
+  const el = $("dwheel"), show = driftUI();
+  if (el.hidden === show) el.hidden = !show;
+  if (!show) return;
+  if (dwheel.id === null && dwheel.ang) { dwheel.ang *= Math.pow(.002, dt); if (Math.abs(dwheel.ang) < .5) dwheel.ang = 0; }   // руль сам возвращается в центр
+  el.firstElementChild.style.transform = `rotate(${dwheel.ang.toFixed(1)}deg)`;
+  $("dwheel-deg").textContent = `${Math.round(dwheel.ang)}°`;
+}
 const speedFx = { el: null, o: 0, a: 0 };
 function speedLines() {          // от ~140 км/ч; в потоке и в катапульте — сильнее, в PRO и потоке — баклажановые
   const el = speedFx.el || (speedFx.el = $("speedfx")); if (!el) return;
@@ -4152,7 +4215,7 @@ function ui() {
   $("h-speed").textContent = Math.round(speed * 3.6);
   $("h-alt").textContent = inAir ? `высота ${Math.max(0, car.y - (mode === "free" ? free.gh : 0)).toFixed(1)} м` : "";
   if (Math.round(gas) !== lastGasShown) { $("h-gas").style.width = `${gas}%`; $("h-gas").style.background = gas > 25 ? "var(--gas)" : "var(--bad)"; lastGasShown = Math.round(gas); }
-  $("h-top").textContent = replay ? "" : mode === "free" ? (free.show ? `Шоу · круг ${Math.min(SHOW_LAPS, free.show.lap + 1)}/${SHOW_LAPS} · чисто ${Math.round(free.show.clean)} ×${free.show.mult} · дрифт ${Math.round(free.show.drift)}` : free.tube && free.tube.path.flow ? `Поток · круг ${Math.min(FLOW_LAPS, free.tube.laps + 1)}/${FLOW_LAPS} · ${Math.round(free.tube.v * 3.6)} км/ч${free.tube.v >= FLOW_FAST ? " 🚀" : ""} · ПРЫГ — выход` : free.slalom ? `Слалом ${(time - free.slalom.t0).toFixed(1)} с · кольцо ${free.slalom.n + 1}/8` : free.lap ? `Круг ${(time - free.lap.t0).toFixed(1)} с · ворота ${free.lap.n}/${ARENA.gates.length}` : `${free.pro ? "PRO ∞ · " : ""}Очки ${free.score}`) : mode === "train" ? "" : `${L.i + 1}. ${L.name}`;
+  $("h-top").textContent = replay ? "" : mode === "free" ? (free.show ? `888 · круг ${Math.min(SHOW_LAPS, free.show.lap + 1)}/${SHOW_LAPS} · чисто ${Math.round(free.show.clean)} ×${free.show.mult} · дрифт ${Math.round(free.show.drift)}` : free.tube && free.tube.path.flow ? `Поток · круг ${Math.min(FLOW_LAPS, free.tube.laps + 1)}/${FLOW_LAPS} · ${Math.round(free.tube.v * 3.6)} км/ч${free.tube.v >= FLOW_FAST ? " 🚀" : ""} · ПРЫГ — выход` : free.slalom ? `Слалом ${(time - free.slalom.t0).toFixed(1)} с · кольцо ${free.slalom.n + 1}/8` : free.lap ? `Круг ${(time - free.lap.t0).toFixed(1)} с · ворота ${free.lap.n}/${ARENA.gates.length}` : `${free.pro ? "PRO ∞ · " : ""}Очки ${free.score}`) : mode === "train" ? "" : `${L.i + 1}. ${L.name}`;
   const freeGround = mode === "free" && !free.air;
   const jm = joyMode();
   $("b-left").hidden = $("b-right").hidden = $("b-thrust").hidden = jm;
@@ -4293,6 +4356,7 @@ function render(dt) {
   }
   camera.updateProjectionMatrix();
   cullChunks(); tickSky();
+  if (window.__camOv) { const o = window.__camOv; camera.position.set(o[0], o[1], o[2]); camera.up.set(0, 1, 0); camera.lookAt(o[3], o[4], o[5]); camera.fov = o[6] || 40; camera.updateProjectionMatrix(); }   // только автотесты: снимок с заданной точки
   renderer.render(scene, camera);
   drawStat.calls = renderer.info.render.calls; drawStat.tris = renderer.info.render.triangles;
 }
@@ -4369,7 +4433,7 @@ function frame(now) {
     if (["run", "ramp", "air", "roll", "crash"].includes(phase) && !result && rec.length < 6000) rec.push({ t: simT, x: car.x, y: car.y, roll: car.roll, pitch: car.pitch });
   } else time += dt;
   if (mode === "train" && !replay && $("ov-res").hidden) trainTick();
-  tickTraffic(dt); tickPuffs(dt); tickSignals(performance.now() / 1000); SHOW.tick(dt);
+  tickTraffic(dt); tickPuffs(dt); tickSignals(performance.now() / 1000); SHOW.tick(dt); driftKitTick(dt);
   const airNow = mode === "free" ? free.air : phase === "air" || phase === "drill";
   sfx.tick(dt, { speed: mode === "free" ? car.v : phase === "run" || phase === "ramp" ? car.v : phase === "roll" ? car.vx : 0, throttle: thr(), air: airNow, skid: mode === "free" && !free.air ? Math.abs(car.vl || 0) : 0 });
   ui(); if (!testFast || ++testFrame % 20 === 0) render(dt);   // в быстрых автотестах рисуем редко — физика идёт в полную скорость
@@ -4489,7 +4553,9 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   proState: () => ({ pro: !!free.pro, flying: !!free.proA, gas, alt: free.proA && free.proA.alt }),
   show: () => free.show && { lap: free.show.lap, clean: free.show.clean, drift: free.show.drift, mult: free.show.mult, spins: free.show.spins, seq: free.show.seq },
   showBest: () => save.eightShowBest || 0,
+  camSet: (...a) => { window.__camOv = a.length ? a : null; },
   showSet: o => { if (free.show) Object.assign(free.show, o); },
+  driftKit: () => ({ on: !!free.driftKit, ui: driftUI(), ang: dwheel.ang, badge: !!save.badge888, wheels: carObj.userData.wheels.map(w => w.drift.visible) }),
   flowSet: (laps, v) => { if (free.tube) { free.tube.laps = laps; free.tube.v = v; } },
   inner: () => INNER && { pad: INNER.pad, padE: INNER.padE, slide0: INNER.slide.frame(0), slideLen: INNER.slide.len, flowLen: INNER.flow.len, aero: free.aero && { ...free.aero }, tube: free.tube && { s: free.tube.s, v: free.tube.v, laps: free.tube.laps, flow: !!free.tube.path.flow, lift: !!free.tube.lift } },
   teleport(x, z, yaw, y = 0) { car.x = x; car.z = z; car.yaw = yaw; car.y = Math.max(y, surfaceH(x, z)); car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0; car.vl = car.bodyRoll = car.bodyPitch = 0; free.air = false; free.wall = null; free.aero = null; free.tube = null; free.lap = null; phase = "free"; camPos.set(x, car.y + 4, z); zoneAt = -1; }
