@@ -894,13 +894,19 @@ const ROADS = OSM.r.map(([c, n, br, a]) => {
   if (p[p.length - 1][1] > -83) p.push([p[p.length - 1][0], ZA - 17]);
   return { c, name: n >= 0 ? OSM.n[n] : "", br, pts: p, w: ROAD_W[c], ...bboxOf(p) };
 });
-const deckH = (d, s) => d.H * smooth(Math.max(0, Math.min(1, (s - d.s0) / d.R, (d.s1 - s) / d.R)));
+function deckH(d, s, l = d.lc) {                 // концы — вровень с землёй (правый берег высокий, по ширине тоже), посередине — не ниже 13 м
+  const ter = (t, w) => terrainH(d.cx + d.dx * t + d.nx * w, d.cz + d.dz * t + d.nz * w);
+  if (d.Hm == null) d.Hm = Math.max(d.H, ter(d.s0, d.lc) + 1, ter(d.s1, d.lc) + 1);
+  const a = Math.min(1, (s - d.s0) / d.R), b = Math.min(1, (d.s1 - s) / d.R), ha = ter(d.s0, l), hb = ter(d.s1, l);
+  const h = Math.min(ha + (d.Hm - ha) * smooth(Math.max(0, a)), hb + (d.Hm - hb) * smooth(Math.max(0, b)));
+  return Math.max(h, ter(s, l) + .05);                         // на склоне настил не уходит в землю
+}
 function deckAt(x, z, y) {                       // настил моста под точкой; ниже настила больше чем на 2,5 м — проезжаем под мостом
   for (const d of DECKS) {
     const ox = x - d.cx, oz = z - d.cz, s = ox * d.dx + oz * d.dz, l = ox * d.nx + oz * d.nz;
     if (s < d.s0 || s > d.s1 || Math.abs(l - d.lc) > d.hw) continue;
-    const h = deckH(d, s); if (y < h - 2.5) continue;
-    return { h, slope: Math.atan((deckH(d, s + .5) - deckH(d, s - .5))), rx: d.dx, rz: d.dz, d, s };
+    const h = deckH(d, s, l); if (y < h - 2.5) continue;
+    return { h, slope: Math.atan((deckH(d, s + .5, l) - deckH(d, s - .5, l))), rx: d.dx, rz: d.dz, d, s, edge: d.hw - Math.abs(l - d.lc) };
   }
   return null;
 }
@@ -916,6 +922,38 @@ const WATER = OSM.a.filter(a => a[0] === "w").map(([, rs]) => { const rings = rs
   });
 })();
 const PIERS = OSM.p.map(dm);
+
+/* ---------- рельеф правого берега ---------- */
+// Правый берег Ростова — высокий склон: у воды гранитная набережная (2 м над Доном), за Береговой улицей город
+// поднимается в гору (Богатяновский спуск, Седова, Станиславского) до ~38 м и к автобану плавно сходит на нет.
+// Левый берег, Арена, автобан, трюк-парк и полигон — на нуле, как раньше.
+const TER = { Q: 2, H: 38, rise: 240, fall: 200, edge: 150, step: 10 };
+const BANK = [], FOOT = [];                       // для x с шагом 10 м: z северного берега Дона и подножия склона
+(() => {
+  const isW = (x, z) => WATER.some(w => !w.outside && x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1 && inRings(x, z, w.rings));
+  const ber = ROADS.filter(r => r.name === "Береговая улица").flatMap(r => r.pts).sort((a, b) => a[0] - b[0]);
+  const berZ = x => { if (!ber.length) return null; if (x <= ber[0][0]) return ber[0][1]; for (let i = 1; i < ber.length; i++) if (x <= ber[i][0]) { const [x0, z0] = ber[i - 1], [x1, z1] = ber[i]; return z0 + (z1 - z0) * (x - x0) / (x1 - x0 || 1); } return ber[ber.length - 1][1]; };
+  const raw = [];
+  for (let x = STRIP.x0; x <= STRIP.x1 + TER.step; x += TER.step) { let zb = null; for (let z = -420; z > -1500; z -= 3) if (isW(x, z)) { zb = z; break; } raw.push(zb); }
+  for (let i = 0; i < raw.length; i++) { let s = 0, n = 0; for (let k = -4; k <= 4; k++) { const v = raw[i + k]; if (v != null) { s += v; n++; } } BANK.push(n ? s / n : null); }
+  BANK.forEach((zb, i) => { const bz = berZ(STRIP.x0 + i * TER.step); FOOT.push(zb == null ? null : Math.max(zb + 30, bz == null ? zb + 40 : bz + 18)); });
+})();
+const terLerp = (A, x) => { const f = (x - STRIP.x0) / TER.step, i = Math.floor(f); if (i < 0 || i >= A.length - 1 || A[i] == null || A[i + 1] == null) return null; return A[i] + (A[i + 1] - A[i]) * (f - i); };
+function terrainH(x, z) {
+  if (z > -82 || x < STRIP.x0 || x > STRIP.x1) return 0;
+  const zb = terLerp(BANK, x); if (zb == null || z <= zb) return 0;
+  const ft = terLerp(FOOT, x), e = smooth(Math.min(1, (x - STRIP.x0) / TER.edge)) * smooth(Math.min(1, (STRIP.x1 - x) / TER.edge));
+  const up = z <= ft ? 0 : TER.H * smooth(Math.min(1, (z - ft) / TER.rise)) * smooth(Math.min(1, (-82 - z) / TER.fall));
+  return (TER.Q * smooth(Math.min(1, (-82 - z) / 40)) + up) * e;
+}
+const surfaceH = (x, z) => { const dk = DECKS.length && deckAt(x, z, 1e3); return Math.max(terrainH(x, z), dk ? dk.h : 0); };   // земля или настил моста
+const terrainN = (x, z) => { const gx = (terrainH(x + 1, z) - terrainH(x - 1, z)) / 2, gz = (terrainH(x, z + 1) - terrainH(x, z - 1)) / 2; return [gx, gz]; };
+// матрица экземпляра, «положенного» на склон: верх — по нормали рельефа
+const M4T = (x, y, z, yaw = 0) => {
+  const h = terrainH(x, z), [gx, gz] = terrainN(x, z), n = new T.Vector3(-gx, 1, -gz).normalize();
+  const q = new T.Quaternion().setFromUnitVectors(yUp0, n).multiply(new T.Quaternion().setFromAxisAngle(yUp0, yaw));
+  return new T.Matrix4().compose(new T.Vector3(x, h + y, z), q, new T.Vector3(1, 1, 1));
+};
 // Большие мосты над рекой из OSM (Ворошиловский): все пути моста с одним именем — один настил над Доном.
 // Ось — по самой широкой проезжей части, ширина — по крайним путям (проезжие части и тротуары).
 // Высота: 0 на берегах, плавные пандусы, посередине 13 м над водой — под мостом проходят катера.
@@ -940,7 +978,7 @@ const DECKS = [];
 })();
 const ZONES = OSM.z.map(([n, a]) => { const ring = dm(a); return { name: OSM.n[n], ring, ...bboxOf(ring), area: (() => { let s = 0; ring.forEach(([x, z], i) => { const [x2, z2] = ring[(i + 1) % ring.length]; s += x * z2 - x2 * z; }); return Math.abs(s / 2); })() }; }).sort((a, b) => a.area - b.area);
 function waterAt(x, z) {                    // вода под точкой (с учётом моста и причалов)
-  if (!inWorldMap(x, z) || (DECKS.length && deckAt(x, z, 99))) return null;     // под настилом моста — не вода (по нему едут)
+  if (!inWorldMap(x, z)) return null;
   const w = WATER.find(w => x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1 && inRings(x, z, w.rings));
   if (!w || PIERS.some(p => lineDist(x, z, p, false) < 1.8)) return null;
   return w;
@@ -1010,7 +1048,8 @@ function placeName(x, z) {
     const list = OSM.a.filter(a => a[0] === k).map(([, rs]) => rs.map(dm));
     if (list.length) add(fillGeo(list, y), flatMat(color, 2));
   });
-  add(fillGeo(WATER.map(w => w.rings), .035), new T.MeshStandardMaterial({ color: 0x4f7f97, roughness: .12, metalness: .25, side: DS, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+  add(fillGeo(WATER.map(w => w.rings), .035), new T.MeshStandardMaterial({ color: 0x5f9e88, roughness: .3, metalness: .1,   // Дон — зелёно-бирюзовый, как на фото
+    side: DS, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
 
   // дороги: чем крупнее, тем выше слой — на перекрёстках главная дорога лежит сверху
   const RC = [0x404246, 0x45474b, 0x4b4d51, 0x55575b, 0xa8a59e];   // серый асфальт, светлая плитка тротуаров
@@ -1029,7 +1068,7 @@ function placeName(x, z) {
     }
   });
   const m4 = new T.Matrix4(), q = new T.Quaternion();
-  chunked(new T.PlaneGeometry(3, .18).rotateX(-Math.PI / 2), white, dashes.map(([x, z, yaw]) => M4(x, .09, z, yaw)), .7);
+  chunked(new T.PlaneGeometry(3, .18).rotateX(-Math.PI / 2), white, dashes.map(([x, z, yaw]) => M4T(x, .09, z, yaw)), .7);   // M4T — по склону
   // железная дорога и трамвай
   const rails = OSM.l.map(([k, a]) => ({ k, pts: dm(a) }));
   add(stripGeo(rails.filter(r => r.k === 0).map(r => ({ pts: r.pts, w: 3.2 })), .04, false), flatMat(0x8a7f74, 1));
@@ -1049,15 +1088,16 @@ function placeName(x, z) {
     const quad = (A, a, b, c, e) => A.push(...a, ...b, ...c, ...a, ...c, ...e);
     const L0 = d.lc - d.hw, L1 = d.lc + d.hw, TH = 2.2, PH = 1.05;
     for (let i = 0; i < N; i++) {
-      const sa = d.s0 + (d.s1 - d.s0) * i / N, sb = d.s0 + (d.s1 - d.s0) * (i + 1) / N, ha = deckH(d, sa) + .06, hb = deckH(d, sb) + .06;
-      quad(top, P(sa, L0, ha), P(sa, L1, ha), P(sb, L1, hb), P(sb, L0, hb));
+      const sa = d.s0 + (d.s1 - d.s0) * i / N, sb = d.s0 + (d.s1 - d.s0) * (i + 1) / N, H = (s1, l) => deckH(d, s1, l) + .06;   // высота по краю — у концов на склоне края разные
+      quad(top, P(sa, L0, H(sa, L0)), P(sa, L1, H(sa, L1)), P(sb, L1, H(sb, L1)), P(sb, L0, H(sb, L0)));
       [L0, L1].forEach((l, k) => {
-        const li = l + (k ? -.35 : .35);
+        const li = l + (k ? -.35 : .35), ha = H(sa, l), hb = H(sb, l);
         quad(side, P(sa, l, ha - TH), P(sb, l, hb - TH), P(sb, l, hb + PH), P(sa, l, ha + PH));          // торец балки и парапет снаружи
         quad(side, P(sa, li, ha), P(sb, li, hb), P(sb, li, hb + PH), P(sa, li, ha + PH));               // парапет изнутри
         quad(side, P(sa, l, ha + PH), P(sb, l, hb + PH), P(sb, li, hb + PH), P(sa, li, ha + PH));       // верх парапета
       });
-      quad(side, P(sa, L0, ha - TH), P(sb, L0, hb - TH), P(sb, L1, hb - TH), P(sa, L1, ha - TH));       // низ
+      quad(side, P(sa, L0, H(sa, L0) - TH), P(sb, L0, H(sb, L0) - TH), P(sb, L1, H(sb, L1) - TH), P(sa, L1, H(sa, L1) - TH));       // низ
+      const ha = H(sa, d.lc), hb = H(sb, d.lc);
       [-.2, .2].forEach(o => quad(line, P(sa, d.lc + o - .08, ha + .02), P(sa, d.lc + o + .08, ha + .02), P(sb, d.lc + o + .08, hb + .02), P(sb, d.lc + o - .08, hb + .02)));   // двойная осевая
     }
     const mk = (pos, m) => { const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); add(g, m); };
@@ -1066,19 +1106,19 @@ function placeName(x, z) {
     // опоры — пары столбов с ригелем, только там, где настил высоко
     const pierM = mat(0xa9a598, { roughness: .9 });
     for (let s = d.s0 + d.R * .7; s < d.s1 - d.R * .6; s += 64) {
-      const h = deckH(d, s) - TH; if (h < 3) continue;
+      const top = deckH(d, s) - TH, gb = terrainH(...P(s, d.lc, 0).filter((_, i) => i !== 1)); if (top - gb < 3) continue;   // низ опоры — на земле или в воде
       [-.32, .32].forEach(f => {
-        const [x, , z] = P(s, d.lc + f * d.hw * 2, 0), col = new T.Mesh(new T.BoxGeometry(3.2, h + 3, 3.2), pierM);
-        col.position.set(x, (h - 3) / 2, z); col.rotation.y = Math.atan2(-d.dz, d.dx); scene.add(col);
-        solids.push({ x0: x - 1.8, x1: x + 1.8, z0: z - 1.8, z1: z + 1.8, h, name: "опору моста" });
+        const [x, , z] = P(s, d.lc + f * d.hw * 2, 0), col = new T.Mesh(new T.BoxGeometry(3.2, top - gb + 3, 3.2), pierM);
+        col.position.set(x, (top + gb - 3) / 2, z); col.rotation.y = Math.atan2(-d.dz, d.dx); scene.add(col);
+        solids.push({ x0: x - 1.8, x1: x + 1.8, z0: z - 1.8, z1: z + 1.8, h: top, name: "опору моста" });
       });
-      const [x, , z] = P(s, d.lc, 0), cap = new T.Mesh(new T.BoxGeometry(3.6, 1.4, d.hw * 1.7), pierM);
+      const [x, , z] = P(s, d.lc, 0), cap = new T.Mesh(new T.BoxGeometry(3.6, 1.4, d.hw * 1.7), pierM), h = top;
       cap.position.set(x, h - .7, z); cap.rotation.y = Math.atan2(-d.dz, d.dx); scene.add(cap);
     }
     // фонари: столб, двойной кронштейн, плафоны; ночью — пятна света на настиле
     const poleM = mat(0x8d9096), headM = nightReg(new T.MeshBasicMaterial({ color: 0xd9d2bf }), "color", { sunset: 0xd9d2bf, day: 0xd9d2bf, night: 0xfff0c0 }), poolPts = [];
     for (let s = d.s0 + 12; s < d.s1 - 6; s += 36) [L0 + .7, L1 - .7].forEach((l, k) => {
-      const h = deckH(d, s) + .06, [x, , z] = P(s, l, h), yaw = Math.atan2(-d.dz, d.dx), sg = k ? -1 : 1;
+      const h = deckH(d, s, l) + .06, [x, , z] = P(s, l, h), yaw = Math.atan2(-d.dz, d.dx), sg = k ? -1 : 1;
       const pole = new T.Mesh(new T.CylinderGeometry(.1, .14, 10, 6), poleM); pole.position.set(x, h + 5, z); scene.add(pole);
       const arm = new T.Mesh(new T.BoxGeometry(.12, .12, 2.6), poleM); arm.position.set(x + d.nx * sg * 1.2, h + 9.9, z + d.nz * sg * 1.2); arm.rotation.y = yaw; scene.add(arm);
       const lamp = new T.Mesh(new T.BoxGeometry(.9, .18, .4), headM); lamp.position.set(x + d.nx * sg * 2.4, h + 9.8, z + d.nz * sg * 2.4); lamp.rotation.y = yaw; scene.add(lamp);
@@ -1102,6 +1142,9 @@ function placeName(x, z) {
   const winTex = mk(winC), emTex = mk(emC);
   const PAL = [[0xd9cfbf, 0xc9b8a0, 0xe0d8c8, 0xbfa58a, 0xd2c4ae, 0xa45a42], [0x9aa0a6, 0xb2b4b0, 0x8e9499], [0xc8d0d8, 0xd6d6d2, 0xaeb9c2], [0xc98f6b, 0xb9775a, 0xd9b08c], [0xeceef0]];
   const ROOFS = [0x5d5f63, 0x6b6e72, 0x7a5a48, 0x8f9397];
+  // старый Ростов на холме — как с левого берега: охра, кремовый, светло-жёлтый, терракота; крыши ржаво-красные, зелёные, серые
+  const lin = h => new T.Color(h).convertSRGBToLinear();
+  const OLD_TOWN = { walls: ["#e9dcc0", "#e2c78c", "#d8a676", "#c98a68", "#efe7d4", "#dcb89e", "#e8d49a"].map(lin), roofs: ["#7d3a2b", "#8c4a33", "#536e52", "#6e5f52", "#62666a"].map(lin), brick: lin("#9a4e36"), concrete: lin("#cfcac0") };
   const walls = [[], []], roofs = [], col = new T.Color(), rcol = new T.Color();
   const arenaSrc = OSM.b.find(b => b[1] === 4), arenaRing = arenaSrc ? dm(arenaSrc[2][0]) : null;
   OSM.b.forEach(([hd, kind, rs, nameI], bi) => {
@@ -1111,7 +1154,15 @@ function placeName(x, z) {
       const c = bboxOf(rings[0]), cx = (c.x0 + c.x1) / 2, cz = (c.z0 + c.z1) / 2;
       if (!inPoly(cx, cz, arenaRing) && lineDist(cx, cz, arenaRing, true) < 70) return;
     }
+    { const c = bboxOf(rings[0]), cx = (c.x0 + c.x1) / 2, cz = (c.z0 + c.z1) / 2;            // под настилом моста домов нет
+      if (DECKS.some(d => { const ox = cx - d.cx, oz = cz - d.cz, sd = ox * d.dx + oz * d.dz, l = ox * d.nx + oz * d.nz; return sd > d.s0 - 4 && sd < d.s1 + 4 && Math.abs(l - d.lc) < d.hw + 3; })) return; }
     const pal = PAL[kind]; col.setHex(pal[bi % pal.length]); rcol.setHex(ROOFS[(bi * 7) % ROOFS.length]);
+    // на склоне: дом стоит на отметке середины, стены уходят до низа склона под ним
+    const bb0 = bboxOf(rings[0]), gc = terrainH((bb0.x0 + bb0.x1) / 2, (bb0.z0 + bb0.z1) / 2), gmin = Math.min(gc, ...rings[0].map(([x, z]) => terrainH(x, z))) - .4;
+    const nm = nameI >= 0 ? OSM.n[nameI] : "";
+    if (/Парамонов/.test(nm)) { col.copy(OLD_TOWN.brick); rcol.copy(OLD_TOWN.roofs[0]); }          // кирпичные Парамоновские склады
+    else if (/зерновых складов/.test(nm)) { col.copy(OLD_TOWN.concrete); rcol.copy(OLD_TOWN.roofs[4]); }
+    else if (gc > 3 && kind !== 1) { col.copy(OLD_TOWN.walls[bi % OLD_TOWN.walls.length]); rcol.copy(OLD_TOWN.roofs[(bi * 3) % OLD_TOWN.roofs.length]); }   // старый город на холме: охра, кремовый, терракота
     const W = walls[plain ? 1 : 0];
     rings.forEach((ring, ri) => {
       let s = 0; for (let i = 0; i < ring.length; i++) s += ring[i][0] * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * ring[i][1];
@@ -1120,17 +1171,18 @@ function placeName(x, z) {
       for (let i = 0; i < ring.length; i++) {
         const [ax, az] = ring[i], [bx, bz] = ring[(i + 1) % ring.length], L = Math.hypot(bx - ax, bz - az);
         if (L < .05) continue;
-        const nx = -(bz - az) / L * out, nz = (bx - ax) / L * out, u1 = u + L / 6, v = h / 6.4;
-        W.push([ax, 0, az, u, 0], [bx, 0, bz, u1, 0], [bx, h, bz, u1, v], [ax, 0, az, u, 0], [bx, h, bz, u1, v], [ax, h, az, u, v]);
+        const nx = -(bz - az) / L * out, nz = (bx - ax) / L * out, u1 = u + L / 6, top = gc + h, v0 = (gmin - gc) / 6.4, v = h / 6.4;
+        const ga = terrainH(ax, az), gb = terrainH(bx, bz);           // земля под углами стены — для затенения у основания
+        W.push([ax, gmin, az, u, v0, ga], [bx, gmin, bz, u1, v0, gb], [bx, top, bz, u1, v, gb], [ax, gmin, az, u, v0, ga], [bx, top, bz, u1, v, gb], [ax, top, az, u, v, ga]);
         W[W.length - 1].n = W[W.length - 2].n = W[W.length - 3].n = W[W.length - 4].n = W[W.length - 5].n = W[W.length - 6].n = [nx, 0, nz];
         for (let k = 0; k < 6; k++) W[W.length - 1 - k].c = [col.r, col.g, col.b];
         u = u1;
       }
     });
     const c2 = rings[0].map(([x, z]) => new T.Vector2(x, z)), hs = rings.slice(1).map(r => r.map(([x, z]) => new T.Vector2(x, z))), all = c2.concat(...hs);
-    T.ShapeUtils.triangulateShape(c2, hs).forEach(t => t.forEach(i => roofs.push(all[i].x, h, all[i].y, rcol.r, rcol.g, rcol.b)));
+    T.ShapeUtils.triangulateShape(c2, hs).forEach(t => t.forEach(i => roofs.push(all[i].x, gc + h, all[i].y, rcol.r, rcol.g, rcol.b)));
     const name = kind === 4 ? "стену стадиона" : "дом";
-    const sb = { ...bboxOf(rings[0]), h, name, rings };
+    const sb = { ...bboxOf(rings[0]), h: gc + h, name, rings };
     // посадочная площадка: плоская крыша, где помещается квадрат 7×7 м вокруг середины, высота 3–45 м
     const cx = (sb.x0 + sb.x1) / 2, cz = (sb.z0 + sb.z1) / 2;
     if (kind !== 4 && h >= 3 && h <= 45 && [[0, 0], [3.5, 3.5], [-3.5, 3.5], [3.5, -3.5], [-3.5, -3.5]].every(([dx, dz]) => inRings(cx + dx, cz + dz, rings)))
@@ -1138,15 +1190,15 @@ function placeName(x, z) {
     solids.push(sb);
   });
   const wallGeo = list => {
-    const P = [], N = [], U = [], C = [];
-    list.forEach(v => { P.push(v[0], v[1], v[2]); U.push(v[3], v[4]); N.push(...v.n); C.push(...v.c); });
+    const P = [], N = [], U = [], C = [], B = [];
+    list.forEach(v => { P.push(v[0], v[1], v[2]); U.push(v[3], v[4]); N.push(...v.n); C.push(...v.c); B.push(v[5]); });
     const g = new T.BufferGeometry();
     g.setAttribute("position", new T.Float32BufferAttribute(P, 3)); g.setAttribute("normal", new T.Float32BufferAttribute(N, 3));
-    g.setAttribute("uv", new T.Float32BufferAttribute(U, 2)); g.setAttribute("color", new T.Float32BufferAttribute(C, 3)); return g;
+    g.setAttribute("uv", new T.Float32BufferAttribute(U, 2)); g.setAttribute("color", new T.Float32BufferAttribute(C, 3)); g.setAttribute("aoBase", new T.Float32BufferAttribute(B, 1)); return g;
   };
   // затенение у основания стен — в шейдере по высоте (стены уже в мировых координатах): нижние 2,6 м темнеют к земле
   const groundAO = m => { m.onBeforeCompile = sh => {
-    sh.vertexShader = "varying float vWY;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWY = position.y;");
+    sh.vertexShader = "attribute float aoBase;\nvarying float vWY;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWY = position.y - aoBase;");
     sh.fragmentShader = "varying float vWY;\n" + sh.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\n diffuseColor.rgb *= mix(.5, 1.0, smoothstep(0.0, 2.6, vWY));");
   }; return m; };
   add(wallGeo(walls[0]), nightReg(groundAO(new T.MeshStandardMaterial({ map: winTex, emissive: 0xffe2b0, emissiveMap: emTex, emissiveIntensity: .12, vertexColors: true, roughness: .9, metalness: 0, side: DS })), "emissiveIntensity", { sunset: .12, day: .03, night: 1.5 }));
@@ -1171,11 +1223,23 @@ function placeName(x, z) {
     const rings = rs.map(dm), b = bboxOf(rings[0]), n = Math.min(120, Math.round((b.x1 - b.x0) * (b.z1 - b.z0) / 320));
     for (let i = 0; i < n; i++) { const x = b.x0 + rnd() * (b.x1 - b.x0), z = b.z0 + rnd() * (b.z1 - b.z0); if (inRings(x, z, rings)) trees.push([x, z]); }
   });
+  // зелёный склон правого берега: деревья там, где круто и нет домов, улиц и воды
+  {
+    const near = new Set(), key = (x, z) => Math.floor(x / 6) + "," + Math.floor(z / 6);
+    ROADS.forEach(r => { if (r.deck) return; for (let i = 1; i < r.pts.length; i++) { const [ax, az] = r.pts[i - 1], [bx, bz] = r.pts[i], L = Math.hypot(bx - ax, bz - az);
+      for (let t = 0; t <= L; t += 3) { const x = ax + (bx - ax) * t / L, z = az + (bz - az) * t / L; for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) near.add(key(x + dx * (r.w / 2 + 2), z + dz * (r.w / 2 + 2))); } } });
+    let n = 0;
+    for (let k = 0; k < 9000 && n < 900; k++) {
+      const x = STRIP.x0 + rnd() * (STRIP.x1 - STRIP.x0), z = -82 - rnd() * 920, h = terrainH(x, z); if (h < 3) continue;
+      const [gx, gz] = terrainN(x, z); if (Math.hypot(gx, gz) < .07 || near.has(key(x, z)) || waterAt(x, z) || solids.some(b => x > b.x0 - 2 && x < b.x1 + 2 && z > b.z0 - 2 && z < b.z1 + 2)) continue;
+      trees.push([x, z]); n++;
+    }
+  }
   const crowns = [], trunks = [];
   trees.forEach(([x, z]) => {
     if (arenaRing && (inPoly(x, z, arenaRing) || lineDist(x, z, arenaRing, true) < 66)) return;   // и деревья там же
     const s = .75 + rnd() * .55;
-    crowns.push(M4(x, 3 + 2.1 * s, z, rnd() * 6, s, s * 1.1, s)); trunks.push(M4(x, 1.5, z));
+    const g0 = terrainH(x, z); crowns.push(M4(x, g0 + 3 + 2.1 * s, z, rnd() * 6, s, s * 1.1, s)); trunks.push(M4(x, g0 + 1.5, z));
   });
   chunked(new T.IcosahedronGeometry(2.3, 0), mat(0x58803a, { flatShading: true }), crowns, .75);
   chunked(new T.CylinderGeometry(.18, .26, 3, 4, 1, true), mat(0x6b5444), trunks, .45);   // стволы вдали не видны
@@ -1581,6 +1645,60 @@ const bakeShadows = (() => {
   };
 })();
 bakeShadows();
+/* ---------- склон правого берега: сетка рельефа, на которой нарисована земля (площади, улицы, рельсы, тени) ---------- */
+// Сетка идёт рядами от линии берега до автобана, поэтому край набережной совпадает с гранитной стенкой.
+// Земля на склоне — одна текстура 1,4 пикс/м (цвета те же, что у плоских слоёв, пересчитаны в sRGB).
+const HILL = (() => {
+  const NX = Math.ceil((STRIP.x1 - STRIP.x0) / 15), NZ = 50, zb0 = BANK.find(v => v != null) ?? -560;
+  const bankAt = x => terLerp(BANK, Math.min(STRIP.x1 - TER.step, Math.max(STRIP.x0, x))) ?? zb0;
+  const zMin = Math.min(...BANK.filter(v => v != null)) - 2, X0 = STRIP.x0, X1 = STRIP.x1, Z1 = -82;
+  const pos = [], uv = [], idx = [];
+  for (let i = 0; i <= NX; i++) {
+    const x = X0 + (X1 - X0) * i / NX, zb = bankAt(x) + .05;
+    for (let j = 0; j <= NZ; j++) { const z = zb + (Z1 - zb) * j / NZ; pos.push(x, terrainH(x, z) + .02, z); uv.push((x - X0) / (X1 - X0), 1 - (z - zMin) / (Z1 - zMin)); }
+  }
+  for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) { const a = i * (NZ + 1) + j, b = a + NZ + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const PX = 1.4, W = Math.ceil((X1 - X0) * PX), Hh = Math.ceil((Z1 - zMin) * PX), c = document.createElement("canvas"); c.width = W; c.height = Hh;
+  const cx = c.getContext("2d"), tex = new T.CanvasTexture(c); tex.encoding = T.sRGBEncoding; tex.anisotropy = 8;
+  const css = hex => "#" + new T.Color(hex).convertLinearToSRGB().getHexString();      // цвет материала (линейный) → цвет на холсте
+  const mesh = new T.Mesh(g, new T.MeshLambertMaterial({ map: tex })); mesh.userData.dyn = true; scene.add(mesh);
+  const AREA = { c: 0xa59b87, b: 0xd8c89d, g: 0x6f9a48, f: 0x557f36, s: 0x5f9a42, k: 0x9c9a93, w: 0x3d6f86 }, RC = [0x404246, 0x45474b, 0x4b4d51, 0x55575b, 0xa8a59e];
+  const shadowA = { sunset: .4, day: .34, night: .14 };
+  function paint() {
+    cx.setTransform(PX, 0, 0, PX, -X0 * PX, -zMin * PX);
+    cx.fillStyle = css(0x9d9585); cx.fillRect(X0, zMin, X1 - X0, Z1 - zMin);
+    // склон зеленее: чем круче, тем больше травы — как на фото правого берега
+    for (let x = X0; x < X1; x += 8) for (let z = zMin; z < Z1; z += 8) {
+      const [gx, gz] = terrainN(x + 4, z + 4), k = Math.min(1, Math.hypot(gx, gz) / .14);
+      if (k > .05) { cx.fillStyle = `rgba(92,128,62,${(.55 * k).toFixed(2)})`; cx.fillRect(x, z, 8, 8); }
+    }
+    const poly = rs => { cx.beginPath(); rs.forEach(r => r.forEach(([x, z], i) => i ? cx.lineTo(x, z) : cx.moveTo(x, z))); cx.fill("evenodd"); };
+    ["c", "b", "g", "f", "s", "k", "w"].forEach(k => { cx.fillStyle = css(AREA[k]); OSM.a.forEach(([kk, rs]) => { if (kk === k) poly(rs.map(dm)); }); });
+    cx.lineCap = cx.lineJoin = "round";
+    OSM.l.forEach(([, a]) => { const pts = dm(a); cx.strokeStyle = "#3b3936"; cx.lineWidth = 1.8; cx.beginPath(); pts.forEach(([x, z], i) => i ? cx.lineTo(x, z) : cx.moveTo(x, z)); cx.stroke(); });
+    [4, 3, 2, 1, 0].forEach(cl => { cx.strokeStyle = css(RC[cl]); ROADS.forEach(r => { if (r.c !== cl || r.deck) return; cx.lineWidth = r.w; cx.beginPath(); r.pts.forEach(([x, z], i) => i ? cx.lineTo(x, z) : cx.moveTo(x, z)); cx.stroke(); }); });
+    // тени домов под текущим солнцем
+    cx.fillStyle = `rgba(0,0,0,${shadowA[TIME]})`; const sx = -SUN_DIR.x / SUN_DIR.y, sz = -SUN_DIR.z / SUN_DIR.y;
+    cx.beginPath();
+    solids.forEach(b => { if (!b.rings || b.arena || b.z1 < zMin || b.z0 > Z1) return; const ring = b.rings[0], len = Math.min(b.h - terrainH((b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2), 22), n = Math.max(2, Math.ceil(len * Math.hypot(sx, sz) / 3));
+      if (len < 2) return; for (let k = 0; k <= n; k++) { const d = len * k / n; ring.forEach(([x, z], i) => i ? cx.lineTo(x + sx * d, z + sz * d) : cx.moveTo(x + sx * d, z + sz * d)); cx.closePath(); } });
+    cx.fill("nonzero");
+    tex.needsUpdate = true;
+  }
+  // гранитная набережная: стенка от воды до верха берега и белый парапет
+  const wall = [], rail = [], q = (A, a, b, c2, d) => A.push(...a, ...b, ...c2, ...a, ...c2, ...d);
+  for (let i = 0; i < NX; i++) {
+    const xa = X0 + (X1 - X0) * i / NX, xb = X0 + (X1 - X0) * (i + 1) / NX, za = bankAt(xa) + .05, zb = bankAt(xb) + .05, ha = terrainH(xa, za + .1), hb = terrainH(xb, zb + .1);
+    if (ha < .5 && hb < .5) continue;
+    q(wall, [xa, -1.5, za], [xb, -1.5, zb], [xb, hb, zb], [xa, ha, za]);
+    q(rail, [xa, ha, za], [xb, hb, zb], [xb, hb + .9, zb], [xa, ha + .9, za]); q(rail, [xa, ha + .9, za], [xb, hb + .9, zb], [xb, hb + .9, zb + .35], [xa, ha + .9, za + .35]);
+    q(rail, [xa, ha, za + .35], [xb, hb, zb + .35], [xb, hb + .9, zb + .35], [xa, ha + .9, za + .35]);
+  }
+  [[wall, 0x6f6a64], [rail, 0xd9d4c8]].forEach(([P, col]) => { const gg = new T.BufferGeometry(); gg.setAttribute("position", new T.Float32BufferAttribute(P, 3)); gg.computeVertexNormals(); scene.add(new T.Mesh(gg, new T.MeshStandardMaterial({ color: col, roughness: .85, side: T.DoubleSide }))); });
+  paint();
+  return { paint, mesh };
+})();
 freeze(scene);   // вся неподвижная геометрия мира — несколько склеенных мешей
 // сетка 40 м для препятствий: домов сотни, проверять все на каждом шаге физики дорого
 const SGRID = 40, sgrid = new Map(), skey = (i, j) => i * 4096 + j, STREET = {};
@@ -1665,7 +1783,7 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
     const cx = cr.x + l.dx * d, cz = cr.z + l.dz * d, yaw = yawOf(l.dx, l.dz);
     for (let o = -l.w / 2 + .6; o <= l.w / 2 - .5; o += 1) zeb.push([cx - l.dz * o, cz + l.dx * o, yaw]);
   }));
-  chunked(new T.PlaneGeometry(3, .5).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0xeeeae0 }), zeb.slice(0, 5000).map(([x, z, yaw]) => M4(x, .095, z, yaw)), .6);
+  chunked(new T.PlaneGeometry(3, .5).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0xeeeae0 }), zeb.slice(0, 5000).map(([x, z, yaw]) => M4T(x, .095, z, yaw)), .6);
   // светофоры на перекрёстках улиц и магистралей: по столбу на каждую «ногу», смотрят навстречу подъезжающим
   const tl = [];
   cross.filter(cr => cr.major <= 1).slice(0, 70).forEach(cr => cr.legs.slice(0, 4).forEach(l => {
@@ -1674,12 +1792,12 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
     if (solidsNear(x, z).some(b => b.h > .5 && inBox(b, x, z, 1.1))) return;
     tl.push([x, z, yawOf(l.dx, l.dz), Math.abs(l.dx) > Math.abs(l.dz) ? "A" : "B"]);
   }));
-  chunked(geo([new T.CylinderGeometry(.07, .08, 3.2, 6), 0, 1.6, 0], [new T.BoxGeometry(.3, 1.05, .34), .05, 3.6, 0]), mat(0x2b2d33), tl.map(([x, z, yaw]) => M4(x, 0, z, yaw)), .6);
+  chunked(geo([new T.CylinderGeometry(.07, .08, 3.2, 6), 0, 1.6, 0], [new T.BoxGeometry(.3, 1.05, .34), .05, 3.6, 0]), mat(0x2b2d33), tl.map(([x, z, yaw]) => M4(x, terrainH(x, z), z, yaw)), .6);
   ["A", "B"].forEach(grp => {
     const mine = tl.filter(t => t[3] === grp);
     [[3.92, 0xff3b30], [3.6, 0xffc400], [3.28, 0x3ddc84]].forEach(([y, c]) => {
       const m = new T.MeshBasicMaterial({ color: c }); m.userData.on = new T.Color(c); m.userData.off = new T.Color(c).multiplyScalar(.18);
-      chunked(new T.CircleGeometry(.12, 8).rotateY(Math.PI / 2).translate(.205, y, 0), m, mine.map(([x, z, yaw]) => M4(x, 0, z, yaw)), .6);
+      chunked(new T.CircleGeometry(.12, 8).rotateY(Math.PI / 2).translate(.205, y, 0), m, mine.map(([x, z, yaw]) => M4(x, terrainH(x, z), z, yaw)), .6);
       SIGNALS[grp].push(m);
     });
   });
@@ -1709,7 +1827,7 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
     [new T.BoxGeometry(.55, .1, .24).translate(1.5, 6.92, 0), nightReg(new T.MeshBasicMaterial({ color: 0xffe2a0 }), "color", { sunset: 0xd9d2bf, day: 0xd9d2bf, night: 0xfff0c0 })],
     [new T.PlaneGeometry(13, 13).rotateX(-Math.PI / 2).translate(1.5, .14, 0), nightReg(new T.MeshBasicMaterial({ map: new T.CanvasTexture(pool), transparent: true, depthWrite: false, blending: T.AdditiveBlending, visible: false }), "visible", { sunset: false, day: false, night: true })]   // фонари горят ночью
   ];
-  lampParts.forEach(([g, m], k) => chunked(g, m, lamps.map(([x, z, yaw]) => M4(x, 0, z, yaw)), k === 2 ? .5 : .8));
+  lampParts.forEach(([g, m], k) => chunked(g, m, lamps.map(([x, z, yaw]) => M4(x, terrainH(x, z) + (k === 2 ? .2 : 0), z, yaw)), k === 2 ? .5 : .8));
   STREET.lamps = lamps.length; STREET.signals = tl.length; STREET.zebras = zeb.length; STREET.crossings = cross.length;
 })();
 function tickSignals(t) {                  // цикл 16 с: у одного направления зелёный, у другого красный
@@ -2318,7 +2436,7 @@ function missionTick() {
 
 /* ---------- физика свободной езды ---------- */
 function groundAt(x, z, y = -1) {   // y — высота машины: крыша считается землёй, только если машина над ней
-  let h = 0, slope = 0, roof = null;
+  let h = terrainH(x, z), slope = 0, roof = null;
   for (const k of kickers) {
     const dx = x - k.x, dz = z - k.z, u = dx * k.fx + dz * k.fz, w = -dx * k.fz + dz * k.fx;
     if (u >= 0 && u <= k.len && Math.abs(w) <= k.w / 2 && !(k.y0 && y < k.y0 - 1)) {
@@ -2330,11 +2448,19 @@ function groundAt(x, z, y = -1) {   // y — высота машины: крыш
   if (y > .6) for (const b of solidsNear(x, z)) if (b.rings && b.h <= y + (b.arena ? 4 : .6) && b.h > h && inBox(b, x, z, 0)) { h = b.h; slope = 0; roof = b; }
   const dk = DECKS.length && deckAt(x, z, y);   // настил моста с пандусами
   if (dk && dk.h > h) return { h: dk.h, slope: dk.slope, roof: null, rx: dk.rx, rz: dk.rz, deck: true };
+  if (!roof && h > 0 && slope === 0) {           // склон правого берега: уклон по ходу и крен поперёк — как на трибуне
+    const [gx, gz] = terrainN(x, z), g = Math.hypot(gx, gz);
+    if (g > 1e-3) return { h, slope: Math.atan(g), roof: null, rx: gx / g, rz: gz / g, hill: true };
+  }
   const bw = ARENA && ARENA.bowl(x, z);   // чаша Арены: трибуны — рампа от поля до крыши
   if (bw && bw.h > h) return { h: bw.h, slope: bw.slope, roof: null, bowl: true, rx: bw.rx, rz: bw.rz };
   return { h, slope, roof };
 }
 function hitSolid(x, z, y) {
+  for (const d of DECKS) {                       // парапет моста — стенка на уровне настила
+    const ox = x - d.cx, oz = z - d.cz, s = ox * d.dx + oz * d.dz, l = Math.abs(ox * d.nx + oz * d.nz - d.lc);
+    if (s > d.s0 + 6 && s < d.s1 - 6 && l > d.hw - .5 && l < d.hw + 1) { const h = deckH(d, s); if (y > h - 1 && y < h + 1.1 && h - terrainH(x, z) > 1) return { name: "парапет моста", h: h + 1.05 }; }
+  }
   for (const b of solidsNear(x, z)) if (y < b.h && inBox(b, x, z, 1.1)) return b;
   for (const b of rowSolids) if (y < b.h && inBox(b, x, z, 1.1)) return b;
   for (const c of traffic) if (y < 1.7 && Math.abs(x - c.x) < 4.2 && Math.abs(z - c.z) < 1.8) return { name: "машину в потоке" };
@@ -2685,7 +2811,7 @@ function stepFree(dt) {
       car.x = nx; car.z = nz; car.y = g0.h;
       const gs = g0.rx !== undefined ? Math.atan(Math.tan(g0.slope) * (nfx * g0.rx + nfz * g0.rz)) : g0.slope;   // чаша, мост: вверх или вниз по ходу
       car.pitch += (gs - car.pitch) * Math.min(1, dt * 12);
-      const sr = g0.bowl ? Math.atan(Math.tan(g0.slope) * (lfx * g0.rx + lfz * g0.rz)) / DEG : 0;   // поперёк трибуны — крен по склону
+      const sr = g0.bowl || g0.hill ? Math.atan(Math.tan(g0.slope) * (lfx * g0.rx + lfz * g0.rz)) / DEG : 0;   // поперёк трибуны — крен по склону
       car.slopeRoll = (car.slopeRoll || 0) + (sr - (car.slopeRoll || 0)) * Math.min(1, dt * 12);
     }
     const wantHop = (input.hop || free.hopReq) && !free.hopLock; free.hopReq = false;
@@ -2708,7 +2834,7 @@ function stepFree(dt) {
       showToast("Застряли? «⋯» → «Куда ехать»", "", 2500);
     }
     free.safeT += dt;
-    if (free.safeT > 1 && car.y < .05 && Math.abs(car.v) > 1 && !hitSolid(car.x, car.z, 0)) { free.safe = { x: car.x, z: car.z, yaw: car.yaw }; free.safeT = 0; }
+    if (free.safeT > 1 && car.y < terrainH(car.x, car.z) + .05 && Math.abs(car.v) > 1 && !hitSolid(car.x, car.z, car.y + .2)) { free.safe = { x: car.x, z: car.z, yaw: car.yaw }; free.safeT = 0; }
     if (Math.abs(car.v) > 3 && thr() > .3 && Math.random() < .08) puff(nozzle(-2.1, -.35), new T.Vector3(0, .5, 0), .4, .12);
     return;
   }
@@ -3181,7 +3307,7 @@ $("m-go").addEventListener("click", e => {
   const [n, x, z, yaw] = GO[+b.dataset.g];
   if (mode !== "free") startFree(false, false);
   free.proA = null;
-  car.x = x; car.z = z; car.yaw = yaw; car.y = 0; car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0;
+  car.x = x; car.z = z; car.yaw = yaw; car.y = surfaceH(x, z); car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0;
   free.air = false; free.wall = null; free.aero = null; free.tube = null; free.lap = null; free.safe = { x, z, yaw }; phase = "free"; camPos.set(x - 9, 3.2, z);
   zoneAt = -1; closeDock(); showToast(`${n}. Джойстик вверх — поехали`, "good", 2500);
 });
@@ -3548,7 +3674,7 @@ function setTime(key) {                         // время суток: све
   shaftTmp.a.copy(SUN_DIR).negate();
   hemi.color.setHex(P.sky); hemi.groundColor.setHex(P.gnd); hemi.intensity = P.hemiI;
   scene.background.setHex(P.haze); scene.fog.color.setHex(P.haze); renderer.toneMappingExposure = P.exp;
-  skyDome.userData.paint(TIME); bakeShadows();
+  skyDome.userData.paint(TIME); bakeShadows(); HILL.paint();
   NIGHT.forEach(([o, k, v]) => { const x = v[TIME]; if (o[k] && o[k].isColor) o[k].setHex(x); else o[k] = x; });
   save.time = TIME; persist();
 }
@@ -3637,7 +3763,9 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   path(x, z, pad = 2.6) {
     const C = 3, i0 = Math.floor((STRIP.x0 - 30) / C), i1 = Math.ceil((STRIP.x1 + 30) / C), j0 = Math.floor((STRIP.z0 - 30) / C), j1 = Math.ceil((ZA - 15) / C);
     const W = i1 - i0 + 1, H = j1 - j0 + 1, prev = new Int32Array(W * H).fill(-2), blk = new Int8Array(W * H).fill(-1);
-    const bad = k => { if (blk[k] < 0) { const cx = (k % W + i0 + .5) * C, cz = (Math.floor(k / W) + j0 + .5) * C; blk[k] = solidsNear(cx, cz).some(b => b.h > .2 && inBox(b, cx, cz, pad)) || waterAt(cx, cz) ? 1 : 0; } return blk[k]; };
+    const ctr = k => [(k % W + i0 + .5) * C, (Math.floor(k / W) + j0 + .5) * C];
+    const dkc = new Map(), deck = k => { if (!dkc.has(k)) { const [cx, cz] = ctr(k), d = DECKS.length && deckAt(cx, cz, 1e3); dkc.set(k, d && d.edge > 5 ? d.h - terrainH(cx, cz) : null); } return dkc.get(k); };   // высота настила над землёй; края — не для пути
+    const bad = k => { if (blk[k] < 0) { const [cx, cz] = ctr(k), dk = deck(k) != null; blk[k] = (!dk && solidsNear(cx, cz).some(b => b.h > .2 && inBox(b, cx, cz, pad))) || (waterAt(cx, cz) && !dk) ? 1 : 0; } return blk[k]; };
     const s = (Math.floor(z / C) - j0) * W + (Math.floor(x / C) - i0), q = [s]; prev[s] = -1;
     for (let h = 0; h < q.length; h++) {
       const k = q[h], ci = k % W, cj = Math.floor(k / W);
@@ -3645,6 +3773,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
       for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
         const ni = ci + di, nj = cj + dj; if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
         const n = nj * W + ni; if (prev[n] !== -2 || bad(n)) continue;
+        { const a = deck(n), b = deck(k); if ((a == null) !== (b == null) && Math.abs((a ?? 0) - (b ?? 0)) > 1.2) continue; }   // на мост и с моста — только у концов, где он вровень с землёй
         if (di && dj && (bad(cj * W + ni) || bad(nj * W + ci))) continue;
         prev[n] = k; q.push(n);
       }
@@ -3657,6 +3786,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   key: (k, v) => { input[k] = v; },
   pro: on => startFree(false, on),
   time: k => { if (k) setTime(k); return TIME; },
+  ground: (x, z, y) => { const g = groundAt(x, z, y); return { h: g.h, deck: !!g.deck, hill: !!g.hill, ter: terrainH(x, z), solid: (hitSolid(x, z, y + .2) || {}).name || "" }; },
   decks: () => DECKS.map(d => ({ name: d.name, cx: d.cx, cz: d.cz, dx: d.dx, dz: d.dz, nx: d.nx, nz: d.nz, s0: d.s0, s1: d.s1, lc: d.lc, hw: d.hw, H: d.H })),
   wheels: () => { const U = carObj.userData; return { wa: U.wa || 0, st: U.st || 0, brake: U.redM.emissiveIntensity }; },
   puffs: () => pool.filter(q => q.on).length,
@@ -3668,7 +3798,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   boosts: () => BOOSTS.map(o => ({ kind: o.kind, x: o.x, z: o.z, y: o.y, yaw: o.yaw })),
   proState: () => ({ pro: !!free.pro, flying: !!free.proA, gas, alt: free.proA && free.proA.alt }),
   inner: () => INNER && { pad: INNER.pad, padE: INNER.padE, slide0: INNER.slide.frame(0), slideLen: INNER.slide.len, flowLen: INNER.flow.len, aero: free.aero && { ...free.aero }, tube: free.tube && { s: free.tube.s, v: free.tube.v, laps: free.tube.laps, flow: !!free.tube.path.flow, lift: !!free.tube.lift } },
-  teleport(x, z, yaw, y = 0) { car.x = x; car.z = z; car.yaw = yaw; car.y = y; car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0; car.vl = car.bodyRoll = car.bodyPitch = 0; free.air = false; free.wall = null; free.aero = null; free.tube = null; free.lap = null; phase = "free"; camPos.set(x, y + 4, z); zoneAt = -1; }
+  teleport(x, z, yaw, y = 0) { car.x = x; car.z = z; car.yaw = yaw; car.y = Math.max(y, surfaceH(x, z)); car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0; car.vl = car.bodyRoll = car.bodyPitch = 0; free.air = false; free.wall = null; free.aero = null; free.tube = null; free.lap = null; phase = "free"; camPos.set(x, car.y + 4, z); zoneAt = -1; }
 };
 requestAnimationFrame(frame);
 })();
