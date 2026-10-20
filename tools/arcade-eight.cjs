@@ -40,11 +40,12 @@ const path = require("path");
   out.best = await ev(() => __t.showBest());
   out.card = await p.$eval("#showcard", e => e.hidden ? "" : e.innerText.replace(/\s+/g, " "));
   out.top = await p.textContent("#h-top");
-  // дрифт и срыв: снова на старт, разгон до перекрёстка, затем занос и «закрутило»
+  // дрифт и срыв: после финиша 6 с паузы, затем снова на старт, разгон до перекрёстка, занос и «закрутило»
+  await run(7000);
   await ev(() => __t.teleport(1010, 150, -Math.PI / 2)); await ev(() => __t.setCar({ v: 15 })); await run(1500);
   out.started = !!(await ev(() => __t.show()));
   await ev(() => __t.setCar({ v: 22, vl: 7 })); await run(120);
-  out.drift = (await ev(() => __t.show())).drift;
+  out.drift = ((await ev(() => __t.show())) || {}).drift;
   await ev(() => __t.setCar({ v: 10, vl: 16 })); await run(300);
   out.spin = await ev(() => __t.show());
   await p.screenshot({ path: path.join(process.env.SHOTS || ".", "eight-spin.png") });
