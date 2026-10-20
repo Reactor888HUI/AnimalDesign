@@ -35,9 +35,13 @@ const path = require("path");
   await p2.clock.install();
   await p2.goto("file://" + path.resolve(__dirname, "../arcade/index.html") + "#test");
   await p2.clock.runFor(1200);
-  await p2.evaluate(() => { __t.fast(true); __t.teleport(700, -1050, Math.PI / 2); });
+  await p2.evaluate(() => __t.fast(true));
   await p.close();
-  await p2.keyboard.down("ArrowUp"); await p2.clock.runFor(8000); await p2.keyboard.up("ArrowUp");   // задание «мост» → очки → запись
+  {   // задание «мост» (Ворошиловский, из конца в конец) → очки → запись
+    const D = (await p2.evaluate(() => __t.decks()))[0], north = D.dz < 0, k = north ? 1 : -1, s = north ? D.s0 + 4 : D.s1 - 4, l = D.lc + D.hw * .45;
+    await p2.evaluate(([x, z, y]) => __t.teleport(x, z, y), [D.cx + D.dx * s + D.nx * l, D.cz + D.dz * s + D.nz * l, Math.atan2(-D.dz * k, D.dx * k)]);
+    await p2.keyboard.down("ArrowUp"); await p2.clock.runFor(18000); await p2.keyboard.up("ArrowUp");
+  }
   await p2.clock.runFor(5000);
   out.boardMissions = await p2.evaluate(() => __t.missions()); out.boardCar = await p2.evaluate(() => __t.car());
   out.boardWrites = await p2.evaluate(() => window.__writes.map(w => ({ path: w.path, best: w.data.best })));

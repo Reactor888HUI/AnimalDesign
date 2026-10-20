@@ -18,7 +18,13 @@ const SHOTS = process.env.SHOTS || ".";
   const keys = async (down, ms) => { for (const k of down) await p.keyboard.down(k); await run(ms); for (const k of down) await p.keyboard.up(k); };
 
   // мост на левый берег
-  await ev(() => __t.teleport(700, -1050, Math.PI / 2)); await keys(["ArrowUp"], 5000);
+  // Ворошиловский мост: с правого берега по настилу до левого
+  const crossBridge = async (pg, ms) => {
+    const D = (await pg.evaluate(() => __t.decks()))[0], north = D.dz < 0, k = north ? 1 : -1, s = north ? D.s0 + 4 : D.s1 - 4, l = D.lc + D.hw * .45;
+    await pg.evaluate(([x, z, y]) => __t.teleport(x, z, y), [D.cx + D.dx * s + D.nx * l, D.cz + D.dz * s + D.nz * l, Math.atan2(-D.dz * k, D.dx * k)]);
+    await pg.keyboard.down("ArrowUp"); await pg.clock.runFor(ms); await pg.keyboard.up("ArrowUp");
+  };
+  await crossBridge(p, 18000);
   out.bridge = !!(await M()).bridge;
   // крыша дома
   const roof = (await ev(() => __t.pads()))[0];       // зелёная площадка «H»

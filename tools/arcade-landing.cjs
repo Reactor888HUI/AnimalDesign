@@ -30,7 +30,8 @@ const path = require("path");
   out.drops.push(await drop("6 м, вверх колёсами, ассистент выкл", { y: 6, roll: 180, ms: 2500 }));
   await p.click("#dock-btn"); await p.clock.runFor(150); await p.click("#m-assist"); await p.click("#dock-btn"); await p.clock.runFor(150);
   // подлёт к площадке «H» сбоку: касание крыши тоже мягкое
-  const pd = (await p.evaluate(() => __t.pads()))[12];
+  // площадка, к которой с запада (25 м) свободный подлёт: по пути нет домов выше её крыши
+  const pd = await p.evaluate(() => { const H = __t.houses(); return __t.pads().find(pd => pd.h > 6 && !H.some(b => b.h > pd.h - .5 && b.x1 > pd.x - 27 && b.x0 < pd.x - 4 && b.z1 > pd.z - 3 && b.z0 < pd.z + 3)); });
   await p.evaluate(pd => { __t.teleport(pd.x - 25, pd.z, 0); __t.setGas(0); __t.setCar({ y: pd.h + 12, vy: 3, v: 9, roll: 0, om: 0, air: true }); }, pd);
   await p.clock.runFor(4000);
   out.sideRoof = { impact: await p.evaluate(() => window.__impact), y: +(await p.evaluate(() => __t.carY())).toFixed(1), h: pd.h };
