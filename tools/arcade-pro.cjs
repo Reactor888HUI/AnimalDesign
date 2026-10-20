@@ -50,9 +50,13 @@ const path = require("path");
   await motion(0, 7.5, 6.3); await motion(-4, 5.5, 6.3); const c1 = await ev(() => __t.ctl());
   out.acc = { src: c1.tilt.src, turn: +c1.turn.toFixed(2), thr: +c1.thr.toFixed(2) };
   await p.click("#m-tilt"); await p.click("#dock-btn");
+  // время суток из «⋯»: закат → ночь → день → закат, ночью горят огни
+  const times = [await ev(() => __t.time())];
+  for (let i = 0; i < 3; i++) { await p.click("#dock-btn"); await run(150); await p.click("#m-time"); await run(150); times.push(await ev(() => __t.time())); await p.click("#dock-btn"); }
+  out.times = times.join(",");
   const ok = !errs.length && out.boosts.pads >= 10 && out.boosts.roofPads >= 5 && out.boosts.rings >= 10 && out.menu.pro && out.hud.startsWith("PRO") &&
     out.fly.flying && out.fly.y > 30 && out.fly.gas === 100 && out.land.landed && out.land.driftVl > 2 && out.boost.vmax > 45 && out.wall.attached && out.wall.stillOn &&
-    out.quick.free && out.quick.pro && out.acc.src === "acc" && out.acc.turn > .3 && out.acc.thr > .3;
+    out.quick.free && out.quick.pro && out.acc.src === "acc" && out.acc.turn > .3 && out.acc.thr > .3 && out.times === "sunset,night,day,sunset";
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 2));
   await b.close(); process.exit(ok ? 0 : 1);
 })();
