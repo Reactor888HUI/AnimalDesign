@@ -321,7 +321,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
       <rect x="-7" y="-101" width="14" height="22" rx="2" fill="#ffc93c"/>
       <circle r="27" fill="#232327"/><circle r="20" fill="#4a1d6e" stroke="#ffc93c" stroke-width="2"/>
       <text y="5.5" text-anchor="middle" font-size="15" font-weight="900" fill="#ffc93c" font-family="Golos Text, Arial, sans-serif">888</text>
-    </svg><div class="deg" id="dwheel-deg"></div></div>
+    </svg></div>
 
     <div class="hud tl"><span class="sp" id="h-speed">0</span><span class="u">км/ч</span><span class="alt" id="h-alt"></span><i class="mgas"><b id="h-gas"></b></i></div>
     <div class="hud top" id="h-top"></div>
@@ -373,7 +373,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
           <p><b>Езда.</b> Джойстик (палец по экрану) вверх — газ, вниз — тормоз, влево / вправо — руль. Тормоз в повороте — занос.</p>
           <p><b>Прыжок.</b> ПРЫГ — сопла подбрасывают машину. В воздухе джойстик крутит её; у земли держите газ — баллон смягчит посадку.</p>
           <p><b>Присоски.</b> С разгона въезжайте в стену Арены: влево — вверх, вправо — вниз, ПРЫГ — оттолкнуться.</p>
-          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или сам после 5 кругов; разогнался к концу 5-го круга до 216 км/ч — катапульта над крышей с двойной бочкой); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее. <b>Дрифт-трек 888</b> (две петли «Восьмёрки»): на треке — дрифтовый руль (крутите пальцем по кругу, больше оборота в каждую сторону) и широкая резина; проезд старта под аркой — начало, 3 круга, указатели — по ходу. Очки за езду по асфальту — множитель до ×5, пока не съезжаете; занос — очки дрифта; закрутило или авария — все очки шоу сгорают. В конце — итог, звёзды, рекорд, фейерверк; прошли трек — наклейка «888» на крыше.</p>
+          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или после 5 кругов катапульта: высоко над городом с тройной бочкой, чем быстрее — тем выше и дальше); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее. <b>Дрифт-трек 888</b> (две петли «Восьмёрки»): на треке — широкая резина (держит лучше) и дрифтовый руль на экране (показывает поворот, управление обычное); проезд старта под аркой — начало, 3 круга, указатели — по ходу. Очки за езду по асфальту — множитель до ×5, пока не съезжаете; занос — очки дрифта; закрутило или авария — все очки шоу сгорают. В конце — итог, звёзды, рекорд, фейерверк; прошли трек — наклейка «888» на крыше.</p>
           <p><b>PRO ∞.</b> Баллоны не кончаются: держите ПРЫГ — летите вверх, газ — вперёд, отпустили — плавно вниз. Фиолетовые дорожки и кольца — разгоны.</p>
           <p><b>Клавиатура.</b> ↑ газ, ↓ тормоз, ← → руль и вращение, Пробел — прыжок, C — камера, R — заново, M — меню.</p>
           <p><b>Вид и наклон.</b> Кнопка «ВИД» — сзади, дальняя, из кабины. «Наклон телефона» — руль наклоном; положение при включении — ноль, от себя — газ, на себя — тормоз.</p>
@@ -3258,7 +3258,7 @@ function stepTube(dt) {
     t.s -= P.len; t.laps++; free.score += 300; save.freeBest = Math.max(save.freeBest, free.score); persist();
     if (t.laps >= 3) completeMission("flow3");
     if (t.laps >= FLOW_LAPS) return flowFinale();
-    queueToast(t.laps === FLOW_LAPS - 1 ? (t.v >= FLOW_FAST ? "Последний круг — держите скорость: катапульта!" : `Последний круг: разгонитесь до ${FLOW_FAST * 3.6 | 0} км/ч — будет катапульта`) : `Круг в потоке ${t.laps}  +300`, "good", 1800);
+    queueToast(t.laps === FLOW_LAPS - 1 ? "Последний круг — разгоняйтесь: чем быстрее, тем выше и дальше катапульта!" : `Круг в потоке ${t.laps}  +300`, "good", 1800);
   }
   if (!P.closed && t.s >= P.len - .2) return tubeExit();
   q = P.at(t.s);
@@ -3283,25 +3283,37 @@ function stepTube(dt) {
     car.x = q.p.x; car.y = q.p.y; car.z = q.p.z; car.roll = 0; car.pitch = 0; car.v = t.v; aeroStart(true);
   }
 }
-// финал потока: медленно — мягкий выход в аэрополёт; быстро — «Баклажановая катапульта»: дуга над крышей Арены на площадь
-// с двойной бочкой (помощник выравнивания на это время отключён, к посадке доворачивает до 720°), внизу — баклажановая подушка
+// финал потока — «Баклажановая катапульта», всегда: чем быстрее разогнались в потоке, тем выше и дальше (апогей ~70…120 м,
+// посадка в 90…200 м за стеной Арены). Направление — где внизу земля, а не Дон и не дом. В полёте — тройная бочка
+// (помощник выравнивания на это время выключен, к посадке доворачивает до целого оборота), камера облетает машину панорамой,
+// у земли баклажановая подушка плавно гасит падение
 function flowFinale() {
-  const t = free.tube, A = ARENA, fast = t.v >= FLOW_FAST;
+  const t = free.tube, A = ARENA, k = Math.max(0, Math.min(1, (t.v - 30) / 55)), fast = t.v >= FLOW_FAST;
   tubeScore(); free.tube = null; free.hopLock = true; car.roll = 0; car.pitch = 0;
-  if (!fast) { car.v = t.v; aeroStart(true); queueToast(`${FLOW_LAPS} кругов! Для катапульты разгонитесь в потоке до ${FLOW_FAST * 3.6 | 0} км/ч`, "", 2800); return; }
-  const r = A.ray(car.x, car.z), y0 = car.y;
-  let apex = A.H + 12, v = 20, vy = 20, tf = 4;   // tf — время полёта (не T: это three.js)
-  for (let k = 0; k < 15; k++) {                     // выше, пока дуга не проходит над краем крыши и над стеной с запасом 3 м
-    vy = Math.sqrt(2 * G * Math.max(1, apex - y0)); tf = (vy + Math.sqrt(vy * vy + 2 * G * Math.max(0, y0))) / G; v = (r.D - r.L + 38) / tf;
-    const yAt = d => { const tt = Math.max(0, d) / v; return y0 + vy * tt - G * tt * tt / 2; };
-    if (yAt(A.KR * r.D - r.L) > A.H + 3 && yAt(r.D - r.L) > A.H + 3) break;
-    apex += 3;
+  const y0 = car.y, apex = A.H + 40 + 50 * k, dist0 = 90 + 110 * k;
+  const r0 = A.ray(car.x, car.z), base = Math.atan2(r0.uz, r0.ux);
+  let pick = null;
+  for (const j of [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 8, -8, 10, -10, 12, -12, 15]) {
+    const a = base + j * 12 * DEG, ux = Math.cos(a), uz = Math.sin(a), wall = A.ray(A.C[0] + ux, A.C[1] + uz).D;
+    const toWall = wall - ((car.x - A.C[0]) * ux + (car.z - A.C[1]) * uz);
+    for (const dist of [dist0, dist0 * .75, dist0 * .55]) {
+      const lx = car.x + ux * (toWall + dist), lz = car.z + uz * (toWall + dist);
+      if (lx < WORLD.x0 + 20 || lx > WORLD.x1 - 20 || lz < WORLD.z0 + 20 || lz > WORLD.z1 - 20) continue;
+      if (waterAt(lx, lz) || [[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4]].some(([dx, dz]) => hitSolid(lx + dx, lz + dz, 3) || waterAt(lx + dx, lz + dz))) continue;
+      pick = { ux, uz, d: toWall + dist, toWall }; break;
+    }
+    if (pick) break;
   }
-  car.yaw = Math.atan2(-r.uz, r.ux); car.v = v; car.vy = vy;
-  takeoff(false); gas = 100; car.om = 720 / tf; free.cat = { until: time + tf * .78 };
-  free.score += 1500; save.freeBest = Math.max(save.freeBest, free.score); persist(); completeMission("flowShot");
-  queueToast("Баклажановая катапульта! Двойная бочка над крышей  +1500", "good", 2600); sfx.burst();
-  for (let i = 0; i < 30; i++) puff(new T.Vector3(car.x, car.y, car.z), new T.Vector3((Math.random() - .5) * 10, -4 - Math.random() * 6, (Math.random() - .5) * 10), .9, .4);
+  if (!pick) pick = { ux: r0.ux, uz: r0.uz, d: r0.D - r0.L + 60, toWall: r0.D - r0.L };
+  const vy = Math.sqrt(2 * G * Math.max(1, apex - y0)), tf = (vy + Math.sqrt(vy * vy + 2 * G * Math.max(0, y0))) / G, v = pick.d / tf;
+  car.yaw = Math.atan2(-pick.uz, pick.ux); car.v = v; car.vy = vy;
+  takeoff(false); gas = 100; car.om = 1080 / (tf * .9);
+  free.cat = { until: time + tf * .82, t0: time, end: time + tf + 1, a0: car.yaw + Math.PI * .75 };
+  const pts = Math.round(1500 + 1500 * k); free.score += pts; save.freeBest = Math.max(save.freeBest, free.score); persist();
+  if (fast) completeMission("flowShot");
+  queueToast(`Баклажановая катапульта! Тройная бочка над городом  +${pts}`, "good", 2800); sfx.burst(); sfx.whoosh();
+  for (let i = 0; i < 40; i++) puff(new T.Vector3(car.x, car.y, car.z), new T.Vector3((Math.random() - .5) * 14, -5 - Math.random() * 8, (Math.random() - .5) * 14), 1.1, .5);
+  SHOW.salute(car.x, car.y + 6, car.z, 4);
 }
 function tubeScore() {
   const t = free.tube, pts = Math.round(t.dist);
@@ -3405,7 +3417,7 @@ function stepFree(dt) {
     // занос: кузов поворачивает сразу, а скорость догоняет его настолько, насколько держат шины.
     // Тормоз на скорости в повороте срывает заднюю ось; на песке сцепление хуже.
     const sand = isSand(car.x, car.z);
-    const grip = (bk > .4 && Math.abs(car.v) > 14 ? 5 : 19) * (sand ? .7 : 1) * (free.pro ? 1.45 : 1);   // PRO на широких колёсах держит дорогу лучше; занос — только тормозом в повороте
+    const grip = (bk > .4 && Math.abs(car.v) > 14 ? 5 : 19) * (sand ? .7 : 1) * (free.pro ? 1.45 : free.driftKit ? 1.3 : 1);   // PRO / широкая резина трека 888 на широких колёсах держит дорогу лучше; занос — только тормозом в повороте
     car.vl = (car.vl || 0) - car.v * yawRate * dt;
     car.vl -= Math.sign(car.vl) * Math.min(Math.abs(car.vl), grip * dt);
     if (Math.abs(car.vl) > 1) car.v -= Math.sign(car.v) * Math.abs(car.vl) * .12 * dt;
@@ -3490,8 +3502,9 @@ function stepFree(dt) {
   free.airT += dt;
   car.vy -= G * dt;
   free.gh = groundAt(car.x, car.z, car.y).h;
-  if (free.cat && car.vy < -13 && car.y - free.gh < 16) {   // баклажановая подушка после катапульты: садимся мягко
-    car.vy = -13; if (Math.random() < .5) puff(new T.Vector3(car.x, car.y - .6, car.z), new T.Vector3(0, -6, 0), .5, .45);
+  if (free.cat && car.vy < -12 && car.y - free.gh < 45) {   // баклажановая подушка после катапульты: плавно гасит падение
+    car.vy = Math.min(-12, car.vy + 32 * dt); car.v *= Math.pow(.35, dt);   // и вперёд тормозим — садимся у выбранного места (не в Дон)
+    if (Math.random() < .5) puff(new T.Vector3(car.x, car.y - .6, car.z), new T.Vector3(0, -6, 0), .5, .45);
   }
   airControls(dt, false);
   // баллон смотрит и вперёд по ходу полёта: если там крыша, тормозить надо до неё, а не до улицы
@@ -4067,28 +4080,17 @@ const joy = { id: null, x: 0, y: 0 }, JOY_R = 60;
 const ctrl = () => save.ctrl || "joy";                       // joy | wheel | buttons
 const joyMode = () => ctrl() !== "buttons";                 // любой сенсорный режим без кнопок
 const wheel = { id: null, steer: 0, ox: 0 }, pedal = { id: null, gas: 0, brake: 0, oy: 0 };
-// дрифтовый руль трека 888: крутят пальцем по кругу вокруг руля, ход — чуть больше оборота в каждую сторону; отпустили — сам в центр
-const DRIFT_LOCK = 400, dwheel = { id: null, ang: 0, last: 0 };
-const driftUI = () => mode === "free" && !!free.driftKit && joyMode();
+// дрифтовый руль трека 888 — показывает поворот (управление обычное, как везде); быстрый: ±120° — без «вялого» оборота
+const DRIFT_VIS = 120, dwheel = { ang: 0 };
+const driftUI = () => mode === "free" && !!free.driftKit;
 const dz = v => Math.abs(v) < .14 ? 0 : (v - Math.sign(v) * .14) / .86;
 const thr = () => Math.max(input.thrust ? 1 : 0, dz(Math.max(0, joy.y)), pedal.gas, tilt.on ? Math.max(0, tilt.y) : 0);          // газ / подушка 0…1
 const brk = () => Math.max(input.brake ? 1 : 0, dz(Math.max(0, -joy.y)), pedal.brake, tilt.on ? Math.max(0, -tilt.y) : 0);        // тормоз 0…1
-const turn = () => Math.max(-1, Math.min(1, (input.rr ? 1 : 0) - (input.rl ? 1 : 0) + dz(joy.x) + wheel.steer + (driftUI() ? dwheel.ang / DRIFT_LOCK : 0) + (tilt.on ? tilt.x : 0)));   // вправо +
+const turn = () => Math.max(-1, Math.min(1, (input.rr ? 1 : 0) - (input.rl ? 1 : 0) + dz(joy.x) + wheel.steer + (tilt.on ? tilt.x : 0)));   // вправо +
 let joyHintUntil = performance.now() + 7000;
 stage.addEventListener("pointerdown", e => {
   if (!joyMode() || e.target.closest("button, .ov, .dock, .lesson")) return;
   const r = stage.getBoundingClientRect();
-  if (driftUI()) {                                           // трек 888: левая половина — дрифтовый руль (вращение пальцем), правая — педаль
-    joyHintUntil = 0;
-    if (e.clientX - r.left < r.width / 2 && dwheel.id === null) {
-      const b = $("dwheel").getBoundingClientRect(); dwheel.id = e.pointerId; dwheel.last = Math.atan2(e.clientY - (b.top + b.height / 2), e.clientX - (b.left + b.width / 2));
-    } else if (e.clientX - r.left >= r.width / 2 && pedal.id === null) {
-      pedal.id = e.pointerId; pedal.oy = e.clientY; pedal.gas = 1; pedal.brake = 0;
-      const el = $("pedal"); el.style.left = `${e.clientX - r.left}px`; el.style.top = `${e.clientY - r.top}px`; el.hidden = false; el.textContent = "ГАЗ";
-    } else return;
-    stage.setPointerCapture?.(e.pointerId);
-    return;
-  }
   if (ctrl() === "wheel") {                                  // левая половина — руль, правая — педаль
     joyHintUntil = 0;
     if (e.clientX - r.left < r.width / 2 && wheel.id === null) {
@@ -4107,13 +4109,6 @@ stage.addEventListener("pointerdown", e => {
   stage.setPointerCapture?.(e.pointerId);
 });
 stage.addEventListener("pointermove", e => {
-  if (e.pointerId === dwheel.id) {                           // угол пальца вокруг центра руля — накапливаем (можно крутить больше оборота)
-    const b = $("dwheel").getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
-    if (Math.hypot(e.clientX - cx, e.clientY - cy) < 18) return;      // у самого центра угол скачет
-    const a = Math.atan2(e.clientY - cy, e.clientX - cx); let d = a - dwheel.last; d = Math.atan2(Math.sin(d), Math.cos(d)); dwheel.last = a;
-    dwheel.ang = Math.max(-DRIFT_LOCK, Math.min(DRIFT_LOCK, dwheel.ang + d / DEG));
-    return;
-  }
   if (e.pointerId === wheel.id) {
     wheel.steer = Math.max(-1, Math.min(1, (e.clientX - wheel.ox) / 70));
     $("wheel").style.transform = `rotate(${wheel.steer * 100}deg)`;
@@ -4132,7 +4127,6 @@ stage.addEventListener("pointermove", e => {
   $("joy-knob").style.transform = `translate(${dx}px, ${dy}px)`;
 });
 const joyEnd = e => {
-  if (e.pointerId === dwheel.id) { dwheel.id = null; return; }
   if (e.pointerId === wheel.id) { wheel.id = null; wheel.steer = 0; $("wheel").hidden = true; $("wheel").style.transform = ""; return; }
   if (e.pointerId === pedal.id) { pedal.id = null; pedal.gas = pedal.brake = 0; $("pedal").hidden = true; $("pedal").classList.remove("brake"); return; }
   if (e.pointerId !== joy.id) return;
@@ -4189,15 +4183,14 @@ let lastHint = "", lastCoach = "", coachSince = 0, lastGasShown = -1;
 function driftKitTick(dt) {
   const want = mode === "free" && !free.pro && !replay && Math.abs(car.x - 1010) < 140 && Math.abs(car.z - EIGHT.z) < 95;
   if (want !== !!free.driftKit) {
-    free.driftKit = want; applyLook(); dwheel.ang = 0; dwheel.id = null;
-    if (want) queueToast(joyMode() ? "Трек 888: дрифтовый руль — крутите пальцем по кругу; широкая резина" : "Трек 888: широкая резина и дрифтовые диски", "good", 2600);
+    free.driftKit = want; applyLook(); dwheel.ang = 0;
+    if (want) queueToast("Трек 888: широкая резина и дрифтовые диски — держат лучше", "good", 2400);
   }
   const el = $("dwheel"), show = driftUI();
   if (el.hidden === show) el.hidden = !show;
   if (!show) return;
-  if (dwheel.id === null && dwheel.ang) { dwheel.ang *= Math.pow(.002, dt); if (Math.abs(dwheel.ang) < .5) dwheel.ang = 0; }   // руль сам возвращается в центр
+  dwheel.ang += (turn() * DRIFT_VIS - dwheel.ang) * Math.min(1, dt * 14);      // руль показывает поворот — быстро, без оборотов
   el.firstElementChild.style.transform = `rotate(${dwheel.ang.toFixed(1)}deg)`;
-  $("dwheel-deg").textContent = `${Math.round(dwheel.ang)}°`;
 }
 const speedFx = { el: null, o: 0, a: 0 };
 function speedLines() {          // от ~140 км/ч; в потоке и в катапульте — сильнее, в PRO и потоке — баклажановые
@@ -4333,10 +4326,14 @@ function render(dt) {
       want = new T.Vector3(car.x - fx * back, car.y + (free.aero ? 3 : air ? 4.3 : rev ? 4.8 : 2.7), car.z - fz * back);
       if (free.wall) { const p = free.wall.p; want.set(car.x - fx * 9 + p.nx * 6, free.wall.y + 2.5, car.z - fz * 9 + p.nz * 6); }   // на стене — сбоку-сзади
       if (free.tube && !free.tube.lift) { const t = free.tube, c = t.path.at(Math.max(0, t.s - 9)); want.set(c.p.x, c.p.y + 1.2, c.p.z); }   // в трубе — по оси сзади
+      if (free.cat && free.air) {                                         // катапульта: панорама — камера облетает машину, отходя всё дальше
+        const e = Math.min(1, (time - free.cat.t0) / Math.max(1, free.cat.end - free.cat.t0)), a = free.cat.a0 + (time - free.cat.t0) * .55, R = 12 + 16 * Math.sin(Math.PI * Math.min(1, e * 1.1));
+        want.set(car.x + Math.cos(a) * R, car.y + 3 + 6 * Math.sin(Math.PI * e), car.z - Math.sin(a) * R);
+      }
       // не залезать в дома: ищем первое здание на отрезке «машина → камера», ставим камеру перед ним
       // и смотрим подальше вперёд — если дом прямо за машиной, получается вид поверх капота
       const from = new T.Vector3(car.x, car.y + 1.2, car.z);
-      for (let i = 1; i <= 12 && !free.wall && !free.tube && !free.aero; i++) {
+      for (let i = 1; i <= 12 && !free.wall && !free.tube && !free.aero && !(free.cat && free.air); i++) {
         const p = from.clone().lerp(want, i / 12);
         const hit = solidsNear(p.x, p.z).find(b => b.h > p.y && inBox(b, p.x, p.z, .6));
         if (!hit) continue;
@@ -4347,10 +4344,11 @@ function render(dt) {
     else if (phase === "drill" || (phase === "brief" && briefPhase === "drill")) want = new T.Vector3(car.x - 14, car.y + 3, 9);
     else want = new T.Vector3(car.x - (air ? 11 : 9), car.y + (air ? 4.5 : 3), air ? 5 : 3.5);
     if (mode === "free" && camMode === "far") want.set(car.x - fx * 15, want.y + 4, car.z - fz * 15);    // дальний вид
-    camPos.lerp(want, mode === "free" && free.tube ? 1 : Math.min(1, dt * (mode === "free" ? 5 : 4)));
+    camPos.lerp(want, mode === "free" && free.tube ? 1 : Math.min(1, dt * (mode === "free" ? (free.cat && free.air ? 3 : 5) : 4)));
     if (mode === "free" && ARENA && !free.tube) { const bw = ARENA.bowl(camPos.x, camPos.z); if (bw && camPos.y < bw.h + 2.2) camPos.y = bw.h + 2.2; }   // не под трибуной
     camera.position.copy(camPos); camera.up.set(0, 1, 0);
-    if (mode === "free") look.set(car.x + fx * (tight ? 14 : 6), car.y + .8 - (air && !free.aero ? Math.min(3, hgt * .25) : 0), car.z + fz * (tight ? 14 : 6));
+    if (mode === "free" && free.cat && free.air) look.set(car.x, car.y + .5, car.z);                 // панорама: смотрим на саму машину
+    else if (mode === "free") look.set(car.x + fx * (tight ? 14 : 6), car.y + .8 - (air && !free.aero ? Math.min(3, hgt * .25) : 0), car.z + fz * (tight ? 14 : 6));
     else look.set(car.x + (air ? 6 : 5), car.y + .6 - (air ? Math.min(3, car.y * .25) : 0), 0);
     camera.lookAt(look); camera.fov = 60 + (mode === "free" ? Math.min(14, Math.abs(car.v) * .25) : 0);
   }
