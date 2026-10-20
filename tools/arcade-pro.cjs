@@ -1,4 +1,4 @@
-// PRO «Бесконечный Безлимит»: кнопка в меню, полёт по ПРЫГ с бесконечным газом, плавная посадка и занос на руле,
+// PRO «Бесконечный Безлимит»: кнопка в меню, полёт по ПРЫГ с бесконечным газом, плавная посадка, сцепление лучше обычной,
 // баклажановый разгон перед трамплином, присоски не отпускают даже без скорости.
 // Запуск: PW=$(npm root -g)/playwright node tools/arcade-pro.cjs   (скриншот — в каталог SHOTS)
 const { chromium } = require(process.env.PW || "playwright");
@@ -15,7 +15,7 @@ const path = require("path");
   const B = await ev(() => __t.boosts()); out.boosts = { pads: B.filter(o => o.kind === "pad").length, roofPads: B.filter(o => o.kind === "pad" && o.y > 3).length, rings: B.filter(o => o.kind === "ring").length };
   // меню: кнопка PRO
   await p.click("#dock-btn"); await run(200); await p.click("#m-modes"); await run(200); await p.click('.lvl[data-i="pro"]'); await run(500);
-  out.menu = await ps(); out.hud = await p.textContent("#h-top");
+  out.menu = await ps(); await run(1500); out.hud = await p.textContent("#h-top");   // в ускоренном режиме шапка обновляется не каждый кадр
   // взлёт по ПРЫГ, держим 5 с — высота растёт, газ 100
   await p.keyboard.down("ArrowUp"); await run(1500);
   await ev(() => __t.key("hop", true)); await run(5000);
@@ -27,6 +27,12 @@ const path = require("path");
   let vl = 0; for (let i = 0; i < 6; i++) { await run(100); vl = Math.max(vl, Math.abs((await ev(() => __t.drift())).vl)); }
   await p.keyboard.up("ArrowRight"); await p.keyboard.up("ArrowUp");
   out.land = { landed, phase: c.phase, y: +c.y.toFixed(1), driftVl: +vl.toFixed(1) };
+  // сцепление: одинаковый поворот на 30 м/с — в PRO боковое скольжение меньше, чем у обычной «восьмёрки»
+  const slip = async pro => { await ev(on => __t.pro(on), pro); await ev(() => { __t.teleport(-450, 120, 0); __t.setCar({ v: 30 }); });
+    await p.keyboard.down("ArrowUp"); await p.keyboard.down("ArrowRight"); let m = 0;
+    for (let i = 0; i < 8; i++) { await run(120); m = Math.max(m, Math.abs((await ev(() => __t.drift())).vl)); }
+    await p.keyboard.up("ArrowRight"); await p.keyboard.up("ArrowUp"); return +m.toFixed(2); };
+  out.grip = { normal: await slip(false), pro: await slip(true) };
   // разгон-дорожка перед трамплином
   const pad = B.find(o => o.kind === "pad" && o.y < 1);
   await ev(([x, z, yaw]) => __t.teleport(x - Math.cos(yaw) * 15, z + Math.sin(yaw) * 15, yaw), [pad.x, pad.z, pad.yaw]);
@@ -55,7 +61,7 @@ const path = require("path");
   for (let i = 0; i < 3; i++) { await p.click("#dock-btn"); await run(150); await p.click("#m-time"); await run(150); times.push(await ev(() => __t.time())); await p.click("#dock-btn"); }
   out.times = times.join(",");
   const ok = !errs.length && out.boosts.pads >= 10 && out.boosts.roofPads >= 5 && out.boosts.rings >= 10 && out.menu.pro && out.hud.startsWith("PRO") &&
-    out.fly.flying && out.fly.y > 30 && out.fly.gas === 100 && out.land.landed && out.land.driftVl > 2 && out.boost.vmax > 45 && out.wall.attached && out.wall.stillOn &&
+    out.fly.flying && out.fly.y > 30 && out.fly.gas === 100 && out.land.landed && out.grip.pro < out.grip.normal * .85 && out.boost.vmax > 45 && out.wall.attached && out.wall.stillOn &&
     out.quick.free && out.quick.pro && out.acc.src === "acc" && out.acc.turn > .3 && out.acc.thr > .3 && out.times === "sunset,night,day,sunset";
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 2));
   await b.close(); process.exit(ok ? 0 : 1);
