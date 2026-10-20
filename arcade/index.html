@@ -340,7 +340,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
           <p><b>Езда.</b> Джойстик (палец по экрану) вверх — газ, вниз — тормоз, влево / вправо — руль. Тормоз в повороте — занос.</p>
           <p><b>Прыжок.</b> ПРЫГ — сопла подбрасывают машину. В воздухе джойстик крутит её; у земли держите газ — баллон смягчит посадку.</p>
           <p><b>Присоски.</b> С разгона въезжайте в стену Арены: влево — вверх, вправо — вниз, ПРЫГ — оттолкнуться.</p>
-          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — бесконечный поток (газ — турбо, руль — по стенке, ПРЫГ — выход); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее.</p>
+          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или сам после 5 кругов; разогнался к концу 5-го круга до 216 км/ч — катапульта над крышей с двойной бочкой); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее.</p>
           <p><b>PRO ∞.</b> Баллоны не кончаются: держите ПРЫГ — летите вверх, газ — вперёд, отпустили — плавно вниз. Фиолетовые дорожки и кольца — разгоны.</p>
           <p><b>Клавиатура.</b> ↑ газ, ↓ тормоз, ← → руль и вращение, Пробел — прыжок, C — камера, R — заново, M — меню.</p>
           <p><b>Вид и наклон.</b> Кнопка «ВИД» — сзади, дальняя, из кабины. «Наклон телефона» — руль наклоном; положение при включении — ноль, от себя — газ, на себя — тормоз.</p>
@@ -1021,6 +1021,10 @@ const DECKS = [];
     ROADS.push({ c: 1, name: "Съезд с " + d.name.replace("мост", "моста"), br: 0, pts, w: ROAD_W[1], link: true, ...bboxOf(pts) });
   }));
 })();
+// проезжая часть (улицы, магистрали, проезды; не тротуары): столбы, фонари, скамейки сюда не ставим никогда
+function onCarriageway(x, z, pad = .4) {
+  return ROADS.some(q => q.c <= 3 && x > q.x0 - 14 && x < q.x1 + 14 && z > q.z0 - 14 && z < q.z1 + 14 && lineDist(x, z, q.pts, false) < q.w / 2 + pad);
+}
 const ZONES = OSM.z.map(([n, a]) => { const ring = dm(a); return { name: OSM.n[n], ring, ...bboxOf(ring), area: (() => { let s = 0; ring.forEach(([x, z], i) => { const [x2, z2] = ring[(i + 1) % ring.length]; s += x * z2 - x2 * z; }); return Math.abs(s / 2); })() }; }).sort((a, b) => a.area - b.area);
 function waterAt(x, z) {                    // вода под точкой (с учётом моста и причалов)
   if (!inWorldMap(x, z)) return null;
@@ -1051,6 +1055,15 @@ function placeName(x, z) {
 (() => {
   const DS = T.DoubleSide;
   const flatMat = (color, f) => new T.MeshLambertMaterial({ color, side: DS, polygonOffset: true, polygonOffsetFactor: f, polygonOffsetUnits: f });
+  // плоские слои двусторонние: у треугольника «изнанкой» вверх three переворачивает нормаль вниз, и он выходит почти чёрным
+  // (те самые чёрные пятна на перекрёстках — круглые стыки дорог шли по часовой). Разворачиваем все треугольники лицом вверх.
+  function faceUp(P) {
+    for (let i = 0; i < P.length; i += 9) {
+      if ((P[i + 5] - P[i + 2]) * (P[i + 6] - P[i]) - (P[i + 3] - P[i]) * (P[i + 8] - P[i + 2]) >= 0) continue;   // y нормали ≥ 0 — уже лицом вверх
+      for (let k = 0; k < 3; k++) { const t = P[i + 3 + k]; P[i + 3 + k] = P[i + 6 + k]; P[i + 6 + k] = t; }
+    }
+    return P;
+  }
   function fillGeo(list, y) {               // многоугольники с дырами → треугольники на высоте y
     const P = [];
     list.forEach(rings => {
@@ -1058,6 +1071,7 @@ function placeName(x, z) {
       const all = c.concat(...hs);
       T.ShapeUtils.triangulateShape(c, hs).forEach(t => t.forEach(i => P.push(all[i].x, y, all[i].y)));
     });
+    faceUp(P);
     const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(P, 3));
     g.setAttribute("normal", new T.Float32BufferAttribute(P.map((_, i) => i % 3 === 1 ? 1 : 0), 3)); return g;
   }
@@ -1081,6 +1095,7 @@ function placeName(x, z) {
         }
       });
     });
+    faceUp(P);
     const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(P, 3));
     g.setAttribute("normal", new T.Float32BufferAttribute(P.map((_, i) => i % 3 === 1 ? 1 : 0), 3));
     g.setAttribute("uv", new T.Float32BufferAttribute(P.filter((_, i) => i % 3 !== 1).map(v => v / 7), 2)); return g;   // uv по миру: плитка фактуры 7 м
@@ -1089,7 +1104,7 @@ function placeName(x, z) {
 
   // земля полосы и площади: газоны, лес, спортплощадки, пляж, парковки, стройки
   flat(STRIP.x1 - STRIP.x0, STRIP.z1 - STRIP.z0, flatMat(0x9d9585, 3), (STRIP.x0 + STRIP.x1) / 2, (STRIP.z0 + STRIP.z1) / 2, .005);
-  const AREA = { c: [0xa59b87, .02], b: [0xd8c89d, .022], g: [0x6f9a48, .025], f: [0x557f36, .027], s: [0x5f9a42, .03], k: [0x9c9a93, .032] };   // цвета по фото: плитка, газон, песок
+  const AREA = { c: [0xa59b87, .02], b: [0xd8c89d, .022], g: [0x4a7d2e, .025], f: [0x3b6a28, .027], s: [0x447f35, .03], k: [0x9c9a93, .032] };   // цвета по фото: плитка, газон, песок
   Object.entries(AREA).forEach(([k, [color, y]]) => {
     const list = OSM.a.filter(a => a[0] === k).map(([, rs]) => rs.map(dm));
     if (list.length) add(fillGeo(list, y), flatMat(color, 2));
@@ -1127,7 +1142,7 @@ function placeName(x, z) {
   }));
   add(stripGeo(railLines, .1, false), flatMat(0x2c2b33, 0));
   {   // контактная сеть трамвая: столбы у края улицы (никогда на проезжей части), провод над путём на 6 м, поперечные растяжки
-    const onRoad = (x, z) => ROADS.some(q => x > q.x0 - 12 && x < q.x1 + 12 && z > q.z0 - 12 && z < q.z1 + 12 && lineDist(x, z, q.pts, false) < q.w / 2 + .6);
+    const onRoad = (x, z) => onCarriageway(x, z, .6);
     const poles = [], W = [], wy = (x, z) => surfaceH(x, z) + 6;
     rails.filter(r => r.k === 1).forEach(({ pts }) => {
       let carry = 0, side = 1;
@@ -1846,7 +1861,7 @@ const HILL = (() => {
     sh.fragmentShader = "uniform sampler2D uGrain;\nvarying vec2 vGxz;\n" + sh.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>\n diffuseColor.rgb *= texture2D(uGrain, vGxz).rgb * 1.06;");
   };
   const mesh = new T.Mesh(g, hm); mesh.userData.dyn = true; scene.add(mesh);
-  const AREA = { c: 0xa59b87, b: 0xd8c89d, g: 0x6f9a48, f: 0x557f36, s: 0x5f9a42, k: 0x9c9a93, w: 0x3d6f86 }, RC = [0x404246, 0x45474b, 0x4b4d51, 0x55575b, 0xa8a59e];
+  const AREA = { c: 0xa59b87, b: 0xd8c89d, g: 0x4a7d2e, f: 0x3b6a28, s: 0x447f35, k: 0x9c9a93, w: 0x3d6f86 }, RC = [0x404246, 0x45474b, 0x4b4d51, 0x55575b, 0xa8a59e];
   const shadowA = { sunset: .4, day: .34, night: .14 };
   function paint() {
     cx.setTransform(PX, 0, 0, PX, -X0 * PX, -zMin * PX);
@@ -1885,8 +1900,8 @@ const HILL = (() => {
     q(fence, [xa, ha, za + .15], [xb, hb, zb + .15], [xb, hb + 1.05, zb + .15], [xa, ha + 1.05, za + .15]);
     fuv.push(run / 2, 0, (run + L) / 2, 0, (run + L) / 2, 1, run / 2, 0, (run + L) / 2, 1, run / 2, 1);
     if (Math.floor((run + L) / 5) > Math.floor(run / 5)) posts.push(M4(xb, hb + .6, zb + .15, Math.atan2(-(zb - za), xb - xa)));        // белые столбики через 5 м
-    if (run - lastLamp > 32) { lastLamp = run; const nz = zb + 3.2; globes.push([xb, terrainH(xb, nz), nz]); }                    // фонари-шары через ~32 м
-    else if (run - lastLamp > 15 && benchAt < lastLamp) { benchAt = run; const nz = zb + 2.4; benches.push(M4(xb, terrainH(xb, nz), nz, Math.atan2(-(zb - za), xb - xa))); }   // скамейка с урной между фонарями
+    if (run - lastLamp > 32 && !onCarriageway(xb, zb + 3.2)) { lastLamp = run; const nz = zb + 3.2; globes.push([xb, terrainH(xb, nz), nz]); }   // фонари-шары через ~32 м, не на проезжей части
+    else if (run - lastLamp > 15 && benchAt < lastLamp && !onCarriageway(xb, zb + 2.4, 1)) { benchAt = run; const nz = zb + 2.4; benches.push(M4(xb, terrainH(xb, nz), nz, Math.atan2(-(zb - za), xb - xa))); }   // скамейка с урной между фонарями
     run += L;
   }
   const mkG = (P, m, uv) => { const gg = new T.BufferGeometry(); gg.setAttribute("position", new T.Float32BufferAttribute(P, 3)); if (uv) gg.setAttribute("uv", new T.Float32BufferAttribute(uv, 2)); gg.computeVertexNormals(); scene.add(new T.Mesh(gg, m)); };
@@ -2006,9 +2021,11 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
   chunked(new T.PlaneGeometry(3, .5).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0xeeeae0 }), zeb.slice(0, 5000).map(([x, z, yaw]) => M4T(x, .095, z, yaw)), .6);
   // светофоры на перекрёстках улиц и магистралей: по столбу на каждую «ногу», смотрят навстречу подъезжающим
   const tl = [];
+  // столб — у края своей «ноги»; если там другая проезжая часть (двойная магистраль, косой перекрёсток) — отодвигаем до 6 м, иначе не ставим
   cross.filter(cr => cr.major <= 1).slice(0, 70).forEach(cr => cr.legs.slice(0, 4).forEach(l => {
-    const d = cr.wmax / 2 + 1.5, off = l.w / 2 + 1.2;
-    const x = cr.x + l.dx * d - l.dz * off, z = cr.z + l.dz * d + l.dx * off;
+    const d = cr.wmax / 2 + 1.5; let off = l.w / 2 + 1.2, x, z;
+    for (; off < l.w / 2 + 7; off += .5) { x = cr.x + l.dx * d - l.dz * off; z = cr.z + l.dz * d + l.dx * off; if (!onCarriageway(x, z)) break; }
+    if (off >= l.w / 2 + 7) return;
     if (solidsNear(x, z).some(b => b.h > .5 && inBox(b, x, z, 1.1))) return;
     tl.push([x, z, yawOf(l.dx, l.dz), Math.abs(l.dx) > Math.abs(l.dz) ? "A" : "B"]);
   }));
@@ -2024,7 +2041,7 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
   // фонари вдоль улиц: через 34 м, по очереди с разных сторон, не в домах и не в воде.
   // По просьбе заказчика в городе их нет — только у стадиона (в 280 м от Арены); и никогда — на проезжей части.
   const lamps = [], taken = new Set();
-  const onRoad = (x, z) => ROADS.some(q => q.c <= 3 && x > q.x0 - 9 && x < q.x1 + 9 && z > q.z0 - 9 && z < q.z1 + 9 && lineDist(x, z, q.pts, false) < q.w / 2 + .3);
+  const onRoad = (x, z) => onCarriageway(x, z, .3);
   ROADS.forEach(r => {
     if (r.c > 2 || r.deck) return;
     let side = 1, acc = 12;
@@ -2574,7 +2591,7 @@ function airControls(dt, invert) {
   let r = turn();
   if (invert) r = -r;
   if (Math.abs(r) > .05 && gas > 0) { sideJet(r, dt); gas -= 5 * Math.abs(r) * dt; }
-  else if (assistOn) {
+  else if (assistOn && !(free.cat && time < free.cat.until)) {   // во время катапульты бочку не гасим
     const target = Math.ceil((car.roll - 10) / 360) * 360;
     const want = (target - car.roll) / Math.max(.3, timeToGround(mode === "free" ? free.gh : 0));
     car.om += (want - car.om) * Math.min(1, dt * 2.5);
@@ -2631,6 +2648,7 @@ const MISSIONS = [
   { id: "aero", t: "Аэротруба «888»: поднимитесь выше крыши Арены", pts: 500 },
   { id: "slide", t: "Горка-труба: с крыши Арены до поля", pts: 500 },
   { id: "flow3", t: "Баклажановый поток: три круга", pts: 700 },
+  { id: "flowShot", t: "Катапульта: 5 кругов в потоке быстрее 216 км/ч", pts: 1000 },
   { id: "slalom", t: "Аэро-слалом: восемь колец вокруг аэротрубы по порядку", pts: 800 }
 ];
 const toastQ = [];
@@ -2879,8 +2897,8 @@ function stepAero(dt) {
   }
 }
 // Трубы: машина едет по стенке трубы. Газ — быстрее, тормоз — медленнее, руль — по кругу стенки (полный круг — бочка).
-// Горка кончается на поле; из потока выход — ПРЫГ, в аэрополёт.
-const tubeV = { r: new T.Vector3() };
+// Горка кончается на поле; из потока выход — ПРЫГ (в аэрополёт) или сам после 5 кругов: разогнался до 216 км/ч — катапульта над крышей.
+const tubeV = { r: new T.Vector3() }, FLOW_LAPS = 5, FLOW_FAST = 60;
 function tubeStart(path, lift) {
   const s0 = lift ? path.nearest(car.x, car.y, car.z) : 0;
   free.tube = { path, s: s0, v: Math.max(path.flow ? 30 : 14, Math.abs(car.v)), th: 0, spin: 0, laps: 0, dist: 0, f: new T.Vector3(1, 0, 0), n: new T.Vector3(0, 1, 0),
@@ -2905,7 +2923,9 @@ function stepTube(dt) {
   t.s += t.v * dt; t.dist += t.v * dt;
   if (P.closed && t.s >= P.len) {
     t.s -= P.len; t.laps++; free.score += 300; save.freeBest = Math.max(save.freeBest, free.score); persist();
-    queueToast(`Круг в потоке ${t.laps}  +300`, "good", 1400); if (t.laps >= 3) completeMission("flow3");
+    if (t.laps >= 3) completeMission("flow3");
+    if (t.laps >= FLOW_LAPS) return flowFinale();
+    queueToast(t.laps === FLOW_LAPS - 1 ? (t.v >= FLOW_FAST ? "Последний круг — держите скорость: катапульта!" : `Последний круг: разгонитесь до ${FLOW_FAST * 3.6 | 0} км/ч — будет катапульта`) : `Круг в потоке ${t.laps}  +300`, "good", 1800);
   }
   if (!P.closed && t.s >= P.len - .2) return tubeExit();
   q = P.at(t.s);
@@ -2929,6 +2949,26 @@ function stepTube(dt) {
     free.hopLock = true; tubeScore(); free.tube = null;
     car.x = q.p.x; car.y = q.p.y; car.z = q.p.z; car.roll = 0; car.pitch = 0; car.v = t.v; aeroStart(true);
   }
+}
+// финал потока: медленно — мягкий выход в аэрополёт; быстро — «Баклажановая катапульта»: дуга над крышей Арены на площадь
+// с двойной бочкой (помощник выравнивания на это время отключён, к посадке доворачивает до 720°), внизу — баклажановая подушка
+function flowFinale() {
+  const t = free.tube, A = ARENA, fast = t.v >= FLOW_FAST;
+  tubeScore(); free.tube = null; free.hopLock = true; car.roll = 0; car.pitch = 0;
+  if (!fast) { car.v = t.v; aeroStart(true); queueToast(`${FLOW_LAPS} кругов! Для катапульты разгонитесь в потоке до ${FLOW_FAST * 3.6 | 0} км/ч`, "", 2800); return; }
+  const r = A.ray(car.x, car.z), y0 = car.y;
+  let apex = A.H + 12, v = 20, vy = 20, tf = 4;   // tf — время полёта (не T: это three.js)
+  for (let k = 0; k < 15; k++) {                     // выше, пока дуга не проходит над краем крыши и над стеной с запасом 3 м
+    vy = Math.sqrt(2 * G * Math.max(1, apex - y0)); tf = (vy + Math.sqrt(vy * vy + 2 * G * Math.max(0, y0))) / G; v = (r.D - r.L + 38) / tf;
+    const yAt = d => { const tt = Math.max(0, d) / v; return y0 + vy * tt - G * tt * tt / 2; };
+    if (yAt(A.KR * r.D - r.L) > A.H + 3 && yAt(r.D - r.L) > A.H + 3) break;
+    apex += 3;
+  }
+  car.yaw = Math.atan2(-r.uz, r.ux); car.v = v; car.vy = vy;
+  takeoff(false); gas = 100; car.om = 720 / tf; free.cat = { until: time + tf * .78 };
+  free.score += 1500; save.freeBest = Math.max(save.freeBest, free.score); persist(); completeMission("flowShot");
+  queueToast("Баклажановая катапульта! Двойная бочка над крышей  +1500", "good", 2600); sfx.burst();
+  for (let i = 0; i < 30; i++) puff(new T.Vector3(car.x, car.y, car.z), new T.Vector3((Math.random() - .5) * 10, -4 - Math.random() * 6, (Math.random() - .5) * 10), .9, .4);
 }
 function tubeScore() {
   const t = free.tube, pts = Math.round(t.dist);
@@ -3112,6 +3152,9 @@ function stepFree(dt) {
   free.airT += dt;
   car.vy -= G * dt;
   free.gh = groundAt(car.x, car.z, car.y).h;
+  if (free.cat && car.vy < -13 && car.y - free.gh < 16) {   // баклажановая подушка после катапульты: садимся мягко
+    car.vy = -13; if (Math.random() < .5) puff(new T.Vector3(car.x, car.y - .6, car.z), new T.Vector3(0, -6, 0), .5, .45);
+  }
   airControls(dt, false);
   // баллон смотрит и вперёд по ходу полёта: если там крыша, тормозить надо до неё, а не до улицы
   const ahead = t => groundAt(car.x + Math.cos(car.yaw) * car.v * t, car.z - Math.sin(car.yaw) * car.v * t, car.y).h;
@@ -3137,7 +3180,7 @@ function stepFree(dt) {
   if (s) return freeCrash(`Авария: влетели в ${s.name}`);
 }
 function landFree(g) {
-  const err = Math.abs(rollErr(car.roll)), vImp = -car.vy;
+  const err = Math.abs(rollErr(car.roll)), vImp = -car.vy; free.cat = null;
   car.y = g.h; free.air = false;
   if (g.h < .1 && waterAt(car.x, car.z)) return sink();
   const q = err <= CLEAN_ROLL && vImp <= CLEAN_V ? "clean" : err <= HARD_ROLL && vImp <= HARD_V ? "hard" : null;
@@ -3768,7 +3811,7 @@ function ui() {
   $("h-speed").textContent = Math.round(speed * 3.6);
   $("h-alt").textContent = inAir ? `высота ${Math.max(0, car.y - (mode === "free" ? free.gh : 0)).toFixed(1)} м` : "";
   if (Math.round(gas) !== lastGasShown) { $("h-gas").style.width = `${gas}%`; $("h-gas").style.background = gas > 25 ? "var(--gas)" : "var(--bad)"; lastGasShown = Math.round(gas); }
-  $("h-top").textContent = replay ? "" : mode === "free" ? (free.slalom ? `Слалом ${(time - free.slalom.t0).toFixed(1)} с · кольцо ${free.slalom.n + 1}/8` : free.lap ? `Круг ${(time - free.lap.t0).toFixed(1)} с · ворота ${free.lap.n}/${ARENA.gates.length}` : `${free.pro ? "PRO ∞ · " : ""}Очки ${free.score}`) : mode === "train" ? "" : `${L.i + 1}. ${L.name}`;
+  $("h-top").textContent = replay ? "" : mode === "free" ? (free.tube && free.tube.path.flow ? `Поток · круг ${Math.min(FLOW_LAPS, free.tube.laps + 1)}/${FLOW_LAPS} · ${Math.round(free.tube.v * 3.6)} км/ч${free.tube.v >= FLOW_FAST ? " 🚀" : ""} · ПРЫГ — выход` : free.slalom ? `Слалом ${(time - free.slalom.t0).toFixed(1)} с · кольцо ${free.slalom.n + 1}/8` : free.lap ? `Круг ${(time - free.lap.t0).toFixed(1)} с · ворота ${free.lap.n}/${ARENA.gates.length}` : `${free.pro ? "PRO ∞ · " : ""}Очки ${free.score}`) : mode === "train" ? "" : `${L.i + 1}. ${L.name}`;
   const freeGround = mode === "free" && !free.air;
   const jm = joyMode();
   $("b-left").hidden = $("b-right").hidden = $("b-thrust").hidden = jm;
@@ -4061,11 +4104,11 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   pro: on => startFree(false, on),
   time: k => { if (k) setTime(k); return TIME; },
   links: () => ROADS.filter(r => r.link).map(r => ({ name: r.name, pts: r.pts })),
-  roadsAll: () => ROADS.map(r => ({ name: r.name, c: r.c, deck: !!r.deck, pts: r.pts })),
+  roadsAll: () => ROADS.map(r => ({ name: r.name, c: r.c, w: r.w, deck: !!r.deck, pts: r.pts })),
   // проверка дорог и высот: ступеньки вдоль улиц (машина не проедет больше 0,7 м за шаг), стыки мостов, склон лицом вверх,
   // предметы на склоне — на земле
   audit() {
-    const out = { roads: 0, samples: 0, steps: [], deckEnds: [], hillUp: 0, items: { checked: 0, off: 0 } };
+    const out = { roads: 0, samples: 0, steps: [], deckEnds: [], hillUp: 0, items: { checked: 0, off: 0 }, poles: { checked: 0, onRoad: 0, where: [] } };
     ROADS.forEach(r => {
       if (r.c > 2) return; out.roads++;
       let prev = null, py = null;
@@ -4083,6 +4126,11 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
     DECKS.forEach(d => [d.s0, d.s1].forEach(se => { const x = d.cx + d.dx * se + d.nx * d.lc, z = d.cz + d.dz * se + d.nz * d.lc; out.deckEnds.push(+(deckH(d, se) - terrainH(x, z)).toFixed(2)); }));
     const nrm = HILL.mesh.geometry.attributes.normal; let up = 0; for (let i = 0; i < nrm.count; i++) if (nrm.getY(i) > 0) up++; out.hillUp = +(up / nrm.count).toFixed(3);
     const m4 = new T.Matrix4(), v = new T.Vector3();
+    scene.traverse(o => {      // столбы (высокие узкие экземпляры: светофоры, фонари, опоры трамвая) — не на проезжей части
+      if (!o.isInstancedMesh) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox;
+      if (bb.max.y - bb.min.y < 2.5 || Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) > 1.2) return;
+      for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m4); v.setFromMatrixPosition(m4); out.poles.checked++; if (onCarriageway(v.x, v.z, 0)) { out.poles.onRoad++; if (out.poles.where.length < 10) out.poles.where.push([Math.round(v.x), Math.round(v.z)]); } }
+    });
     scene.traverse(o => { if (!o.isInstancedMesh) return; for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m4); v.setFromMatrixPosition(m4); const t = terrainH(v.x, v.z); if (t < 1) continue; out.items.checked++; if (v.y < t - .5) out.items.off++; } });
     return out;
   },
@@ -4097,6 +4145,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   slopeRoll: () => car.slopeRoll || 0,
   boosts: () => BOOSTS.map(o => ({ kind: o.kind, x: o.x, z: o.z, y: o.y, yaw: o.yaw })),
   proState: () => ({ pro: !!free.pro, flying: !!free.proA, gas, alt: free.proA && free.proA.alt }),
+  flowSet: (laps, v) => { if (free.tube) { free.tube.laps = laps; free.tube.v = v; } },
   inner: () => INNER && { pad: INNER.pad, padE: INNER.padE, slide0: INNER.slide.frame(0), slideLen: INNER.slide.len, flowLen: INNER.flow.len, aero: free.aero && { ...free.aero }, tube: free.tube && { s: free.tube.s, v: free.tube.v, laps: free.tube.laps, flow: !!free.tube.path.flow, lift: !!free.tube.lift } },
   teleport(x, z, yaw, y = 0) { car.x = x; car.z = z; car.yaw = yaw; car.y = Math.max(y, surfaceH(x, z)); car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0; car.vl = car.bodyRoll = car.bodyPitch = 0; free.air = false; free.wall = null; free.aero = null; free.tube = null; free.lap = null; phase = "free"; camPos.set(x, car.y + 4, z); zoneAt = -1; }
 };

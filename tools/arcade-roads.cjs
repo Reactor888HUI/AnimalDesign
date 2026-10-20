@@ -33,7 +33,7 @@ const path = require("path");
   for (const k2 of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]) await p.keyboard.up(k2);
   out.reachedLink = wi >= way.length;
   out.drive = { maxY: +maxY.toFixed(1), end: [Math.round(c.x), Math.round(c.z), +c.y.toFixed(1)], phase: c.phase, zone: await ev(() => __t.zone()) };
-  const ok = !errs.length && out.steps.length === 0 && out.deckEnds.every(d => Math.abs(d) < .35) && out.hillUp > .99 && out.items.off === 0 && out.drive.maxY > 12 && out.drive.phase === "free" && out.reachedLink && out.drive.end[2] < 2;   // съезд строится, только если сеть у конца моста обрывается
+  const ok = !errs.length && out.steps.length === 0 && out.deckEnds.every(d => Math.abs(d) < .35) && out.hillUp > .99 && out.items.off === 0 && out.poles.checked > 100 && out.poles.onRoad === 0 && out.drive.maxY > 12 && out.drive.phase === "free" && out.reachedLink && out.drive.end[2] < 2;   // съезд строится, только если сеть у конца моста обрывается
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 1));
   await b.close(); process.exit(ok ? 0 : 1);
 })();

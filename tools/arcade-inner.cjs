@@ -55,6 +55,18 @@ const path = require("path");
   for (let i = 0; i < 80; i++) { await run(250); if (!(await inn()).aero) break; }
   await run(1500); c = await car(); out.flowEnd = { y: +c.y.toFixed(1), air: c.air, phase: c.phase, aero: !!(await inn()).aero };
   await p.screenshot({ path: SH + "/in-end.png" });
+  // катапульта: 5-й круг потока на скорости → дуга над крышей Арены на площадь, двойная бочка, мягкая посадка
+  await ev(([x, z]) => __t.teleport(x - 12, z, 0), [I.padE.x, I.padE.z]);
+  await p.keyboard.down("ArrowUp"); tb = null;
+  for (let i = 0; i < 30 && !(tb && tb.flow); i++) { await run(150); tb = (await inn()).tube; }
+  await ev(() => __t.flowSet(4, 80));
+  for (let i = 0; i < 80; i++) { await run(250); tb = (await inn()).tube; if (!tb) break; await ev(() => __t.flowSet(4, 80)); }
+  await p.keyboard.up("ArrowUp");
+  let maxY = 0, landed = null;
+  for (let i = 0; i < 60; i++) { await run(200); c = await car(); maxY = Math.max(maxY, c.y); if (!c.air) { landed = c; break; } }
+  await run(1500); c = await car();
+  const AC = await ev(() => __t.arena()), outside = Math.hypot(c.x - AC.C[0], c.z - AC.C[1]);
+  out.catapult = { maxY: +maxY.toFixed(1), landed: !!landed, phase: c.phase, dist: Math.round(outside), wallR: Math.round(AC.len / (2 * Math.PI)), mission: !!(await ev(() => __t.missions())).flowShot };
   // аэро-слалом: в аэротрубе проходим кольца по порядку
   await ev(([x, z]) => __t.teleport(x - 14, z, 0), [I.pad.x, I.pad.z]);
   await p.keyboard.down("ArrowUp"); for (let i = 0; i < 30 && !(await inn()).aero; i++) await run(150); await p.keyboard.up("ArrowUp");
@@ -78,7 +90,7 @@ const path = require("path");
   out.tilt = { on: ctl.tilt.on, turn: +ctl.turn.toFixed(2), thr: +ctl.thr.toFixed(2) };
   await orient(62, -16); const ctl2 = await ev(() => __t.ctl()); out.tilt.turnL = +ctl2.turn.toFixed(2); out.tilt.brk = +ctl2.brk.toFixed(2);
   await p.click("#m-tilt");
-  const ok = !errs.length && out.aeroStart && out.aeroMission && out.aeroTop > 35 && out.aeroToRoof.y >= 28 && !out.aeroToRoof.aero &&
+  const ok = out.catapult && out.catapult.landed && out.catapult.phase === "free" && out.catapult.maxY > 32 && out.catapult.dist > out.catapult.wallR && out.catapult.mission && !errs.length && out.aeroStart && out.aeroMission && out.aeroTop > 35 && out.aeroToRoof.y >= 28 && !out.aeroToRoof.aero &&
     !out.aeroDown.aero && out.aeroDown.phase === "free" && out.slideStart && out.slideEnd.mission && out.slideEnd.phase === "free" &&
     out.flowStart && out.flow.laps >= 3 && out.flow.mission && out.flowToAero && !out.flowEnd.aero && out.flowEnd.phase === "free" &&
     out.slalom.mission && out.stands.roll > 15 && out.stands.camUnder === 0 && out.cams === "far,cockpit,chase" &&
