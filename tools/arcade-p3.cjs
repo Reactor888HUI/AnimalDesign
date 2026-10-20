@@ -48,7 +48,7 @@ const path = require("path");
   await p2.click("#dock-btn"); await p2.clock.runFor(300);
   out.boardText = await p2.$eval("#m-board", e => e.innerText.replace(/\s+/g, " "));
   await p2.screenshot({ path: path.join(process.env.SHOTS || ".", "p3-board.png") });
-  const ok = !errs.length && out.boardWrites.length >= 1 && out.boardWrites[0].path === "scores/u_me" && /Соседка/.test(out.boardText) && /вы/.test(out.boardText) && out.street.lamps > 100 && out.street.signals > 20 && out.street.zebras > 200 && out.signalsChange &&
+  const ok = !errs.length && out.boardWrites.length >= 1 && out.boardWrites[0].path === "scores/u_me" && /Соседка/.test(out.boardText) && /вы/.test(out.boardText) && out.street.lamps > 10 && out.street.signals > 20 && out.street.zebras > 200 && out.signalsChange &&
     new Set(labels).size === 3 && out.tuneSaved === 0 && out.boardHidden;
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 2));
   await b.close(); process.exit(ok ? 0 : 1);

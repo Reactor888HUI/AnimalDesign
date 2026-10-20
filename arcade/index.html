@@ -577,6 +577,29 @@ scene.fog = new T.Fog(HAZE, 260, 900);
 const hemi = new T.HemisphereLight(0xc4d8f2, 0x5e5646, .55); scene.add(hemi);
 const sun = new T.DirectionalLight(0xffcf8f, 2.3); sun.position.copy(SUN_DIR).multiplyScalar(400); scene.add(sun);
 // время суток: закат 16:30 (основное), день, ночь. Всё, что меняется ночью, регистрируется здесь и переключается в setTime
+// Дон: голубая вода, рябь в шейдере по мировым координатам — бежит на запад (+x), по течению;
+// блики солнца от волн, у горизонта отражает небо. На низком качестве рябь стоит (uFlow = 0).
+const DON_WATER = new T.MeshStandardMaterial({ color: new T.Color("#2f86b4").convertSRGBToLinear(), roughness: .14, metalness: .05, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+DON_WATER.userData.u = { uTime: { value: 0 }, uFlow: { value: 1 }, uSky: { value: new T.Color(0x9fc4e0) } };
+DON_WATER.onBeforeCompile = sh => {
+  Object.assign(sh.uniforms, DON_WATER.userData.u);
+  sh.vertexShader = "varying vec3 vWP;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWP = position;");
+  sh.fragmentShader = "varying vec3 vWP; uniform float uTime, uFlow; uniform vec3 uSky;\n" + sh.fragmentShader
+    .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>
+    vec2 p = vWP.xz; float t = uTime * uFlow; vec2 g = vec2(0.); float hh = 0.;
+    // четыре системы волн, главная — вдоль течения (на запад); градиент считаем точно
+    vec4 K = vec4(.21, .37, .62, 1.13), A = vec4(.10, .06, .035, .02);
+    vec2 D0 = normalize(vec2(1., .25)), D1 = normalize(vec2(.8, -.6)), D2 = normalize(vec2(.3, 1.)), D3 = normalize(vec2(-.5, .9));
+    float ph0 = dot(D0, p) * K.x - t * 1.3, ph1 = dot(D1, p) * K.y - t * 1.9, ph2 = dot(D2, p) * K.z - t * 2.6, ph3 = dot(D3, p) * K.w - t * 3.4;
+    hh = A.x * sin(ph0) + A.y * sin(ph1) + A.z * sin(ph2) + A.w * sin(ph3);
+    g = A.x * K.x * cos(ph0) * D0 + A.y * K.y * cos(ph1) * D1 + A.z * K.z * cos(ph2) * D2 + A.w * K.w * cos(ph3) * D3;
+    vec3 nW = normalize(vec3(-g.x * 3.5, 1., -g.y * 3.5));
+    normal = normalize((viewMatrix * vec4(nW, 0.)).xyz);
+    diffuseColor.rgb *= .9 + .9 * hh;                      // гребни светлее, впадины темнее — видна рябь`)
+    .replace("#include <output_fragment>", `float fr = pow(1. - max(dot(normal, normalize(vViewPosition)), 0.), 4.);
+    outgoingLight = mix(outgoingLight, uSky, clamp(fr * .75, 0., .75));
+    #include <output_fragment>`);
+};
 const TIMES = {
   sunset: { sun: [.73, .31, -.61], sunC: 0xffcf8f, sunI: 2.3, sky: 0xc4d8f2, gnd: 0x5e5646, hemiI: .55, haze: 0xd6dcdb, exp: .92, name: "закат" },
   day: { sun: [.32, .86, -.4], sunC: 0xfff3e2, sunI: 1.9, sky: 0xcfe2fa, gnd: 0x6b6250, hemiI: .6, haze: 0xcbd9e6, exp: .8, name: "день" },
@@ -883,7 +906,8 @@ function deckH(d, s, l = d.lc) {                 // концы — вровен�
   const ter = (t, w) => terrainH(d.cx + d.dx * t + d.nx * w, d.cz + d.dz * t + d.nz * w);
   if (d.Hm == null) d.Hm = Math.max(d.H, ter(d.s0, d.lc) + 1, ter(d.s1, d.lc) + 1);
   const a = Math.min(1, (s - d.s0) / d.R), b = Math.min(1, (d.s1 - s) / d.R), ha = ter(d.s0, l), hb = ter(d.s1, l);
-  const h = Math.min(ha + (d.Hm - ha) * smooth(Math.max(0, a)), hb + (d.Hm - hb) * smooth(Math.max(0, b)));
+  const u = (s - d.s0) / (d.s1 - d.s0), arch = 2.5 * Math.max(0, 1 - ((u - .5) / .32) ** 2);   // над водой — лёгкая арка, как на фото
+  const h = Math.min(ha + (d.Hm - ha) * smooth(Math.max(0, a)), hb + (d.Hm - hb) * smooth(Math.max(0, b))) + arch * Math.min(1, a, b);
   return Math.max(h, ter(s, l) + .05);                         // на склоне настил не уходит в землю
 }
 function deckAt(x, z, y) {                       // настил моста под точкой; ниже настила больше чем на 2,5 м — проезжаем под мостом
@@ -1033,8 +1057,7 @@ function placeName(x, z) {
     const list = OSM.a.filter(a => a[0] === k).map(([, rs]) => rs.map(dm));
     if (list.length) add(fillGeo(list, y), flatMat(color, 2));
   });
-  add(fillGeo(WATER.map(w => w.rings), .035), new T.MeshStandardMaterial({ color: 0x5f9e88, roughness: .3, metalness: .1,   // Дон — зелёно-бирюзовый, как на фото
-    side: DS, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+  add(fillGeo(WATER.map(w => w.rings), .035), DON_WATER);
 
   // дороги: чем крупнее, тем выше слой — на перекрёстках главная дорога лежит сверху
   const RC = [0x404246, 0x45474b, 0x4b4d51, 0x55575b, 0xa8a59e];   // серый асфальт, светлая плитка тротуаров
@@ -1066,52 +1089,75 @@ function placeName(x, z) {
   // причалы
   add(stripGeo(PIERS.map(pts => ({ pts, w: 3.4 })), .12, false), flatMat(0x9c7b58, 0));
 
-  // Ворошиловский мост по фото: бетонная балка с серым торцом, асфальт с двойной осевой, бетонный парапет,
-  // опоры-близнецы с ригелем, фонари с двух сторон через 36 м (ночью горят)
+  // Ворошиловский мост по фото (после реконструкции): тонкая плита с белыми кромками, под ней узкая коробчатая балка,
+  // металлические перила, опоры — по четыре колонны на общем ростверке, фонари с синими флажками, у правого берега —
+  // белая решётчатая башня-лестница. Над водой настил чуть выгнут аркой.
   DECKS.forEach(d => {
-    const N = Math.ceil((d.s1 - d.s0) / 6), top = [], side = [], line = [], P = (s, l, y) => [d.cx + d.dx * s + d.nx * l, y, d.cz + d.dz * s + d.nz * l];
-    const quad = (A, a, b, c, e) => A.push(...a, ...b, ...c, ...a, ...c, ...e);
-    const L0 = d.lc - d.hw, L1 = d.lc + d.hw, TH = 2.2, PH = 1.05;
+    const N = Math.ceil((d.s1 - d.s0) / 6), top = [], edge = [], box = [], line = [], rails = [], marks = [];
+    const P = (s, l, y) => [d.cx + d.dx * s + d.nx * l, y, d.cz + d.dz * s + d.nz * l], quad = (A, a, b, c, e) => A.push(...a, ...b, ...c, ...a, ...c, ...e);
+    const L0 = d.lc - d.hw, L1 = d.lc + d.hw, SL = .7, BW = d.hw * .55, BD = 2.6, yaw = Math.atan2(-d.dz, d.dx);
     for (let i = 0; i < N; i++) {
-      const sa = d.s0 + (d.s1 - d.s0) * i / N, sb = d.s0 + (d.s1 - d.s0) * (i + 1) / N, H = (s1, l) => deckH(d, s1, l) + .06;   // высота по краю — у концов на склоне края разные
+      const sa = d.s0 + (d.s1 - d.s0) * i / N, sb = d.s0 + (d.s1 - d.s0) * (i + 1) / N, H = (t, l) => deckH(d, t, l) + .06;
       quad(top, P(sa, L0, H(sa, L0)), P(sa, L1, H(sa, L1)), P(sb, L1, H(sb, L1)), P(sb, L0, H(sb, L0)));
       [L0, L1].forEach((l, k) => {
-        const li = l + (k ? -.35 : .35), ha = H(sa, l), hb = H(sb, l);
-        quad(side, P(sa, l, ha - TH), P(sb, l, hb - TH), P(sb, l, hb + PH), P(sa, l, ha + PH));          // торец балки и парапет снаружи
-        quad(side, P(sa, li, ha), P(sb, li, hb), P(sb, li, hb + PH), P(sa, li, ha + PH));               // парапет изнутри
-        quad(side, P(sa, l, ha + PH), P(sb, l, hb + PH), P(sb, li, hb + PH), P(sa, li, ha + PH));       // верх парапета
+        const li = l + (k ? -.4 : .4), ha = H(sa, l), hb = H(sb, l);
+        quad(edge, P(sa, l, ha - SL), P(sb, l, hb - SL), P(sb, l, hb + .45), P(sa, l, ha + .45));         // белая кромка и бортик
+        quad(edge, P(sa, li, ha), P(sb, li, hb), P(sb, li, hb + .45), P(sa, li, ha + .45));
+        quad(edge, P(sa, l, ha + .45), P(sb, l, hb + .45), P(sb, li, hb + .45), P(sa, li, ha + .45));
+        quad(edge, P(sa, l, ha - SL), P(sb, l, hb - SL), P(sb, li, hb - SL), P(sa, li, ha - SL));
+        quad(rails, P(sa, l, ha + 1.05), P(sb, l, hb + 1.05), P(sb, l, hb + 1.15), P(sa, l, ha + 1.15));   // поручень
+        line.push(...P(sa, l, ha + .45), ...P(sa, l, ha + 1.1));                          // стойки перил
       });
-      quad(side, P(sa, L0, H(sa, L0) - TH), P(sb, L0, H(sb, L0) - TH), P(sb, L1, H(sb, L1) - TH), P(sa, L1, H(sa, L1) - TH));       // низ
-      const ha = H(sa, d.lc), hb = H(sb, d.lc);
-      [-.2, .2].forEach(o => quad(line, P(sa, d.lc + o - .08, ha + .02), P(sa, d.lc + o + .08, ha + .02), P(sb, d.lc + o + .08, hb + .02), P(sb, d.lc + o - .08, hb + .02)));   // двойная осевая
+      const hc = H(sa, d.lc), hd = H(sb, d.lc);
+      if (hc - terrainH(...P(sa, d.lc, 0).filter((_, q) => q !== 1)) > 4) {                                  // балка — там, где мост высоко
+        [-BW, BW].forEach(o => quad(box, P(sa, d.lc + o, hc - SL), P(sb, d.lc + o, hd - SL), P(sb, d.lc + o, hd - SL - BD), P(sa, d.lc + o, hc - SL - BD)));
+        quad(box, P(sa, d.lc - BW, hc - SL - BD), P(sb, d.lc - BW, hd - SL - BD), P(sb, d.lc + BW, hd - SL - BD), P(sa, d.lc + BW, hc - SL - BD));
+      }
+      quad(box, P(sa, L0, H(sa, L0) - SL), P(sb, L0, H(sb, L0) - SL), P(sb, L1, H(sb, L1) - SL), P(sa, L1, H(sa, L1) - SL));   // низ плиты
+      [-.2, .2].forEach(o => quad(marks, P(sa, d.lc + o - .08, hc + .02), P(sa, d.lc + o + .08, hc + .02), P(sb, d.lc + o + .08, hd + .02), P(sb, d.lc + o - .08, hd + .02)));   // двойная осевая
     }
     const mk = (pos, m) => { const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); g.computeVertexNormals(); add(g, m); };
-    mk(top, new T.MeshStandardMaterial({ color: 0x1c1d20, roughness: .9, side: DS })); mk(side, new T.MeshStandardMaterial({ color: 0xb4b0a4, roughness: .85, side: DS }));
-    mk(line, new T.MeshBasicMaterial({ color: 0xf2efe6, side: DS }));
-    // опоры — пары столбов с ригелем, только там, где настил высоко
-    const pierM = mat(0xa9a598, { roughness: .9 });
-    for (let s = d.s0 + d.R * .7; s < d.s1 - d.R * .6; s += 64) {
-      const top = deckH(d, s) - TH, gb = terrainH(...P(s, d.lc, 0).filter((_, i) => i !== 1)); if (top - gb < 3) continue;   // низ опоры — на земле или в воде
-      [-.32, .32].forEach(f => {
-        const [x, , z] = P(s, d.lc + f * d.hw * 2, 0), col = new T.Mesh(new T.BoxGeometry(3.2, top - gb + 3, 3.2), pierM);
-        col.position.set(x, (top + gb - 3) / 2, z); col.rotation.y = Math.atan2(-d.dz, d.dx); scene.add(col);
-        solids.push({ x0: x - 1.8, x1: x + 1.8, z0: z - 1.8, z1: z + 1.8, h: top, name: "опору моста" });
+    mk(top, new T.MeshStandardMaterial({ color: 0x1c1d20, roughness: .9, side: DS }));
+    mk(edge, new T.MeshStandardMaterial({ color: 0xe4e1d8, roughness: .7, side: DS })); mk(box, new T.MeshStandardMaterial({ color: 0xb9b5aa, roughness: .85, side: DS }));
+    mk(rails, new T.MeshStandardMaterial({ color: 0x9aa0a6, roughness: .4, metalness: .5, side: DS })); mk(marks, new T.MeshBasicMaterial({ color: 0xf2efe6, side: DS }));
+    const lg = new T.BufferGeometry(); lg.setAttribute("position", new T.Float32BufferAttribute(line, 3)); scene.add(new T.LineSegments(lg, new T.LineBasicMaterial({ color: 0x8d9399 })));
+    // опоры: ростверк, четыре колонны поперёк, ригель под балкой
+    const pierM = mat(0xc4c0b5, { roughness: .9 });
+    for (let s = d.s0 + d.R * .45; s < d.s1 - d.R * .4; s += 58) {
+      const top2 = deckH(d, s) - SL - BD, gb = terrainH(...P(s, d.lc, 0).filter((_, i) => i !== 1)); if (top2 - gb < 3) continue;
+      const [x, , z] = P(s, d.lc, 0), base = gb > .5 ? gb - .3 : -1;
+      const foot = new T.Mesh(new T.BoxGeometry(5, 2.2, BW * 2.6), pierM); foot.position.set(x, base + 1.1 - .9, z); foot.rotation.y = yaw; scene.add(foot);
+      [-1.5, -.5, .5, 1.5].forEach(f => {
+        const [cx, , cz] = P(s, d.lc + f * BW * .62, 0), col = new T.Mesh(new T.BoxGeometry(1.7, top2 - base, 1.7), pierM);
+        col.position.set(cx, (top2 + base) / 2, cz); col.rotation.y = yaw; scene.add(col);
+        solids.push({ x0: cx - 1, x1: cx + 1, z0: cz - 1, z1: cz + 1, h: top2, name: "опору моста" });
       });
-      const [x, , z] = P(s, d.lc, 0), cap = new T.Mesh(new T.BoxGeometry(3.6, 1.4, d.hw * 1.7), pierM), h = top;
-      cap.position.set(x, h - .7, z); cap.rotation.y = Math.atan2(-d.dz, d.dx); scene.add(cap);
+      const cap = new T.Mesh(new T.BoxGeometry(2.4, 1.2, BW * 2.5), pierM); cap.position.set(x, top2 - .6, z); cap.rotation.y = yaw; scene.add(cap);
     }
-    // фонари: столб, двойной кронштейн, плафоны; ночью — пятна света на настиле
-    const poleM = mat(0x8d9096), headM = nightReg(new T.MeshBasicMaterial({ color: 0xd9d2bf }), "color", { sunset: 0xd9d2bf, day: 0xd9d2bf, night: 0xfff0c0 }), poolPts = [];
-    for (let s = d.s0 + 12; s < d.s1 - 6; s += 36) [L0 + .7, L1 - .7].forEach((l, k) => {
-      const h = deckH(d, s, l) + .06, [x, , z] = P(s, l, h), yaw = Math.atan2(-d.dz, d.dx), sg = k ? -1 : 1;
-      const pole = new T.Mesh(new T.CylinderGeometry(.1, .14, 10, 6), poleM); pole.position.set(x, h + 5, z); scene.add(pole);
-      const arm = new T.Mesh(new T.BoxGeometry(.12, .12, 2.6), poleM); arm.position.set(x + d.nx * sg * 1.2, h + 9.9, z + d.nz * sg * 1.2); arm.rotation.y = yaw; scene.add(arm);
-      const lamp = new T.Mesh(new T.BoxGeometry(.9, .18, .4), headM); lamp.position.set(x + d.nx * sg * 2.4, h + 9.8, z + d.nz * sg * 2.4); lamp.rotation.y = yaw; scene.add(lamp);
-      poolPts.push(M4(x + d.nx * sg * 3, h + .1, z + d.nz * sg * 3));
+    // фонари: высокий столб, кронштейн над дорогой, синий флажок; ночью — пятна света на настиле
+    const poleM = mat(0xc9ccd0), flagM = new T.MeshStandardMaterial({ color: new T.Color("#2f5fb3").convertSRGBToLinear(), side: DS }), headM = nightReg(new T.MeshBasicMaterial({ color: 0xd9d2bf }), "color", { sunset: 0xd9d2bf, day: 0xd9d2bf, night: 0xfff0c0 }), poolPts = [];
+    for (let s = d.s0 + 12; s < d.s1 - 6; s += 32) [L0 + .9, L1 - .9].forEach((l, k) => {
+      const h = deckH(d, s, l) + .06, [x, , z] = P(s, l, h), sg = k ? -1 : 1;
+      const pole = new T.Mesh(new T.CylinderGeometry(.11, .16, 11, 6), poleM); pole.position.set(x, h + 5.5, z); scene.add(pole);
+      const arm = new T.Mesh(new T.BoxGeometry(.12, .12, 3), poleM); arm.position.set(x + d.nx * sg * 1.4, h + 10.9, z + d.nz * sg * 1.4); arm.rotation.y = yaw; scene.add(arm);
+      const lamp = new T.Mesh(new T.BoxGeometry(1, .2, .45), headM); lamp.position.set(x + d.nx * sg * 2.8, h + 10.8, z + d.nz * sg * 2.8); lamp.rotation.y = yaw; scene.add(lamp);
+      const flag = new T.Mesh(new T.PlaneGeometry(.9, .55), flagM); flag.position.set(x - d.nx * sg * .5, h + 8.6, z - d.nz * sg * .5); flag.rotation.y = yaw; scene.add(flag);
+      poolPts.push(M4(x + d.nx * sg * 3.4, h + .1, z + d.nz * sg * 3.4));
     });
     const pc = document.createElement("canvas"); pc.width = pc.height = 64; const pg = pc.getContext("2d"), gr = pg.createRadialGradient(32, 32, 0, 32, 32, 32);
     gr.addColorStop(0, "rgba(255,214,150,.6)"); gr.addColorStop(1, "rgba(255,214,150,0)"); pg.fillStyle = gr; pg.fillRect(0, 0, 64, 64);
     chunked(new T.PlaneGeometry(14, 14).rotateX(-Math.PI / 2), nightReg(new T.MeshBasicMaterial({ map: new T.CanvasTexture(pc), transparent: true, depthWrite: false, blending: T.AdditiveBlending, visible: false }), "visible", { sunset: false, day: false, night: true }), poolPts, .6);
+    // белая решётчатая башня у правого берега — там, где мост выходит на набережную
+    let sb = null; for (let t = d.s0; t < d.s1; t += 2) { const [x, , z] = P(t, L1 + 4, 0); if (BANK.length && terrainH(x, z) > 1 && !waterAt(x, z) && waterAt(...P(t + (d.dz < 0 ? 6 : -6), L1 + 4, 0).filter((_, i) => i !== 1))) { sb = t; break; } }
+    if (sb != null) {
+      const [x, , z] = P(sb, L1 + 4.5, 0), g0 = terrainH(x, z), hTop = deckH(d, sb) + 6, wM = mat(0xf2f2ee), tw = new T.Group();
+      [[-1.6, -1.6], [1.6, -1.6], [1.6, 1.6], [-1.6, 1.6]].forEach(([a, c]) => { const p = new T.Mesh(new T.BoxGeometry(.3, hTop - g0, .3), wM); p.position.set(a, (hTop + g0) / 2, c); tw.add(p); });
+      const br = [];
+      for (let y = g0 + 3; y < hTop; y += 3) { [[-1.6, -1.6, 1.6, -1.6], [1.6, -1.6, 1.6, 1.6], [1.6, 1.6, -1.6, 1.6], [-1.6, 1.6, -1.6, -1.6]].forEach(([a, b, c, e]) => { br.push(a, y, b, c, y, e, a, y - 3, b, c, y, e); }); }
+      const bg = new T.BufferGeometry(); bg.setAttribute("position", new T.Float32BufferAttribute(br, 3)); tw.add(new T.LineSegments(bg, new T.LineBasicMaterial({ color: 0xf6f6f2 })));
+      tw.position.set(x, 0, z); tw.rotation.y = yaw; scene.add(tw);
+      solids.push({ x0: x - 2.2, x1: x + 2.2, z0: z - 2.2, z1: z + 2.2, h: hTop, name: "башню у моста" });
+    }
   });
 
   // дома: стены с окнами (жилые, общественные) и без (склады, стадион), плоские крыши
@@ -1221,6 +1267,10 @@ function placeName(x, z) {
     }
   }
   const crowns = [], trunks = [];
+  // деревья не растут на проезжей части и под настилом моста
+  const asphalt = (x, z) => ROADS.some(q => q.c <= 3 && x > q.x0 - 9 && x < q.x1 + 9 && z > q.z0 - 9 && z < q.z1 + 9 && lineDist(x, z, q.pts, false) < q.w / 2 + 1.2);
+  const underDeck = (x, z) => DECKS.some(d => { const ox = x - d.cx, oz = z - d.cz, s = ox * d.dx + oz * d.dz, l = ox * d.nx + oz * d.nz; return s > d.s0 - 6 && s < d.s1 + 6 && Math.abs(l - d.lc) < d.hw + 4; });
+  for (let i = trees.length - 1; i >= 0; i--) if (asphalt(...trees[i]) || underDeck(...trees[i])) trees.splice(i, 1);
   trees.forEach(([x, z]) => {
     if (arenaRing && (inPoly(x, z, arenaRing) || lineDist(x, z, arenaRing, true) < 66)) return;   // и деревья там же
     const s = .75 + rnd() * .55;
@@ -1659,6 +1709,11 @@ const HILL = (() => {
       if (k > .05) { cx.fillStyle = `rgba(92,128,62,${(.55 * k).toFixed(2)})`; cx.fillRect(x, z, 8, 8); }
     }
     const poly = rs => { cx.beginPath(); rs.forEach(r => r.forEach(([x, z], i) => i ? cx.lineTo(x, z) : cx.moveTo(x, z))); cx.fill("evenodd"); };
+    // набережная — плитка (тёпло-бежевая с рисунком), полоса 16 м вдоль воды
+    if (!paint.tile) { const t = document.createElement("canvas"); t.width = t.height = 16; const g = t.getContext("2d"); g.fillStyle = css(0xc9ab90); g.fillRect(0, 0, 16, 16); g.fillStyle = css(0xb08f78); g.fillRect(0, 0, 8, 8); g.fillRect(8, 8, 8, 8); g.fillStyle = "rgba(0,0,0,.12)"; g.fillRect(0, 7, 16, 1); g.fillRect(7, 0, 1, 16); paint.tile = cx.createPattern(t, "repeat"); }
+    cx.beginPath();
+    for (let x = X0; x <= X1; x += 10) cx.lineTo(x, bankAt(x)); for (let x = X1; x >= X0; x -= 10) cx.lineTo(x, bankAt(x) + 16);
+    cx.closePath(); cx.fillStyle = paint.tile; cx.fill();
     ["c", "b", "g", "f", "s", "k", "w"].forEach(k => { cx.fillStyle = css(AREA[k]); OSM.a.forEach(([kk, rs]) => { if (kk === k) poly(rs.map(dm)); }); });
     cx.lineCap = cx.lineJoin = "round";
     OSM.l.forEach(([, a]) => { const pts = dm(a); cx.strokeStyle = "#3b3936"; cx.lineWidth = 1.8; cx.beginPath(); pts.forEach(([x, z], i) => i ? cx.lineTo(x, z) : cx.moveTo(x, z)); cx.stroke(); });
@@ -1671,16 +1726,31 @@ const HILL = (() => {
     cx.fill("nonzero");
     tex.needsUpdate = true;
   }
-  // гранитная набережная: стенка от воды до верха берега и белый парапет
-  const wall = [], rail = [], q = (A, a, b, c2, d) => A.push(...a, ...b, ...c2, ...a, ...c2, ...d);
-  for (let i = 0; i < NX; i++) {
-    const xa = X0 + (X1 - X0) * i / NX, xb = X0 + (X1 - X0) * (i + 1) / NX, za = bankAt(xa) + .05, zb = bankAt(xb) + .05, ha = terrainH(xa, za + .1), hb = terrainH(xb, zb + .1);
+  // гранитная набережная по фото: стенка к воде, чёрная кованая ограда между белыми столбиками, фонари-шары
+  const wall = [], fence = [], fuv = [], q = (A, a, b, c2, d) => A.push(...a, ...b, ...c2, ...a, ...c2, ...d), posts = [], globes = [];
+  let run = 0, lastLamp = -99;
+  for (let i = 0; i < NX * 3; i++) {
+    const xa = X0 + (X1 - X0) * i / (NX * 3), xb = X0 + (X1 - X0) * (i + 1) / (NX * 3), za = bankAt(xa) + .05, zb = bankAt(xb) + .05, ha = terrainH(xa, za + .1), hb = terrainH(xb, zb + .1);
     if (ha < .5 && hb < .5) continue;
     q(wall, [xa, -1.5, za], [xb, -1.5, zb], [xb, hb, zb], [xa, ha, za]);
-    q(rail, [xa, ha, za], [xb, hb, zb], [xb, hb + .9, zb], [xa, ha + .9, za]); q(rail, [xa, ha + .9, za], [xb, hb + .9, zb], [xb, hb + .9, zb + .35], [xa, ha + .9, za + .35]);
-    q(rail, [xa, ha, za + .35], [xb, hb, zb + .35], [xb, hb + .9, zb + .35], [xa, ha + .9, za + .35]);
+    const L = Math.hypot(xb - xa, zb - za);
+    q(fence, [xa, ha, za + .15], [xb, hb, zb + .15], [xb, hb + 1.05, zb + .15], [xa, ha + 1.05, za + .15]);
+    fuv.push(run / 2, 0, (run + L) / 2, 0, (run + L) / 2, 1, run / 2, 0, (run + L) / 2, 1, run / 2, 1);
+    if (Math.floor((run + L) / 5) > Math.floor(run / 5)) posts.push(M4(xb, hb + .6, zb + .15, Math.atan2(-(zb - za), xb - xa)));        // белые столбики через 5 м
+    if (run - lastLamp > 32) { lastLamp = run; const nz = zb + 3.2; globes.push([xb, terrainH(xb, nz), nz]); }                    // фонари-шары через ~32 м
+    run += L;
   }
-  [[wall, 0x6f6a64], [rail, 0xd9d4c8]].forEach(([P, col]) => { const gg = new T.BufferGeometry(); gg.setAttribute("position", new T.Float32BufferAttribute(P, 3)); gg.computeVertexNormals(); scene.add(new T.Mesh(gg, new T.MeshStandardMaterial({ color: col, roughness: .85, side: T.DoubleSide }))); });
+  const mkG = (P, m, uv) => { const gg = new T.BufferGeometry(); gg.setAttribute("position", new T.Float32BufferAttribute(P, 3)); if (uv) gg.setAttribute("uv", new T.Float32BufferAttribute(uv, 2)); gg.computeVertexNormals(); scene.add(new T.Mesh(gg, m)); };
+  mkG(wall, new T.MeshStandardMaterial({ color: 0x6f6a64, roughness: .85, side: T.DoubleSide }));
+  const fc = document.createElement("canvas"); fc.width = 64; fc.height = 32; const fg = fc.getContext("2d");
+  fg.fillStyle = "#16171a"; fg.fillRect(0, 0, 64, 3); fg.fillRect(0, 28, 64, 4); for (let x = 2; x < 64; x += 6) fg.fillRect(x, 0, 2, 32);   // поручень, низ, прутья
+  fg.strokeStyle = "#16171a"; fg.lineWidth = 2; fg.beginPath(); fg.arc(32, 16, 7, 0, 7); fg.stroke();                                  // кованый узор
+  const ft = new T.CanvasTexture(fc); ft.wrapS = T.RepeatWrapping;
+  mkG(fence, new T.MeshStandardMaterial({ map: ft, alphaTest: .5, transparent: false, side: T.DoubleSide, roughness: .5, metalness: .4 }), fuv);
+  chunked(new T.BoxGeometry(.5, 1.2, .5), mat(0xeeece6), posts, .6);
+  const gm = nightReg(new T.MeshBasicMaterial({ color: 0xe8e8e2 }), "color", { sunset: 0xe8e8e2, day: 0xe8e8e2, night: 0xfff4d6 });
+  chunked(new T.CylinderGeometry(.07, .1, 4, 6).translate(0, 2, 0), mat(0x2a2c30), globes.map(([x, y, z]) => M4(x, y, z)), .5);
+  chunked(new T.SphereGeometry(.32, 10, 8).translate(0, 4.2, 0), gm, globes.map(([x, y, z]) => M4(x, y, z)), .5);
   paint();
   return { paint, mesh };
 })();
@@ -1786,8 +1856,10 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
       SIGNALS[grp].push(m);
     });
   });
-  // фонари вдоль улиц: через 34 м, по очереди с разных сторон, не в домах и не в воде
+  // фонари вдоль улиц: через 34 м, по очереди с разных сторон, не в домах и не в воде.
+  // По просьбе заказчика в городе их нет — только у стадиона (в 280 м от Арены); и никогда — на проезжей части.
   const lamps = [], taken = new Set();
+  const onRoad = (x, z) => ROADS.some(q => q.c <= 3 && x > q.x0 - 9 && x < q.x1 + 9 && z > q.z0 - 9 && z < q.z1 + 9 && lineDist(x, z, q.pts, false) < q.w / 2 + .3);
   ROADS.forEach(r => {
     if (r.c > 2 || r.deck) return;
     let side = 1, acc = 12;
@@ -1799,6 +1871,7 @@ const SIGNALS = { A: [], B: [] };          // материалы сигнало�
         side = -side;
         const k = Math.round(x / 15) + "," + Math.round(z / 15);
         if (taken.has(k) || !inStrip(x, z) || z > -86 || solidsNear(x, z).some(b => b.h > .5 && inBox(b, x, z, 1.1)) || waterAt(x, z)) continue;
+        if (!ARENA || Math.hypot(x - ARENA.C[0], z - ARENA.C[1]) > 280 || onRoad(x, z)) continue;
         taken.add(k); lamps.push([x, z, yawOf(-ox, -oz)]);
       }
       acc -= L;
@@ -3547,6 +3620,7 @@ function render(dt) {
     carObj.quaternion.setFromRotationMatrix(wallBasis.m); carObj.position.set(car.x + t.n.x * WHEEL, car.y + t.n.y * WHEEL, car.z + t.n.z * WHEEL);
   }
   if (INNER) INNER.anim(dt);
+  DON_WATER.userData.u.uTime.value += dt; DON_WATER.userData.u.uFlow.value = perf.q >= 1 ? 1 : 0;   // рябь — на среднем и высоком качестве
   {   // колёса крутятся по скорости, передние поворачивают; стоп-сигналы горят при торможении
     const U = carObj.userData, v = replay ? 0 : mode === "free" ? (free.aero || free.air ? 0 : car.v) : (car.vx || 0);
     U.wa = ((U.wa || 0) + v * dt / .288) % (Math.PI * 2);
@@ -3640,7 +3714,8 @@ function layerGround() {
     if (box.max.y - box.min.y < .06 && box.max.y < .25 && box.min.y > -.05) flatOnes.push([box.max.y, o]);
   });
   flatOnes.sort((a, b) => a[0] - b[0]).forEach(([, o], i) => {
-    o.material = o.material.clone(); o.material.depthWrite = false; o.material.polygonOffset = false; o.renderOrder = -1000 + i;
+    if (o.material !== DON_WATER) o.material = o.material.clone();   // у воды свой шейдер — копия его потеряла бы
+    o.material.depthWrite = false; o.material.polygonOffset = false; o.renderOrder = -1000 + i;
   });
   return flatOnes.length;
 }
@@ -3660,6 +3735,7 @@ function setTime(key) {                         // время суток: све
   hemi.color.setHex(P.sky); hemi.groundColor.setHex(P.gnd); hemi.intensity = P.hemiI;
   scene.background.setHex(P.haze); scene.fog.color.setHex(P.haze); renderer.toneMappingExposure = P.exp;
   skyDome.userData.paint(TIME); bakeShadows(); HILL.paint();
+  DON_WATER.userData.u.uSky.value.setHex({ sunset: 0xa8c6dc, day: 0xb4d6f0, night: 0x0f1c34 }[TIME]);
   NIGHT.forEach(([o, k, v]) => { const x = v[TIME]; if (o[k] && o[k].isColor) o[k].setHex(x); else o[k] = x; });
   save.time = TIME; persist();
 }
