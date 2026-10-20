@@ -1126,6 +1126,30 @@ function placeName(x, z) {
     railLines.push({ pts: off, w: .14 });
   }));
   add(stripGeo(railLines, .1, false), flatMat(0x2c2b33, 0));
+  {   // контактная сеть трамвая: столбы у края улицы (никогда на проезжей части), провод над путём на 6 м, поперечные растяжки
+    const onRoad = (x, z) => ROADS.some(q => x > q.x0 - 12 && x < q.x1 + 12 && z > q.z0 - 12 && z < q.z1 + 12 && lineDist(x, z, q.pts, false) < q.w / 2 + .6);
+    const poles = [], W = [], wy = (x, z) => surfaceH(x, z) + 6;
+    rails.filter(r => r.k === 1).forEach(({ pts }) => {
+      let carry = 0, side = 1;
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, az] = pts[i - 1], [bx, bz] = pts[i], L = Math.hypot(bx - ax, bz - az); if (L < .1) continue;
+        const nx = -(bz - az) / L, nz = (bx - ax) / L;
+        W.push(ax, wy(ax, az), az, bx, wy(bx, bz), bz);
+        for (let s = carry; s < L; s += 32) {
+          const x = ax + (bx - ax) * s / L, z = az + (bz - az) * s / L;
+          let off = 4; while (off < 13 && onRoad(x + nx * off * side, z + nz * off * side)) off += 1;
+          if (off < 13) { const px = x + nx * off * side, pz = z + nz * off * side, g = surfaceH(px, pz); poles.push(M4(px, g, pz)); W.push(px, g + 6.6, pz, x, wy(x, z), z); }
+          side = -side;
+        }
+        carry = (carry - L) % 32; if (carry < 0) carry += 32;
+      }
+    });
+    if (poles.length) {
+      chunked(new T.CylinderGeometry(.09, .13, 7, 6).translate(0, 3.5, 0), mat(0x2e3135), poles, .5);
+      const wg = new T.BufferGeometry(); wg.setAttribute("position", new T.Float32BufferAttribute(W, 3));
+      const wires = new T.LineSegments(wg, new T.LineBasicMaterial({ color: 0x1d1f22 })); wires.userData.dyn = true; scene.add(wires);
+    }
+  }
   // причалы
   add(stripGeo(PIERS.map(pts => ({ pts, w: 3.4 })), .12, false), flatMat(0x9c7b58, 0));
 
@@ -1270,7 +1294,7 @@ function placeName(x, z) {
     // тип фасада: стекло — высокие общественные, панелька — высокие жилые, старый город — исторические и дома на холме
     const fac = plain ? -1 : kind === 2 && h >= 18 ? 3 : kind === 3 || (gc > 3 && h < 18) ? 2 : kind === 0 && h >= 15 ? 1 : 0;
     if (fac === 3) col.copy(GLASS); else if (fac === 1) col.copy(PANEL[bi % PANEL.length]);
-    const lot = lotOf((bb0.x0 + bb0.x1) / 2, (bb0.z0 + bb0.z1) / 2), W = lot.W, win = fac + 1, roofY = gc + h, P = h >= 4 ? .5 : 0;   // P — парапет над крышей
+    const lot = lotOf((bb0.x0 + bb0.x1) / 2, (bb0.z0 + bb0.z1) / 2), W = lot.W, win = fac + 1, roofY = gc + h, P = h >= 4 ? .35 : 0;   // P — парапет над крышей (низкий: по крыше ездят, а он не твёрдый)
     rings.forEach((ring, ri) => {
       let s = 0; for (let i = 0; i < ring.length; i++) s += ring[i][0] * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * ring[i][1];
       const out = (s > 0) === (ri === 0) ? 1 : -1;           // наружная нормаль для внешнего кольца и для дыр
@@ -1299,6 +1323,20 @@ function placeName(x, z) {
     if (kind !== 4 && h >= 3 && h <= 45 && [[0, 0], [3.5, 3.5], [-3.5, 3.5], [3.5, -3.5], [-3.5, -3.5]].every(([dx, dz]) => inRings(cx + dx, cz + dz, rings)))
       sb.pad = { x: cx, z: cz };
     solids.push(sb);
+    // машинное помещение лифта на крыше высоких домов: бетонная будка 3×3×2,4 м ближе к углу (середина — под площадку и разгон), твёрдая
+    if (!plain && h >= 15) {
+      const pick = [[.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7], [.7, 0], [-.7, 0]].map(([kx, kz]) => [cx + (sb.x1 - sb.x0) / 2 * kx, cz + (sb.z1 - sb.z0) / 2 * kz])
+        .find(([x, z]) => Math.hypot(x - cx, z - cz) > 9 && [[-2.5, -2.5], [2.5, -2.5], [2.5, 2.5], [-2.5, 2.5]].every(([dx, dz]) => inRings(x + dx, z + dz, rings)));
+      if (pick) {
+        const [x, z] = pick, b0 = roofY, b1 = roofY + 2.4, k = .82, cc = [col.r * k, col.g * k, col.b * k];
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([nx, nz]) => {
+          const tx = -nz, tz = nx, fx = x + nx * 1.5, fz = z + nz * 1.5, A = [fx - tx * 1.5, fz - tz * 1.5], B = [fx + tx * 1.5, fz + tz * 1.5];
+          [[A, b0], [B, b0], [B, b1], [A, b0], [B, b1], [A, b1]].forEach(([[px, pz], y]) => W.push(Object.assign([px, y, pz, 0, 0, b0], { n: [nx, 0, nz], c: cc, w: 0, t: b1 + 9 })));
+        });
+        [[-1.5, -1.5], [1.5, -1.5], [1.5, 1.5], [-1.5, -1.5], [1.5, 1.5], [-1.5, 1.5]].forEach(([dx, dz]) => lot.R.push(x + dx, b1, z + dz, rcol.r, rcol.g, rcol.b));
+        solids.push({ x0: x - 1.5, x1: x + 1.5, z0: z - 1.5, z1: z + 1.5, h: b1, name: "будку на крыше" });
+      }
+    }
   });
   // стены с окнами, глухие стены и крыши — в одной сетке участка; win: 0 — без окон, 1–4 — плитка атласа фасадов;
   // aoBase = (земля под стеной, отметка крыши): у земли темнее, выше крыши — светлый карниз-парапет без окон

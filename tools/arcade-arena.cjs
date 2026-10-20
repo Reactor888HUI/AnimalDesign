@@ -17,7 +17,7 @@ const path = require("path");
   const [gx, gz, tx, tz] = A.gates[2], yaw0 = Math.atan2(-(A.C[1] - gz), A.C[0] - gx), yt = Math.atan2(-tz, tx);
   await ev(([x, z, y]) => { __t.teleport(x, z, y); __t.setCar({ v: 24 }); }, [gx, gz, yaw0 + (Math.sin(yt - yaw0) > 0 ? .9 : -.9)]);
   await p.keyboard.down("ArrowUp");
-  let w = null; for (let i = 0; i < 20 && !w; i++) { await run(150); w = (await ev(() => __t.arena())).wall; }
+  let w = null; for (let i = 0; i < 40 && !w; i++) { await run(150); w = (await ev(() => __t.arena())).wall; }
   out.attached = !!w;
   await p.keyboard.down("ArrowLeft"); await run(800); await p.keyboard.up("ArrowLeft");
   const w1 = (await ev(() => __t.arena())).wall; out.climbed = w1 && w1.y > (w ? w.y : 0) + 3;
@@ -31,11 +31,13 @@ const path = require("path");
   // круг: едем по точкам кольца трассы через ворота по порядку
   const G = A.gates; await ev(([x, z, tx, tz]) => __t.teleport(x - tx * 25, z - tz * 25, Math.atan2(-tz, tx)), G[0]);
   const way = []; for (let k = 1; k <= G.length; k++) { const a = G[k - 1], g = G[k % G.length]; for (let f = 1 / 3; f <= 1.001; f += 1 / 3) way.push([a[0] + (g[0] - a[0]) * f, a[1] + (g[1] - a[1]) * f]); }
-  let wi = 0, lapSeen = false, t = 0;
+  way.push([G[0][0] + G[0][2] * 25, G[0][1] + G[0][3] * 25]);   // за финишные ворота: иначе бот бросал газ за 18 м до них и не всегда докатывался
+  let wi = 0, lapSeen = false, t = 0; const lapLog = [];
   for (; t < 90 && wi < way.length; t += .2) {
     const c = await ev(() => __t.car()), h = await ev(() => __t.heading());
-    if (await ev(() => !!__t.lap())) lapSeen = true;
-    while (wi < way.length && Math.hypot(way[wi][0] - c.x, way[wi][1] - c.z) < 18) wi++;
+    { const L = await ev(() => __t.lap()); if (L) { lapSeen = true; if (L.n !== lapLog[lapLog.length - 1]) lapLog.push(L.n); } else if (lapLog[lapLog.length - 1] !== "-") { lapLog.push("-"); if (lapLog.length > 2) lapLog.push(JSON.stringify(G.map((g, i) => [i, Math.round(Math.hypot(g[0] - c.x, g[1] - c.z))]).filter(e => e[1] < 40))); } }
+    // точка ворот (каждая третья) засчитывается ближе 8 м — игра считает ворота в радиусе 11 м; промежуточные — 18 м
+    while (wi < way.length && Math.hypot(way[wi][0] - c.x, way[wi][1] - c.z) < (wi % 3 === 2 && wi < way.length - 1 ? 8 : 18)) wi++;
     if (wi >= way.length) break;
     let d = Math.atan2(-(way[wi][1] - c.z), way[wi][0] - c.x) - h; d = Math.atan2(Math.sin(d), Math.cos(d));
     for (const k of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]) await p.keyboard.up(k);
@@ -45,7 +47,7 @@ const path = require("path");
   }
   for (const k of ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]) await p.keyboard.up(k);
   await run(1500);
-  out.lap = { started: lapSeen, waypoints: `${wi}/${way.length}`, seconds: +t.toFixed(1), best: await ev(() => JSON.parse(localStorage.getItem("baklan3d-v1")).arenaLap || null) };
+  out.lap = { started: lapSeen, waypoints: `${wi}/${way.length}`, seconds: +t.toFixed(1), gatesLog: lapLog.join(" "), best: await ev(() => JSON.parse(localStorage.getItem("baklan3d-v1")).arenaLap || null) };
   // мега-трамплины: разгон с места, газ отпускаем в воздухе — каждый сажает на крышу (29 м)
   out.megas = [];
   for (const m of A.megas) {
