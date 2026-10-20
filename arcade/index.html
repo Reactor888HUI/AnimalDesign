@@ -3345,14 +3345,16 @@ const board = { db: null, user: null, me: null, rows: [], sent: "", timer: 0, re
   } catch (e) { board.db = null; }
 })();
 function pushScore() {                     // свой рекорд — не чаще раза в 4 с и только если он изменился
-  if (!board.db || !board.me || board.readOnly || !save.freeBest) return;
-  const row = { best: save.freeBest, trick: save.trickBest || 0, missions: Object.keys(save.missions || {}).length };
-  const k = JSON.stringify(row); if (k === board.sent) return;
-  clearTimeout(board.timer);
+  // таймер не перезапускаем: иначе, пока очки растут чаще раза в 4 с, запись откладывалась бы бесконечно; строку собираем в момент отправки
+  if (!board.db || !board.me || board.readOnly || !save.freeBest || board.timer) return;
+  const rowNow = () => ({ best: save.freeBest, trick: save.trickBest || 0, missions: Object.keys(save.missions || {}).length });
+  if (JSON.stringify(rowNow()) === board.sent) return;
   board.timer = setTimeout(async () => {
-    try { await board.db.doc("scores/" + board.me).set({ ...row, at: Date.now() }); board.sent = k; }
+    const row = rowNow(), k = JSON.stringify(row);
+    try { if (k !== board.sent) { await board.db.doc("scores/" + board.me).set({ ...row, at: Date.now() }); board.sent = k; } }
     catch (e) { if (e && (e.code === "invalid_argument" || e.code === "revoked" || e.code === "not_granted")) board.readOnly = true; }
-    renderBoard();
+    board.timer = 0; renderBoard();
+    if (JSON.stringify(rowNow()) !== board.sent) pushScore();   // пока ждали ответа, рекорд мог вырасти
   }, 4000);
 }
 async function renderBoard() {
