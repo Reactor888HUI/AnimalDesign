@@ -22,7 +22,7 @@ REF = os.path.join(ROOT, "arcade", "refs", "models")
 
 MODELS = {
     # городской автобус: двухцветный — верх в цвет машины, низ — тёмная полоса; удлинён до ~10,5 м
-    "bus": dict(src="quaternius-bus.obj", fwd=("x", -1), width=2.5, stretch=4.4, pillars=True, mats={
+    "bus": dict(src="quaternius-bus.obj", fwd=("x", -1), width=2.5, stretch=4.4, pillars=True, wheels=("Material", 1.8), mats={
         "Top": "tint", "Bottom": 0x2f3d55, "Windows": 0x1d2838, "Bumper": 0x2a2c31, "Details": 0x8d939b,
         "Lights": 0xfff0a8, "Material": 0x15161a}, rear=(0xfff0a8, 0xd8262c)),
     # маршрутка: микроавтобус с высокой крышей, ~6 м
@@ -114,6 +114,21 @@ def convert(name, spec):
         for p in P:
             if p[1] > H0 * h:
                 p[1] += dh
+    # колёса крупнее (у модели автобуса они игрушечные): каждое — вокруг своего центра, нижней точкой на земле
+    if spec.get("wheels"):
+        wm, f = spec["wheels"]
+        groups = {}
+        for mat, pts in F:
+            if mat != wm:
+                continue
+            for v, _ in pts:
+                groups.setdefault((P[v][0] > 0, P[v][2] > 0), set()).add(v)
+        for vs in groups.values():
+            xs_ = [P[v][0] for v in vs]; ys_ = [P[v][1] for v in vs]; zs_ = [P[v][2] for v in vs]
+            c = [(min(xs_) + max(xs_)) / 2, (min(ys_) + max(ys_)) / 2, (min(zs_) + max(zs_)) / 2]
+            r = (max(ys_) - min(ys_)) / 2
+            for v in vs:
+                P[v] = [c[0] + (P[v][0] - c[0]) * f, r * f + (P[v][1] - c[1]) * f, c[2] + (P[v][2] - c[2]) * min(f, 1.25)]
     # цвета
     pal_img = None
     if spec.get("palette"):
