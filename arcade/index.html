@@ -575,7 +575,7 @@ const grainTex = (() => {
   for (let i = 0; i < 9; i++) { const x = hr() * 128, y = hr() * 128, r = 10 + hr() * 22, gr = g.createRadialGradient(x, y, 0, x, y, r), v = hr() < .5 ? "215,215,215" : "250,250,250";
     gr.addColorStop(0, `rgba(${v},.7)`); gr.addColorStop(1, `rgba(${v},0)`); g.fillStyle = gr; [-128, 0, 128].forEach(ox => [-128, 0, 128].forEach(oy => g.fillRect(x - r + ox, y - r + oy, r * 2, r * 2))); }
   for (let i = 0; i < 3200; i++) { const v = 195 + hr() * 60 | 0; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(hr() * 128 | 0, hr() * 128 | 0, 1, 1); }
-  const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; t.encoding = T.sRGBEncoding; return t;
+  const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.encoding = T.sRGBEncoding; return t;
 })();
 const M4 = (x, y, z, yaw = 0, sx = 1, sy = 1, sz = 1) => new T.Matrix4().compose(new T.Vector3(x, y, z), new T.Quaternion().setFromAxisAngle(yUp0, yaw), new T.Vector3(sx, sy, sz));
 /* ---------- небо и свет: 16:30, низкое золотое солнце ---------- */
@@ -1099,7 +1099,8 @@ function placeName(x, z) {
   // дороги: чем крупнее, тем выше слой — на перекрёстках главная дорога лежит сверху
   const RC = [0x404246, 0x45474b, 0x4b4d51, 0x55575b, 0xa8a59e];   // серый асфальт, светлая плитка тротуаров
   // бордюр: светлая кайма 0,35 м под всеми дорогами — видна только там, где рядом нет другой дороги
-  add(stripGeo(ROADS.filter(r => r.c <= 2 && !r.deck).map(r => ({ pts: r.pts, w: r.w + .7 })), .045), flatMat(0xb4b1aa, 0));
+  // (на склоне дороги нарисованы на его текстуре — там бордюр не нужен, лишняя перерисовка)
+  add(stripGeo(ROADS.filter(r => r.c <= 2 && !r.deck && r.pts.some(([x, z]) => terrainH(x, z) < .3)).map(r => ({ pts: r.pts, w: r.w + .7 })), .045), flatMat(0xb4b1aa, 0));
   [4, 3, 2, 1, 0].forEach((c, i) => {
     const list = ROADS.filter(r => r.c === c && !r.deck);       // мосты — отдельной моделью над водой
     if (list.length) { const m = flatMat(RC[c], 0); m.map = grainTex; add(stripGeo(list, .05 + i * .006), m); }
@@ -1200,10 +1201,11 @@ function placeName(x, z) {
   });
 
   // дома: стены с окнами (жилые, общественные) и без (склады, стадион), плоские крыши
-  // атлас фасадов 4 плитки 64×64 (6 м × 6,4 м, два этажа): 0 обычный, 1 панелька, 2 старый город, 3 стекло
-  const winC = document.createElement("canvas"), emC = document.createElement("canvas"); winC.width = emC.width = 256; winC.height = emC.height = 64;
+  // атлас фасадов — 4 плитки 64×64 (6 м × 6,4 м, два этажа) столбиком: 0 обычный, 1 панелька, 2 старый город, 3 стекло.
+  // Столбиком — чтобы по горизонтали работал обычный повтор текстуры; стык мип-уровней остаётся только горизонтальный (раз в два этажа)
+  const winC = document.createElement("canvas"), emC = document.createElement("canvas"); winC.width = emC.width = 64; winC.height = emC.height = 256;
   const wg = winC.getContext("2d"), eg = emC.getContext("2d");
-  wg.fillStyle = "#fff"; wg.fillRect(0, 0, 256, 64); eg.fillStyle = "#000"; eg.fillRect(0, 0, 256, 64);
+  wg.fillStyle = "#fff"; wg.fillRect(0, 0, 64, 256); eg.fillStyle = "#000"; eg.fillRect(0, 0, 64, 256);
   for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
     const lit = rnd() < .4;
     wg.fillStyle = lit ? "#c9a46e" : "#4c5b6b"; wg.fillRect(c * 32 + 9, r * 32 + 8, 14, 16);   // днём окна — тёмное стекло
@@ -1211,9 +1213,12 @@ function placeName(x, z) {
   }
   { let hs = 99; const hr = () => (hs = (hs * 16807) % 2147483647) / 2147483647;   // своё зерно — общий rnd() не сдвигаем
     const win = (x, y, w, h, day, lit, glow = "#ffcf7a") => { wg.fillStyle = lit ? "#c9a46e" : day; wg.fillRect(x, y, w, h); if (lit) { eg.fillStyle = glow; eg.fillRect(x, y, w, h); } };
+    const tile = k => [wg, eg].forEach(g => g.setTransform(1, 0, 0, 1, -64 * k, 64 * k));   // рисуем плитку k в координатах x 64k…, кладём в строку k
     // 1 — панелька: швы плит, широкие окна, тёмная полоса лоджий
+    tile(1);
     wg.fillStyle = "#b9b9b9"; wg.fillRect(64, 0, 64, 1); wg.fillRect(64, 32, 64, 1); wg.fillRect(64, 0, 1, 64); wg.fillRect(96, 0, 1, 64);
     for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) { win(64 + c * 32 + 7, r * 32 + 9, 18, 13, "#4f5e6c", hr() < .45); wg.fillStyle = "#d6d6d6"; wg.fillRect(64 + c * 32 + 5, r * 32 + 23, 22, 3); }
+    tile(2);
     // 2 — старый город: светлые наличники, высокие окна с полукруглым верхом, междуэтажный карниз
     wg.fillStyle = "#e0e0e0"; wg.fillRect(128, 0, 64, 64);
     for (let r = 0; r < 2; r++) {
@@ -1225,6 +1230,7 @@ function placeName(x, z) {
         if (lit) { eg.fillStyle = "#ffcf7a"; eg.beginPath(); eg.arc(x + 6, y + 5, 6, Math.PI, 0); eg.fill(); }
       }
     }
+    tile(3);
     // 3 — стекло: панели в рамах, светлый блик сверху вниз, этажные пояса
     for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
       const g = wg.createLinearGradient(0, r * 16, 0, r * 16 + 16); g.addColorStop(0, "#9fb6c8"); g.addColorStop(1, "#56708a");
@@ -1232,6 +1238,7 @@ function placeName(x, z) {
       if (hr() < .35) { eg.fillStyle = "#e8f0ff"; eg.fillRect(192 + c * 16 + 1, r * 16 + 2, 14, 13); }
     }
     wg.fillStyle = "#d8dde2"; for (let r = 0; r < 4; r++) wg.fillRect(192, r * 16, 64, 2);
+    tile(0);
   }
   const mk = c => { const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return t; };
   const winTex = mk(winC), emTex = mk(emC); if (location.hash === "#test") window.__atlas = [winC, emC];
@@ -1309,20 +1316,15 @@ function placeName(x, z) {
   const houseMat = new T.MeshStandardMaterial({ map: winTex, emissive: 0xffe2b0, emissiveMap: emTex, emissiveIntensity: .12, vertexColors: true, roughness: .9, metalness: 0, side: DS });
   houseMat.onBeforeCompile = sh => {
     sh.vertexShader = "attribute vec2 aoBase;\nattribute float win;\nvarying float vWY;\nvarying float vTop;\nvarying float vWin;\nvarying float vFac;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWY = position.y - aoBase.x; vTop = position.y - aoBase.y; vWin = min(win, 1.0); vFac = max(win - 1.0, 0.0);");
-    // плитка атласа: fract по uv; на WebGL2 — textureGrad по исходным uv, чтобы на стыках плиток не было швов мип-уровней
-    const atlas = m => `vec2 fu = vec2((fract(vUv.x) + floor(vFac + .5)) * .25, fract(vUv.y));
-#if __VERSION__ >= 300
- vec4 ${m} = textureGrad(${m === "sampledDiffuseColor" ? "map" : "emissiveMap"}, fu, dFdx(vUv) * vec2(.25, 1.0), dFdy(vUv) * vec2(.25, 1.0));
-#else
- vec4 ${m} = texture2D(${m === "sampledDiffuseColor" ? "map" : "emissiveMap"}, fu);
-#endif`;
+    // плитка атласа: по u — обычный повтор, по v — fract внутри своей строки (canvas сверху вниз, текстура перевёрнута)
+    const atlas = m => `vec4 ${m} = texture2D(${m === "sampledDiffuseColor" ? "map" : "emissiveMap"}, vec2(vUv.x, (fract(vUv.y) + 3.0 - floor(vFac + .5)) * .25));`;
     sh.fragmentShader = "varying float vWY;\nvarying float vTop;\nvarying float vWin;\nvarying float vFac;\n" + sh.fragmentShader
       // куски шейдера в onBeforeCompile ещё не развёрнуты — подставляем их сами с правками
       .replace("#include <map_fragment>", T.ShaderChunk.map_fragment
         .replace("vec4 sampledDiffuseColor = texture2D( map, vUv );", atlas("sampledDiffuseColor"))
         .replace("diffuseColor *= sampledDiffuseColor;", "diffuseColor *= mix(vec4(1.0), sampledDiffuseColor, vWin * (1.0 - step(-.02, vTop)));"))
       .replace("#include <emissivemap_fragment>", T.ShaderChunk.emissivemap_fragment
-        .replace("vec4 emissiveColor = texture2D( emissiveMap, vUv );", atlas("emissiveColor").replace("vec2 fu", "fu"))
+        .replace("vec4 emissiveColor = texture2D( emissiveMap, vUv );", atlas("emissiveColor"))
         .replace("totalEmissiveRadiance *= emissiveColor.rgb;", "totalEmissiveRadiance *= emissiveColor.rgb * vWin * (1.0 - step(-.02, vTop));"))
       .replace("#include <color_fragment>", "#include <color_fragment>\n diffuseColor.rgb *= mix(.5, 1.0, smoothstep(0.0, 2.6, vWY)) * mix(1.0, 1.14, step(-.02, vTop));");
   };
@@ -2243,7 +2245,7 @@ function setTune(n) {                          // n = "pro" — широкий �
   carObj.userData.wheels.forEach(w => { w.stock.visible = !pro && n < 2; w.alloy.visible = !pro && n >= 2; w.pro.visible = pro; });
 }
 const EGGPLANT = { n: "баклажан", c: 0x2c0a44 };
-// отражения на машине: небо-купол текущего времени суток → PMREM; только кузов, стёкла и хром (их материалы — у машины)
+// отражения неба в стёклах машины: небо-купол текущего времени суток → PMREM
 const carEnv = { pmrem: null, rt: null };
 function paintCarEnv() {
   try {
@@ -2253,16 +2255,16 @@ function paintCarEnv() {
     const rt = carEnv.pmrem.fromScene(sc, 0, .1, 200);
     if (parent) parent.add(skyDome); skyDome.position.copy(pos); skyDome.scale.setScalar(sc0);
     if (carEnv.rt) carEnv.rt.dispose(); carEnv.rt = rt;
-    const pm = carObj.userData.paint, seen = new Set();
+    const seen = new Set();
     carObj.traverse(o => {
       const m = o.material; if (!m || !m.isMeshStandardMaterial || seen.has(m)) return; seen.add(m);
-      if (m === pm || m.userData.carShiny) { m.envMap = rt.texture; m.envMapIntensity = m === pm ? (m.roughness > .6 ? .35 : .8) : 1; m.needsUpdate = true; }
+      if (m.userData.carShiny) { m.envMap = rt.texture; m.envMapIntensity = 1; m.needsUpdate = true; }   // кузов без отражений: на телефоне они дороги на большой площади
     });
   } catch (e) { console.warn("env", e); }
 }
 function setPaint(i) {                         // i < 0 — баклажан режима PRO
   const p = i < 0 ? EGGPLANT : PAINTS[i % PAINTS.length];
-  carObj.userData.paint.color.setHex(p.c); carObj.userData.paint.roughness = i < 0 ? .85 : .38; carObj.userData.paint.envMapIntensity = i < 0 ? .35 : .8; carObj.userData.paint.metalness = i < 0 ? .05 : .25;   // тёмный баклажан без белого блика
+  carObj.userData.paint.color.setHex(p.c); carObj.userData.paint.roughness = i < 0 ? .85 : .38; carObj.userData.paint.metalness = i < 0 ? .05 : .25;   // тёмный баклажан без белого блика
   const hex = "#" + p.c.toString(16).padStart(6, "0");
   document.querySelectorAll("#d-car .paint").forEach(el => el.setAttribute(el.tagName === "path" ? "stroke" : "fill", hex));
 }
