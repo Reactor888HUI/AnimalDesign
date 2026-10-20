@@ -1216,7 +1216,9 @@ function placeName(x, z) {
   // старый Ростов на холме — как с левого берега: охра, кремовый, светло-жёлтый, терракота; крыши ржаво-красные, зелёные, серые
   const lin = h => new T.Color(h).convertSRGBToLinear();
   const OLD_TOWN = { walls: ["#e9dcc0", "#e2c78c", "#d8a676", "#c98a68", "#efe7d4", "#dcb89e", "#e8d49a"].map(lin), roofs: ["#7d3a2b", "#8c4a33", "#536e52", "#6e5f52", "#62666a"].map(lin), brick: lin("#9a4e36"), concrete: lin("#cfcac0") };
-  const walls = [[], []], roofs = [], col = new T.Color(), rcol = new T.Color();
+  // дома разложены по участкам 400×400 м (по середине дома): каждый участок — одна сетка, рисуется только в поле зрения и ближе тумана
+  const LOT = 400, lots = new Map(), col = new T.Color(), rcol = new T.Color();
+  const lotOf = (x, z) => { const k = Math.floor(x / LOT) * 4096 + Math.floor(z / LOT); if (!lots.has(k)) lots.set(k, { W: [], R: [] }); return lots.get(k); };
   const arenaSrc = OSM.b.find(b => b[1] === 4), arenaRing = arenaSrc ? dm(arenaSrc[2][0]) : null;
   OSM.b.forEach(([hd, kind, rs, nameI], bi) => {
     const rings = rs.map(dm), h = hd / 10, plain = kind === 1 || kind === 4;
@@ -1234,7 +1236,7 @@ function placeName(x, z) {
     if (/Парамонов/.test(nm)) { col.copy(OLD_TOWN.brick); rcol.copy(OLD_TOWN.roofs[0]); }          // кирпичные Парамоновские склады
     else if (/зерновых складов/.test(nm)) { col.copy(OLD_TOWN.concrete); rcol.copy(OLD_TOWN.roofs[4]); }
     else if (gc > 3 && kind !== 1) { col.copy(OLD_TOWN.walls[bi % OLD_TOWN.walls.length]); rcol.copy(OLD_TOWN.roofs[(bi * 3) % OLD_TOWN.roofs.length]); }   // старый город на холме: охра, кремовый, терракота
-    const W = walls[plain ? 1 : 0];
+    const lot = lotOf((bb0.x0 + bb0.x1) / 2, (bb0.z0 + bb0.z1) / 2), W = lot.W, win = plain ? 0 : 1;
     rings.forEach((ring, ri) => {
       let s = 0; for (let i = 0; i < ring.length; i++) s += ring[i][0] * ring[(i + 1) % ring.length][1] - ring[(i + 1) % ring.length][0] * ring[i][1];
       const out = (s > 0) === (ri === 0) ? 1 : -1;           // наружная нормаль для внешнего кольца и для дыр
@@ -1246,12 +1248,12 @@ function placeName(x, z) {
         const ga = terrainH(ax, az), gb = terrainH(bx, bz);           // земля под углами стены — для затенения у основания
         W.push([ax, gmin, az, u, v0, ga], [bx, gmin, bz, u1, v0, gb], [bx, top, bz, u1, v, gb], [ax, gmin, az, u, v0, ga], [bx, top, bz, u1, v, gb], [ax, top, az, u, v, ga]);
         W[W.length - 1].n = W[W.length - 2].n = W[W.length - 3].n = W[W.length - 4].n = W[W.length - 5].n = W[W.length - 6].n = [nx, 0, nz];
-        for (let k = 0; k < 6; k++) W[W.length - 1 - k].c = [col.r, col.g, col.b];
+        for (let k = 0; k < 6; k++) { W[W.length - 1 - k].c = [col.r, col.g, col.b]; W[W.length - 1 - k].w = win; }
         u = u1;
       }
     });
     const c2 = rings[0].map(([x, z]) => new T.Vector2(x, z)), hs = rings.slice(1).map(r => r.map(([x, z]) => new T.Vector2(x, z))), all = c2.concat(...hs);
-    T.ShapeUtils.triangulateShape(c2, hs).forEach(t => t.forEach(i => roofs.push(all[i].x, gc + h, all[i].y, rcol.r, rcol.g, rcol.b)));
+    T.ShapeUtils.triangulateShape(c2, hs).forEach(t => t.forEach(i => lot.R.push(all[i].x, gc + h, all[i].y, rcol.r, rcol.g, rcol.b)));
     const name = kind === 4 ? "стену стадиона" : "дом";
     const sb = { ...bboxOf(rings[0]), h: gc + h, name, rings };
     // посадочная площадка: плоская крыша, где помещается квадрат 7×7 м вокруг середины, высота 3–45 м
@@ -1260,25 +1262,33 @@ function placeName(x, z) {
       sb.pad = { x: cx, z: cz };
     solids.push(sb);
   });
-  const wallGeo = list => {
-    const P = [], N = [], U = [], C = [], B = [];
-    list.forEach(v => { P.push(v[0], v[1], v[2]); U.push(v[3], v[4]); N.push(...v.n); C.push(...v.c); B.push(v[5]); });
+  // стены с окнами, глухие стены и крыши — в одной сетке участка; признак win (1 — окна) включает текстуру окон в шейдере
+  const lotGeo = ({ W, R }) => {
+    const P = [], N = [], U = [], C = [], B = [], Wn = [];
+    W.forEach(v => { P.push(v[0], v[1], v[2]); U.push(v[3], v[4]); N.push(...v.n); C.push(...v.c); B.push(v[5]); Wn.push(v.w); });
+    for (let i = 0; i < R.length; i += 6) { P.push(R[i], R[i + 1], R[i + 2]); U.push(0, 0); N.push(0, 1, 0); C.push(R[i + 3], R[i + 4], R[i + 5]); B.push(-99); Wn.push(0); }
     const g = new T.BufferGeometry();
     g.setAttribute("position", new T.Float32BufferAttribute(P, 3)); g.setAttribute("normal", new T.Float32BufferAttribute(N, 3));
-    g.setAttribute("uv", new T.Float32BufferAttribute(U, 2)); g.setAttribute("color", new T.Float32BufferAttribute(C, 3)); g.setAttribute("aoBase", new T.Float32BufferAttribute(B, 1)); return g;
+    g.setAttribute("uv", new T.Float32BufferAttribute(U, 2)); g.setAttribute("color", new T.Float32BufferAttribute(C, 3));
+    g.setAttribute("aoBase", new T.Float32BufferAttribute(B, 1)); g.setAttribute("win", new T.Float32BufferAttribute(Wn, 1));
+    g.computeBoundingSphere(); return g;
   };
   // затенение у основания стен — в шейдере по высоте (стены уже в мировых координатах): нижние 2,6 м темнеют к земле
-  const groundAO = m => { m.onBeforeCompile = sh => {
-    sh.vertexShader = "attribute float aoBase;\nvarying float vWY;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWY = position.y - aoBase;");
-    sh.fragmentShader = "varying float vWY;\n" + sh.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\n diffuseColor.rgb *= mix(.5, 1.0, smoothstep(0.0, 2.6, vWY));");
-  }; return m; };
-  add(wallGeo(walls[0]), nightReg(groundAO(new T.MeshStandardMaterial({ map: winTex, emissive: 0xffe2b0, emissiveMap: emTex, emissiveIntensity: .12, vertexColors: true, roughness: .9, metalness: 0, side: DS })), "emissiveIntensity", { sunset: .12, day: .03, night: 1.5 }));
-  add(wallGeo(walls[1]), groundAO(new T.MeshStandardMaterial({ vertexColors: true, roughness: .9, metalness: 0, side: DS })));
-  const rg = new T.BufferGeometry(), RP = [], RCc = [];
-  for (let i = 0; i < roofs.length; i += 6) { RP.push(roofs[i], roofs[i + 1], roofs[i + 2]); RCc.push(roofs[i + 3], roofs[i + 4], roofs[i + 5]); }
-  rg.setAttribute("position", new T.Float32BufferAttribute(RP, 3)); rg.setAttribute("color", new T.Float32BufferAttribute(RCc, 3));
-  rg.setAttribute("normal", new T.Float32BufferAttribute(RP.map((_, i) => i % 3 === 1 ? 1 : 0), 3));
-  add(rg, new T.MeshStandardMaterial({ vertexColors: true, roughness: .95, side: DS }));
+  const houseMat = new T.MeshStandardMaterial({ map: winTex, emissive: 0xffe2b0, emissiveMap: emTex, emissiveIntensity: .12, vertexColors: true, roughness: .9, metalness: 0, side: DS });
+  houseMat.onBeforeCompile = sh => {
+    sh.vertexShader = "attribute float aoBase;\nattribute float win;\nvarying float vWY;\nvarying float vWin;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWY = position.y - aoBase; vWin = win;");
+    sh.fragmentShader = "varying float vWY;\nvarying float vWin;\n" + sh.fragmentShader
+      .replace("diffuseColor *= sampledDiffuseColor;", "diffuseColor *= mix(vec4(1.0), sampledDiffuseColor, vWin);")
+      .replace("totalEmissiveRadiance *= emissiveColor.rgb;", "totalEmissiveRadiance *= emissiveColor.rgb * vWin;")
+      .replace("#include <color_fragment>", "#include <color_fragment>\n diffuseColor.rgb *= mix(.5, 1.0, smoothstep(0.0, 2.6, vWY));");
+  };
+  nightReg(houseMat, "emissiveIntensity", { sunset: .12, day: .03, night: 1.5 });
+  lots.forEach(lot => {
+    if (!lot.W.length && !lot.R.length) return;
+    const g = lotGeo(lot), mesh = add(g, houseMat);
+    mesh.userData.dyn = true; mesh.userData.lot = true;              // freeze не склеивает участки обратно
+    CHUNKS.push({ obj: mesh, s: g.boundingSphere.clone(), far: 2.3 });  // дальность ≈ туман: 690/990/1330 м
+  });
 
   // зелёные площадки «H» на крышах, куда можно садиться
   const pads = solids.filter(b => b.pad), pc = document.createElement("canvas"); pc.width = pc.height = 128;
