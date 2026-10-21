@@ -1,6 +1,7 @@
 """Сборка игры одним файлом для скачивания: Three.js встраивается внутрь, интернет не нужен.
 
 Запуск: python3 -I tools/build-offline.py   (нужен three.min.js r149: скачивается с jsdelivr или берётся из dist/three.min.js)
+Песня вечеринки arcade/refs/music/party.mp3 встраивается внутрь.
 Результат: dist/vosmerka-baklazhan/index.html и dist/vosmerka-baklazhan.zip
 """
 import os, sys, urllib.request, zipfile
@@ -15,6 +16,12 @@ src = open(os.path.join(ROOT, "arcade", "index.html"), encoding="utf8").read()
 tag = '<script src="%s"></script>' % URL
 assert src.count(tag) == 1, "в index.html не найден тег Three.js"
 head = '<!doctype html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n</head>\n<body>\n'
+# песня вечеринки (файл игрока, 96 кбит/с) — встраивается как data:-адрес
+import base64
+mtag = 'const PARTY_MUSIC = "refs/music/party.mp3";'
+assert src.count(mtag) == 1, "в index.html не найдена ссылка на песню вечеринки"
+mp3 = base64.b64encode(open(os.path.join(ROOT, "arcade", "refs", "music", "party.mp3"), "rb").read()).decode()
+src = src.replace(mtag, 'const PARTY_MUSIC = "data:audio/mpeg;base64,%s";' % mp3)
 body = src.replace(tag, "<script>/* Three.js r149, MIT License, (c) 2010-2023 three.js authors — встроен, чтобы игра работала без интернета */\n" + three + "\n</script>")
 out_dir = os.path.join(ROOT, "dist", "vosmerka-baklazhan")
 os.makedirs(out_dir, exist_ok=True)

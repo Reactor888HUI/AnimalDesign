@@ -126,10 +126,11 @@ h1 span { color: var(--amber); }
 .showcard { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.9); z-index: 6; pointer-events: none; min-width: 250px; max-width: 86%;
   padding: 14px 20px 16px; border-radius: 18px; text-align: center; color: #fff; background: linear-gradient(160deg, rgba(70,24,110,.92), rgba(30,14,52,.92));
   border: 3px solid #ffc93c; box-shadow: 0 0 0 4px rgba(255,59,107,.5), 0 12px 40px rgba(0,0,0,.45); font-family: Golos Text, system-ui, sans-serif; transition: transform .25s, opacity .4s; }
-.partycap { position: absolute; left: 50%; top: 13%; transform: translateX(-50%); z-index: 5; pointer-events: none; text-align: center; white-space: nowrap;
-  font-weight: 900; font-size: 22px; letter-spacing: .06em; color: #ff3b6b; text-shadow: 0 0 12px currentColor, 0 2px 0 #2c0a44; }
-.partycap small { display: block; font-size: 14px; font-weight: 700; color: #fff6d8; letter-spacing: .03em; }
-body.cine .top, body.cine .stage > *:not(canvas):not(#partycap):not(#cinecap) { display: none !important; }
+body.full .page { max-width: none; padding: 0; }
+body.full header.top, body.full footer { display: none; }
+body.full .stage { position: fixed; inset: 0; width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 0; }
+.dock-panel .credits { font-size: 11px; color: var(--dim); margin-top: 10px; line-height: 1.4; }
+body.cine .top, body.cine .stage > *:not(canvas):not(#cinecap) { display: none !important; }
 body.cine .stage { position: fixed; inset: 0; width: 100vw; height: 100vh; max-height: none; border-radius: 0; margin: 0; z-index: 50; }
 .cinecap { position: absolute; left: 0; right: 0; bottom: 7%; z-index: 6; pointer-events: none; text-align: center; color: #fff6d8; font-weight: 900; font-size: 34px;
   letter-spacing: .04em; text-shadow: 0 3px 0 #2c0a44, 0 0 18px rgba(180,107,255,.8); transition: opacity .4s; opacity: 0; }
@@ -318,7 +319,6 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
     <div class="loading" id="loading">Загружаю город…</div>
     <div class="speedfx" id="speedfx"></div>
     <div class="showcard" id="showcard" hidden></div>
-    <div class="partycap" id="partycap" hidden>ВЕЧЕРИНКА 888<small>♪ Лада Седан — Баклажан ♪</small></div>
     <div class="dwheel" id="dwheel" hidden><svg id="dwheel-svg" viewBox="-100 -100 200 200" aria-hidden="true">
       <circle r="90" fill="none" stroke="#18181c" stroke-width="20"/>
       <circle r="90" fill="none" stroke="#2c2c33" stroke-width="2" stroke-dasharray="3 5"/>
@@ -383,7 +383,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
           <p><b>Прыжок.</b> ПРЫГ — сопла подбрасывают машину. В воздухе джойстик крутит её; у земли держите газ — баллон смягчит посадку.</p>
           <p><b>Присоски.</b> С разгона въезжайте в стену Арены: влево — вверх, вправо — вниз, ПРЫГ — оттолкнуться.</p>
           <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или после 5 кругов катапульта: высоко над городом с тройной бочкой, чем быстрее — тем выше и дальше); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее. <b>Дрифт-трек 888</b> (две петли «Восьмёрки»): на треке — широкая резина (держит лучше) и управление двумя руками: левая — дрифтовый руль (влево-вправо), правая — газ, вниз — тормоз; проезд старта под аркой — начало, 3 круга, указатели — по ходу. Очки за езду по асфальту — множитель до ×5, пока не съезжаете; занос — очки дрифта; закрутило или авария — все очки шоу сгорают. В конце — итог, звёзды, рекорд, фейерверк; прошли трек — номер «888» становится золотым.</p>
-          <p><b>Вечеринка 888.</b> У «восьмёрки» гоночный номер 888 на крыше и дверях. После крутого трюка (бочка, штопор, от 800 очков), катапульты или финиша шоу машина минуту светится: неон снизу, фары и фонари мигают в такт, пар в стороны, цветные пушки, лазеры вокруг и песня «Лада Седан — Баклажан». Новый трюк продлевает вечеринку. На крыше Арены — 10 неоновых колец для круга по крыше.</p>
+          <p><b>Вечеринка 888.</b> У «восьмёрки» гоночный номер 888 на крыше и дверях. После крутого трюка (бочка, штопор, от 800 очков), катапульты или финиша шоу играет песня, и ровно на её длину машина светится: сначала лазеры сверху и конфетти, потом неон снизу, фары и фонари мигают в такт, дым из вращающихся сопел, цветные пушки, лёгкий лазерный веер. Музыку и спецэффекты можно выключить в «⋯» по отдельности. На крыше Арены — 10 неоновых колец для круга по крыше.</p>
           <p><b>PRO ∞.</b> Баллоны не кончаются: держите ПРЫГ — летите вверх, газ — вперёд, отпустили — плавно вниз. Фиолетовые дорожки и кольца — разгоны.</p>
           <p><b>Клавиатура.</b> ↑ газ, ↓ тормоз, ← → руль и вращение, Пробел — прыжок, C — камера, R — заново, M — меню.</p>
           <p><b>Вид и наклон.</b> Кнопка «ВИД» — сзади, дальняя, из кабины. «Наклон телефона» — руль наклоном; положение при включении — ноль, от себя — газ, на себя — тормоз.</p>
@@ -399,10 +399,14 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <button type="button" id="m-tune">Обвес: заводской</button>
         <button type="button" id="m-garage">Осмотреть машину</button>
         <div class="lbl">Игра</div>
+        <button type="button" id="m-full">Экран: во весь</button>
         <button type="button" id="m-snd">Звук: вкл</button>
+        <button type="button" id="m-pmus">Музыка вечеринки: вкл</button>
+        <button type="button" id="m-pfx">Спецэффекты вечеринки: вкл</button>
         <button type="button" id="m-q">Качество: авто</button>
         <button type="button" id="m-mini">Мини-карта: вкл</button>
         <button type="button" id="m-restart">Заново</button>
+        <div class="credits">Карта Ростова-на-Дону: © участники OpenStreetMap. Автобус — модель Quaternius, маршрутка — Kenney (обе CC0). Машина — своя модель «восьмёрки» по заводским чертежам.</div>
       </div>
     </div>
 
@@ -2758,96 +2762,108 @@ function tickPuffs(dt) {
   }
 }
 
-/* ---------- вечеринка 888: после трюка машина минуту светится — неон, мигалки, пар, цветные пушки, лазеры, песня ---------- */
-const PARTY_T = 60;
+/* ---------- вечеринка 888: после трюка машина светится ровно на длину песни (~34 с) ---------- */
+// Начало — шоу сверху: из «рамы» над машиной вниз бьют лазеры и сыплется конфетти. Дальше — неон снизу, фары и фонари
+// мигают в такт, дым из двух вращающихся сопел, цветные пушки, лёгкий лазерный веер вверх (прозрачный — не мешает ехать).
+// Музыка и спецэффекты отключаются в «⋯» по отдельности.
+const PARTY_BEAT = 60 / 172, PARTY_BEAT0 = .28;        // темп песни, замерен по файлу: свет мигает в такт
+const partyFx = () => save.partyFx !== false, partyMus = () => save.partyMusic !== false;
 const PARTY = (() => {
-  const st = { on: false, t: 0, left: 0, steam: 0, beat: -1 };
+  const st = { on: false, t: 0, len: 34, smoke: 0, beat: -1, red: .55, head0: .25 };
   const COLS = FEST_COLS.map(c => new T.Color(c).convertSRGBToLinear());
   const tmp = new T.Color();
-  // неон под машиной: белое пятно, цвет меняется по тактам
+  const colored = (geo, c) => { geo = geo.toNonIndexed(); const a = new Float32Array(geo.attributes.position.count * 3); for (let k = 0; k < a.length; k += 3) { a[k] = c.r; a[k + 1] = c.g; a[k + 2] = c.b; } geo.setAttribute("color", new T.BufferAttribute(a, 3)); geo.deleteAttribute("uv"); return geo; };
+  const addM = () => new T.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false });
+  // неон под машиной: белое пятно, цвет — по тактам
   const gc = document.createElement("canvas"); gc.width = gc.height = 64; const gg = gc.getContext("2d"), rg = gg.createRadialGradient(32, 32, 2, 32, 32, 32);
   rg.addColorStop(0, "rgba(255,255,255,1)"); rg.addColorStop(.55, "rgba(255,255,255,.45)"); rg.addColorStop(1, "rgba(255,255,255,0)"); gg.fillStyle = rg; gg.fillRect(0, 0, 64, 64);
   const neonM = new T.MeshBasicMaterial({ map: new T.CanvasTexture(gc), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false, fog: false });
   const neon = new T.Mesh(new T.PlaneGeometry(7.5, 4.4).rotateX(-Math.PI / 2), neonM); neon.position.y = -.6; neon.visible = false; neon.userData.dyn = true; carObj.add(neon);
-  // лазеры: 16 лучей из точки над крышей, в одну сетку; вращаются и «дышат» по высоте
   const grp = new T.Group(); grp.visible = false; grp.userData.dyn = true; scene.add(grp);
-  const beams = [];
-  for (let i = 0; i < 16; i++) {
-    const b = new T.BoxGeometry(48, .09, .09).translate(24, 0, 0).toNonIndexed(), c = COLS[i % COLS.length], a = new Float32Array(b.attributes.position.count * 3);
-    for (let k = 0; k < a.length; k += 3) { a[k] = c.r; a[k + 1] = c.g; a[k + 2] = c.b; }
-    b.setAttribute("color", new T.BufferAttribute(a, 3)); b.deleteAttribute("uv"); beams.push(b);
-  }
-  const laserM = new T.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .8, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false });
-  const fan = []; for (let r = 0; r < 2; r++) { const m = new T.Mesh(mergeGeos(beams.slice(r * 8, r * 8 + 8).map((b, i) => b.clone().rotateZ(.12 + r * .22).rotateY(i / 8 * Math.PI * 2 + r * .4))), laserM); m.frustumCulled = false; grp.add(m); fan.push(m); }
-  // цветные пушки: струи конфетти-искр из четырёх углов машины
-  const CN = 480, cpos = new Float32Array(CN * 3), ccol = new Float32Array(CN * 3), cv = new Float32Array(CN * 3), clife = new Float32Array(CN), cbase = new Float32Array(CN * 3);
+  // лазерный веер — только вверх (26° и 48° над горизонтом), тонкий и прозрачный
+  const fanM = addM(), fan = [0, 1].map(r => { const m = new T.Mesh(mergeGeos([...Array(8)].map((_, i) => colored(new T.BoxGeometry(40, .05, .05).translate(20, 0, 0), COLS[(i + r * 3) % COLS.length]).rotateZ(.45 + r * .38).rotateY(i / 8 * Math.PI * 2 + r * .4))), fanM); m.frustumCulled = false; grp.add(m); return m; });
+  // шоу сверху: 14 лучей из точки на 15 м над машиной — конусом вниз на дорогу вокруг неё
+  const topM = addM(), top = new T.Mesh(mergeGeos([...Array(14)].map((_, i) => colored(new T.BoxGeometry(.07, 17, .07).translate(0, -8.5, 0), COLS[i % COLS.length]).rotateZ(.32 + (i % 2) * .16).rotateY(i / 14 * Math.PI * 2))), topM);
+  top.position.y = 14; top.frustumCulled = false; grp.add(top);
+  // искры: цветные пушки из углов машины и конфетти сверху (медленно падает, кружится)
+  const CN = 700, cpos = new Float32Array(CN * 3), ccol = new Float32Array(CN * 3), cv = new Float32Array(CN * 3), clife = new Float32Array(CN), cbase = new Float32Array(CN * 3), cgr = new Float32Array(CN), cph = new Float32Array(CN);
   const cgeo = new T.BufferGeometry(); cgeo.setAttribute("position", new T.BufferAttribute(cpos, 3)); cgeo.setAttribute("color", new T.BufferAttribute(ccol, 3));
   const dot = document.createElement("canvas"); dot.width = dot.height = 32; { const q = dot.getContext("2d"), r = q.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, "#fff"); r.addColorStop(.35, "rgba(255,255,255,.9)"); r.addColorStop(1, "rgba(255,255,255,0)"); q.fillStyle = r; q.fillRect(0, 0, 32, 32); }
-  const cpts = new T.Points(cgeo, new T.PointsMaterial({ size: .32, map: new T.CanvasTexture(dot), vertexColors: true, transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
+  const cpts = new T.Points(cgeo, new T.PointsMaterial({ size: .3, map: new T.CanvasTexture(dot), alphaTest: .12, vertexColors: true, transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
   cpts.frustumCulled = false; cpts.userData.dyn = true; cpts.visible = false; scene.add(cpts);
   let ci = 0;
-  const v3 = new T.Vector3(), fwd = new T.Vector3(), side = new T.Vector3(), up = new T.Vector3();
-  function cannon(corner, col) {
-    const [fx, sx] = corner; v3.set(fx * 1.6, .1, sx * .8).applyMatrix4(carObj.matrixWorld);
-    for (let k = 0; k < 40; k++) {
-      const i = ci++ % CN, sp = 13 + Math.random() * 6;
-      const dx = side.x * sx * .55 + fwd.x * fx * .25 + up.x, dy = side.y * sx * .55 + fwd.y * fx * .25 + up.y, dz = side.z * sx * .55 + fwd.z * fx * .25 + up.z;
-      cpos.set([v3.x, v3.y, v3.z], i * 3); cv.set([(dx + (Math.random() - .5) * .35) * sp, (dy + (Math.random() - .5) * .3) * sp, (dz + (Math.random() - .5) * .35) * sp], i * 3);
-      cbase.set([col.r * 1.3, col.g * 1.3, col.b * 1.3], i * 3); clife[i] = 1.4 + Math.random() * .6;
+  const v3 = new T.Vector3(), fwd = new T.Vector3(), side = new T.Vector3(), up = new T.Vector3(), vel = new T.Vector3();
+  const spark = (x, y, z, vx, vy, vz, col, life, gr) => { const i = ci++ % CN; cpos.set([x, y, z], i * 3); cv.set([vx, vy, vz], i * 3); cbase.set([col.r * 1.3, col.g * 1.3, col.b * 1.3], i * 3); clife[i] = life; cgr[i] = gr; cph[i] = Math.random() * 6.3; };
+  function cannon(fx, sx, col) {
+    v3.set(fx * 1.6, .1, sx * .8).applyMatrix4(carObj.matrixWorld);
+    for (let k = 0; k < 36; k++) {
+      const sp = 13 + Math.random() * 6, dx = side.x * sx * .55 + fwd.x * fx * .25 + up.x, dy = side.y * sx * .55 + fwd.y * fx * .25 + up.y, dz = side.z * sx * .55 + fwd.z * fx * .25 + up.z;
+      spark(v3.x, v3.y, v3.z, (dx + (Math.random() - .5) * .35) * sp + vel.x, (dy + (Math.random() - .5) * .3) * sp, (dz + (Math.random() - .5) * .35) * sp + vel.z, col, 1.4 + Math.random() * .6, 9);
     }
   }
-  const lightsOff = () => { const U = carObj.userData; U.headM.emissiveIntensity = st.head0; U.amberM.emissiveIntensity = .5; };
+  function confetti(n) {                                        // дождь конфетти над машиной
+    for (let k = 0; k < n; k++) { const a = Math.random() * 6.3, r = 1 + Math.random() * 5.5, cx = car.x + fwd.x * 4, cz = car.z + fwd.z * 4; spark(cx + Math.cos(a) * r, car.y + 9 + Math.random() * 6, cz + Math.sin(a) * r, vel.x * .8, -1 - Math.random(), vel.z * .8, COLS[k % COLS.length], 4 + Math.random() * 1.5, 0); }
+  }
+  const lightsOff = () => { const U = carObj.userData; U.headM.emissiveIntensity = st.head0; U.amberM.emissiveIntensity = .5; st.red = .55; };
   function start() {
-    st.left = PARTY_T;
-    if (st.on) return;
-    st.on = true; st.t = 0; st.beat = -1; st.head0 = carObj.userData.headM.emissiveIntensity;
-    neon.visible = grp.visible = cpts.visible = true; sfx.song(true);
-    const el = $("partycap"); if (el) el.hidden = false;
+    if (st.on) { SHOW.salute(car.x, car.y + 10, car.z, 2); return; }   // уже горит — только салют, вечеринка идёт до конца песни
+    if (!partyFx() && !partyMus()) return;
+    st.on = true; st.t = 0; st.beat = -1; st.smoke = 0; st.head0 = carObj.userData.headM.emissiveIntensity;
+    st.len = sfx.partyLen(); sfx.song(true); st.intro = 0;
   }
   function stop() {
     if (!st.on) return; st.on = false; neon.visible = grp.visible = false; lightsOff(); sfx.song(false);
-    puffMat.uniforms.color.value.setHex(0xe9f3fb); const el = $("partycap"); if (el) el.hidden = true;
+    puffMat.uniforms.color.value.setHex(0xe9f3fb);
   }
   function tick(dt) {
     let alive = 0;
     for (let i = 0; i < CN; i++) {
       if (clife[i] <= 0) { ccol[i * 3] = ccol[i * 3 + 1] = ccol[i * 3 + 2] = 0; continue; }
-      alive++; clife[i] -= dt; cv[i * 3 + 1] -= 9 * dt; for (let k = 0; k < 3; k++) { cv[i * 3 + k] *= 1 - dt * .9; cpos[i * 3 + k] += cv[i * 3 + k] * dt; }
-      const f = Math.max(0, Math.min(1, clife[i] / .6)); for (let k = 0; k < 3; k++) ccol[i * 3 + k] = cbase[i * 3 + k] * f;
+      alive++; clife[i] -= dt;
+      if (cgr[i]) { cv[i * 3 + 1] -= cgr[i] * dt; for (let k = 0; k < 3; k++) cv[i * 3 + k] *= 1 - dt * .9; }
+      else { cph[i] += dt * 5; cv[i * 3] += Math.cos(cph[i]) * 3 * dt; cv[i * 3 + 2] += Math.sin(cph[i]) * 3 * dt; cv[i * 3 + 1] += (-1.6 - cv[i * 3 + 1]) * dt * 2; }   // конфетти парит и кружится
+      for (let k = 0; k < 3; k++) cpos[i * 3 + k] += cv[i * 3 + k] * dt;
+      const f = Math.max(0, Math.min(1, clife[i] / .6)) * (cgr[i] ? 1 : .55 + .45 * Math.abs(Math.sin(cph[i] * 1.7))); for (let k = 0; k < 3; k++) ccol[i * 3 + k] = cbase[i * 3 + k] * f;
     }
-    if (alive || st.on) { cgeo.attributes.position.needsUpdate = cgeo.attributes.color.needsUpdate = true; } else cpts.visible = false;
+    if (alive) { cgeo.attributes.position.needsUpdate = cgeo.attributes.color.needsUpdate = true; } else cpts.visible = false;
     if (!st.on) return;
-    st.t += dt; st.left -= dt; if (st.left <= 0) return stop();
-    const ts = st.t % SONG.LEN, beat = Math.floor(ts / SONG.B), ph = ts / SONG.B - beat, barN = Math.floor(beat / 4), U = carObj.userData;
-    const fade = Math.min(1, st.left / 2, st.t * 2);             // плавно загорается и гаснет
+    const pos = sfx.songPos(); st.t = pos != null ? pos : st.t + dt;   // время — по музыке, если она играет: эффекты кончаются ровно с песней
+    if (st.t >= st.len) return stop();
+    const fx = partyFx(), U = carObj.userData;
+    neon.visible = grp.visible = fx;
+    if (!fx) { lightsOff(); puffMat.uniforms.color.value.setHex(0xe9f3fb); return; }
+    const bt = Math.max(0, st.t - PARTY_BEAT0) / PARTY_BEAT, beat = Math.floor(bt), ph = bt - beat, barN = Math.floor(beat / 8);
+    const fade = Math.min(1, (st.len - st.t) / 1.2, st.t * 2);  // плавно загорается и гаснет вместе с концом песни
     const col = COLS[barN % COLS.length], col2 = COLS[(barN + 2) % COLS.length];
     tmp.copy(col).lerp(col2, .5 + .5 * Math.sin(st.t * 3)); neonM.color.copy(tmp).multiplyScalar((1.1 + .9 * (1 - ph)) * fade);
     neon.scale.setScalar(1 + .12 * (1 - ph));
-    // мигалки под ритм: фары — на сильные доли, поворотники — восьмыми; стоп-сигналы — в render (на слабые)
-    U.headM.emissiveIntensity = beat % 2 === 0 ? st.head0 + 6 * (1 - ph) * fade : st.head0;
-    U.amberM.emissiveIntensity = .5 + (Math.floor(ts / (SONG.B / 2)) % 2 ? 3.5 * fade : 0);
-    st.red = beat % 2 ? 1.2 + 4 * (1 - ph) : 1.2;
+    // мигалки в такт: фары — через долю, поворотники — каждую, стоп-сигналы — на слабые (render)
+    U.headM.emissiveIntensity = beat % 2 === 0 ? st.head0 + 5 * (1 - ph) * fade : st.head0;
+    U.amberM.emissiveIntensity = .5 + (beat % 2 ? 3 * fade : 0);
+    st.red = beat % 2 ? 1.2 + 3.5 * (1 - ph) * fade : 1.2;
     carObj.updateMatrixWorld(); fwd.set(1, 0, 0).transformDirection(carObj.matrixWorld); side.set(0, 0, 1).transformDirection(carObj.matrixWorld); up.set(0, 1, 0).transformDirection(carObj.matrixWorld);
-    grp.position.set(car.x, car.y + WHEEL + 1.3, car.z); grp.rotation.set(0, st.t * 1.1, 0);
-    fan.forEach((m, r) => { m.rotation.set(0, r ? -st.t * 1.7 : 0, Math.sin(st.t * (r ? 1.3 : .9)) * .18); });
-    laserM.opacity = (.45 + .45 * (beat % 4 === 0 ? 1 - ph : .5)) * fade;
-    // пушки — каждую вторую долю, по очереди из углов
+    vel.set(Math.cos(car.yaw) * car.v, 0, -Math.sin(car.yaw) * car.v);
+    grp.position.set(car.x, car.y + WHEEL + 1.3, car.z); grp.rotation.set(0, st.t * .9, 0);
+    fan.forEach((m, r) => m.rotation.set(0, r ? -st.t * 1.4 : 0, 0));
+    const intro = Math.max(0, 1 - Math.max(0, st.t - 3.5) / 1.5);                 // первые ~4 с — шоу сверху
+    top.rotation.y = -st.t * 1.6; top.scale.y = .85 + .15 * Math.sin(st.t * 4); topM.opacity = .55 * intro * Math.min(1, st.t * 3);
+    fanM.opacity = (.12 + .14 * (beat % 4 === 0 ? 1 - ph : 0)) * fade * (1 - intro * .8);
+    if (st.intro < 3 && st.t > st.intro * .9) { confetti(150); st.intro++; cpts.visible = true; }
+    // пушки — раз в 4 доли из двух углов; салют — раз в 32
     if (beat !== st.beat) {
       st.beat = beat;
-      if (beat % 2 === 0 && st.left > 1.5) { const cs = [[1, 1], [-1, -1], [1, -1], [-1, 1]]; cannon(cs[(beat / 2) % 4], COLS[(beat / 2) % COLS.length]); cannon(cs[(beat / 2 + 1) % 4], COLS[(beat / 2 + 3) % COLS.length]); cpts.visible = true; }
-      if (beat % 16 === 0 && beat) SHOW.salute(car.x, car.y + 12, car.z, 2);
+      if (beat % 4 === 0 && st.t > 2.5 && st.len - st.t > 1.5) { const cs = [[1, 1], [-1, -1], [1, -1], [-1, 1]], j = beat / 4; cannon(...cs[j % 4], COLS[j % COLS.length]); cannon(...cs[(j + 1) % 4], COLS[(j + 3) % COLS.length]); cpts.visible = true; }
+      if (beat % 32 === 16) SHOW.salute(car.x, car.y + 12, car.z, 2);
     }
-    // пар из-под машины в стороны, подсвеченный неоном
-    st.steam -= dt;
-    if (st.steam <= 0 && st.left > 1) {
-      st.steam = .09;
-      [-1, 1].forEach(s => { v3.set((Math.random() - .5) * 2.4, -.45, s * .7).applyMatrix4(carObj.matrixWorld); puff(v3, new T.Vector3(side.x * s * 9 + Math.cos(car.yaw) * car.v * .6, 1.2 + Math.random(), side.z * s * 9 + -Math.sin(car.yaw) * car.v * .6), 1.5, .75); });
+    // дым из двух сопел под машиной, сопла вращаются — клубы уходят в разные стороны, подсвечены неоном
+    st.smoke -= dt;
+    if (st.smoke <= 0 && st.len - st.t > 1) {
+      st.smoke = .05; const a = st.t * 2.6;
+      [0, Math.PI].forEach(o => { const dx = Math.cos(a + o), dz = Math.sin(a + o); v3.set(car.x + dx * .8, car.y + .25, car.z + dz * .8); puff(v3, new T.Vector3(dx * 12 + vel.x * .6, 1.3 + Math.random(), dz * 12 + vel.z * .6), 1.7, .95); });
     }
     puffMat.uniforms.color.value.setRGB(.91, .95, .98).lerp(tmp, .45 * fade);
-    const el = $("partycap");
-    if (el) { const s = Math.ceil(st.left); el.firstChild.textContent = `ВЕЧЕРИНКА 888 · 0:${String(s).padStart(2, "0")}`; el.style.transform = `translateX(-50%) scale(${1 + .06 * (1 - ph)})`; el.style.color = "#" + col.clone().convertLinearToSRGB().getHexString(); }
   }
-  return { start, stop, tick, get on() { return st.on; }, get red() { return st.red; }, state: () => ({ on: st.on, t: st.t, left: st.left }) };
+  return { start, stop, tick, get on() { return st.on; }, get red() { return st.red; }, state: () => ({ on: st.on, t: st.t, len: st.len, fx: partyFx() }) };
 })();
 
 /* ---------- ряд машин на полигоне ---------- */
@@ -3942,6 +3958,9 @@ function syncDock() {
   $("m-assist").textContent = `Ассистент переворота: ${save.assist ? "вкл" : "выкл"}`;
   $("m-q").textContent = `Качество: ${QUALS[save.quality || "auto"][0]} · ${Math.round(perf.fps)} к/с · ${Math.round(drawStat.tris / 1000)} тыс. △ · ${drawStat.calls} выз.`;
   $("m-snd").textContent = `Звук: ${save.sound === false ? "выкл" : "вкл"}`;
+  $("m-pmus").textContent = `Музыка вечеринки: ${partyMus() ? "вкл" : "выкл"}`;
+  $("m-pfx").textContent = `Спецэффекты вечеринки: ${partyFx() ? "вкл" : "выкл"}`;
+  $("m-full").textContent = `Экран: ${save.full === false ? "с заголовком" : "во весь"}`;
   $("m-mini").textContent = `Мини-карта: ${save.mini === false ? "выкл" : "вкл"}`;
   $("m-ctrl").textContent = `Управление: ${{ joy: "джойстик", wheel: "руль + педаль", buttons: "кнопки" }[ctrl()]}`;
   $("m-paint").textContent = `Цвет: ${PAINTS[(save.paint || 0) % PAINTS.length].n}`;
@@ -4121,12 +4140,27 @@ $("m-q").onclick = () => {
   const order = ["auto", "low", "mid", "high"], next = order[(order.indexOf(save.quality || "auto") + 1) % order.length];
   save.quality = next; persist(); setQuality(QUALS[next][1]); syncDock();
 };
-$("m-snd").onclick = () => { save.sound = save.sound === false; persist(); sfx.unlock(); syncDock(); };
+$("m-snd").onclick = () => { save.sound = save.sound === false; persist(); sfx.unlock(); if (save.sound === false) sfx.song(false); syncDock(); };
+$("m-pmus").onclick = () => { save.partyMusic = !partyMus(); persist(); if (!partyMus()) sfx.song(false); syncDock(); };
+$("m-pfx").onclick = () => { save.partyFx = !partyFx(); persist(); syncDock(); };
+// во весь экран: игра занимает всё окно (шапки нет, меню — «⋯» сверху); на телефоне ещё и прячем панели браузера
+function goFull(on) {
+  document.body.classList.toggle("full", on); resize();
+  try { const d = document, fs = d.fullscreenElement || d.webkitFullscreenElement;
+    if (on && !fs) (d.documentElement.requestFullscreen || d.documentElement.webkitRequestFullscreen || (() => {})).call(d.documentElement)?.catch?.(() => {});
+    else if (!on && fs) (d.exitFullscreen || d.webkitExitFullscreen).call(d)?.catch?.(() => {}); } catch (e) {}
+}
+$("m-full").onclick = () => { save.full = save.full === false; persist(); goFull(save.full !== false); syncDock(); };
+document.body.classList.toggle("full", save.full !== false);
+let fullAsked = false;
+stage.addEventListener("pointerdown", () => { if (fullAsked || save.full === false || !matchMedia("(pointer: coarse)").matches) return; fullAsked = true; goFull(true); }, true);   // первое касание — без панелей браузера
+addEventListener("fullscreenchange", resize);
 $("m-mini").onclick = () => { save.mini = save.mini === false; persist(); syncDock(); };
 
 /* ---------- звук: всё синтезируется на лету, без файлов ---------- */
 /* ---------- песня «Лада Седан Баклажан»: своя мелодия, 128 уд/мин, 16 тактов = 30 с, синтез в WebAudio ---------- */
 // Одна и та же партитура играет в игре (по тактам, без подгрузки) и пишется в звук для ролика (OfflineAudioContext).
+const PARTY_MUSIC = "refs/music/party.mp3";   /*PARTY-MUSIC*/
 const SONG = (() => {
   const BPM = 128, B = 60 / BPM, BAR = B * 4, BARS = 16, LEN = BAR * BARS;
   const nf = n => 440 * Math.pow(2, (n - 69) / 12);               // MIDI → Гц
@@ -4226,14 +4260,17 @@ const sfx = (() => {
     eng.connect(engF); eng2.connect(g2).connect(engF); engF.connect(engG).connect(master); eng.start(); eng2.start();
     jetG = loopNoise("bandpass", 1400, .8);                   // шипение сопел
     skidG = loopNoise("bandpass", 650, 4);                    // визг шин
+    loadMusic();
   }
   const unlock = () => { init(); if (ac && ac.state === "suspended") ac.resume(); };
   addEventListener("pointerdown", unlock, true); addEventListener("keydown", unlock, true);
   document.addEventListener("visibilitychange", () => { if (ac) document.hidden ? ac.suspend() : on() && ac.resume(); });
   let jet = 0;
   const set = (p, v, t = .06) => p.setTargetAtTime(v, ac.currentTime, t);
-  let song = null;                                         // песня вечеринки: такты подкладываются заранее на ~0,8 с
-  function songTick() { while (song && song.t0 + song.n * SONG.BAR < ac.currentTime + .8) { SONG.bar(ac, song.b, song.t0 + song.n * SONG.BAR, song.n % SONG.BARS); song.n++; } }
+  // песня вечеринки — файл игрока (PARTY_MUSIC, в офлайн-сборке встроен); не загрузился — своя синтезированная, такты подкладываются заранее
+  let song = null, music = null, musicP = null;
+  function loadMusic() { if (musicP || !ac) return; musicP = fetch(PARTY_MUSIC).then(r => r.arrayBuffer()).then(b => new Promise((ok, no) => ac.decodeAudioData(b, ok, no))).then(b => { music = b; }).catch(() => {}); }
+  function songTick() { while (song && song.synth && song.n < SONG.BARS && song.t0 + song.n * SONG.BAR < ac.currentTime + .8) { SONG.bar(ac, song.b, song.t0 + song.n * SONG.BAR, song.n); song.n++; } }
   function tick(dt, st) {
     if (!ac) return;
     songTick();
@@ -4297,9 +4334,14 @@ const sfx = (() => {
     }),
     song(play) {
       if (!ac) return;
-      if (play && !song && on()) song = { b: SONG.bus(ac, master), t0: ac.currentTime + .05, n: 0 };
-      else if (!play && song) { const b = song.b; b.out.gain.setTargetAtTime(0, ac.currentTime, .35); setTimeout(() => b.out.disconnect(), 2500); song = null; }
+      if (play && !song && on() && partyMus()) {
+        const g = ac.createGain(), t0 = ac.currentTime + .03; g.gain.value = .85; g.connect(master);
+        if (music) { const src = ac.createBufferSource(); src.buffer = music; src.connect(g); src.start(t0); song = { g, src, t0 }; }
+        else song = { g, b: SONG.bus(ac, g), t0, n: 0, synth: true };
+      } else if (!play && song) { const { g, src } = song; g.gain.setTargetAtTime(0, ac.currentTime, .25); setTimeout(() => { try { src && src.stop(); } catch (e) {} g.disconnect(); }, 1500); song = null; }
     },
+    songPos: () => song && ac && ac.state === "running" ? ac.currentTime - song.t0 : null,
+    partyLen: () => music ? music.duration : SONG.LEN,
     state: () => ac ? ac.state : "off"
   };
 })();
