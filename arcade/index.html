@@ -3317,12 +3317,15 @@ function flowFinale() {
     for (const dist of [dist0, dist0 * .75, dist0 * .55]) {
       const lx = car.x + ux * (toWall + dist), lz = car.z + uz * (toWall + dist);
       if (lx < WORLD.x0 + 20 || lx > WORLD.x1 - 20 || lz < WORLD.z0 + 20 || lz > WORLD.z1 - 20) continue;
-      if (waterAt(lx, lz) || [[0, 0], [4, 0], [-4, 0], [0, 4], [0, -4]].some(([dx, dz]) => hitSolid(lx + dx, lz + dz, 3) || waterAt(lx + dx, lz + dz))) continue;
+      let bad = false;                                    // свободно в радиусе ~28 м: точка посадки «гуляет» на 10–20 м
+      for (let dx = -28; dx <= 28 && !bad; dx += 7) for (let dz = -28; dz <= 28 && !bad; dz += 7) bad = !!(hitSolid(lx + dx, lz + dz, 3) || waterAt(lx + dx, lz + dz));
+      if (bad) continue;
       pick = { ux, uz, d: toWall + dist, toWall }; break;
     }
     if (pick) break;
   }
   if (!pick) pick = { ux: r0.ux, uz: r0.uz, d: r0.D - r0.L + 60, toWall: r0.D - r0.L };
+  if (location.hash === "#test") window.__cat = { ...pick, from: [car.x, car.z], to: [car.x + pick.ux * pick.d, car.z + pick.uz * pick.d] };
   const vy = Math.sqrt(2 * G * Math.max(1, apex - y0)), tf = (vy + Math.sqrt(vy * vy + 2 * G * Math.max(0, y0))) / G, v = pick.d / tf;
   car.yaw = Math.atan2(-pick.uz, pick.ux); car.v = v; car.vy = vy;
   takeoff(false); gas = 100; car.om = 1080 / (tf * .9);
@@ -3521,7 +3524,7 @@ function stepFree(dt) {
   car.vy -= G * dt;
   free.gh = groundAt(car.x, car.z, car.y).h;
   if (free.cat && car.vy < -12 && car.y - free.gh < 45) {   // баклажановая подушка после катапульты: плавно гасит падение
-    car.vy = Math.min(-12, car.vy + 32 * dt); car.v *= Math.pow(.35, dt);   // и вперёд тормозим — садимся у выбранного места (не в Дон)
+    car.vy = Math.min(-12, car.vy + 32 * dt); car.v *= Math.pow(car.y - free.gh < 20 ? .03 : .3, dt);   // и вперёд тормозим — садимся у выбранного места, у земли почти без хода
     if (Math.random() < .5) puff(new T.Vector3(car.x, car.y - .6, car.z), new T.Vector3(0, -6, 0), .5, .45);
   }
   airControls(dt, false);

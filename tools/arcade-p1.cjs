@@ -73,7 +73,8 @@ const SHOTS = process.env.SHOTS || ".";
 
   // колёса крутятся, передние поворачивают, стоп-сигналы горят на тормозе
   await ev(() => __t.teleport(-300, 30, 0)); await p.keyboard.down("ArrowUp"); await p.clock.runFor(1500);
-  const wh0 = await ev(() => __t.wheels()); await p.keyboard.down("ArrowLeft"); await p.clock.runFor(300); const wh1 = await ev(() => __t.wheels());
+  const wh0 = await ev(() => __t.wheels()); await p.keyboard.down("ArrowLeft"); let wh1 = null;
+  for (let t = 0; t < 1500 && !(wh1 && wh1.st > .2); t += 150) { await p.clock.runFor(150); wh1 = await ev(() => __t.wheels()); }   // ждём поворота колёс, а не ровно 0,3 с
   await p.keyboard.up("ArrowLeft"); await p.keyboard.up("ArrowUp"); await p.keyboard.down("ArrowDown"); await p.clock.runFor(700); const wh2 = await ev(() => __t.wheels()); await p.keyboard.up("ArrowDown");
   out.wheels = { spins: wh0.wa !== 0, steerLeft: wh1.st > .2, brakeLight: wh2.brake > 2 };
   // 5. камера не заходит в дома: машина у стены, задом к дому
