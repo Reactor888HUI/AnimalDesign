@@ -2835,10 +2835,10 @@ const PARTY = (() => {
     }
   }
   const lightsOff = () => { const U = carObj.userData; U.headM.emissiveIntensity = st.head0; U.amberM.emissiveIntensity = .5; st.red = .55; };
-  function start() {
+  function start(calm = false) {
     if (st.on) { SHOW.salute(car.x, car.y + 10, car.z, 2); return; }        // уже идёт — только салют
     if (!partyFx() && !partyMus()) return;
-    st.on = true; st.t = 0; st.beat = -1; st.smoke = 0; st.head0 = carObj.userData.headM.emissiveIntensity; st.hit = false;
+    st.on = true; st.t = 0; st.beat = -1; st.smoke = 0; st.head0 = carObj.userData.headM.emissiveIntensity; st.hit = false; st.calm = calm;
     st.len = Math.min(PARTY_LEN, sfx.partyLen()); sfx.song(true);
     st.a0 = Math.atan2(camera.position.z - car.z, camera.position.x - car.x);  // облёт начинается оттуда, где стоит камера
   }
@@ -2892,8 +2892,8 @@ const PARTY = (() => {
   return {
     start, stop, tick, get on() { return st.on; }, get red() { return st.red; },
     // замедление и облёт камеры — первые 3 с, если эффекты включены
-    get slow() { return st.on && partyFx() && st.t < PARTY_ORBIT ? .3 + .7 * smooth(Math.max(0, (st.t - PARTY_ORBIT + .8) / .8)) : 1; },
-    orbit: () => st.on && partyFx() && st.t < PARTY_ORBIT ? { k: st.t / PARTY_ORBIT, a0: st.a0 } : null,
+    get slow() { return st.on && !st.calm && partyFx() && st.t < PARTY_ORBIT ? .3 + .7 * smooth(Math.max(0, (st.t - PARTY_ORBIT + .8) / .8)) : 1; },
+    orbit: () => st.on && !st.calm && partyFx() && st.t < PARTY_ORBIT ? { k: st.t / PARTY_ORBIT, a0: st.a0 } : null,
     state: () => ({ on: st.on, t: st.t, len: st.len, fx: partyFx() }),
   };
 })();
@@ -3502,7 +3502,7 @@ function flowFinale() {
   if (fast) completeMission("flowShot");
   queueToast(`Баклажановая катапульта! Тройная бочка над городом  +${pts}`, "good", 2800); sfx.burst(); sfx.whoosh();
   for (let i = 0; i < 40; i++) puff(new T.Vector3(car.x, car.y, car.z), new T.Vector3((Math.random() - .5) * 14, -5 - Math.random() * 8, (Math.random() - .5) * 14), 1.1, .5);
-  SHOW.salute(car.x, car.y + 6, car.z, 4); PARTY.start();
+  SHOW.salute(car.x, car.y + 6, car.z, 4); PARTY.start(true);   // в полёте катапульты — без замедления и облёта: там своя панорама
 }
 function tubeScore() {
   const t = free.tube, pts = Math.round(t.dist);
