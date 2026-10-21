@@ -4186,91 +4186,9 @@ stage.addEventListener("pointerdown", () => { if (fullAsked || save.full === fal
 addEventListener("fullscreenchange", resize);
 $("m-mini").onclick = () => { save.mini = save.mini === false; persist(); syncDock(); };
 
-/* ---------- звук: всё синтезируется на лету, без файлов ---------- */
-/* ---------- песня «Лада Седан Баклажан»: своя мелодия, 128 уд/мин, 16 тактов = 30 с, синтез в WebAudio ---------- */
-// Одна и та же партитура играет в игре (по тактам, без подгрузки) и пишется в звук для ролика (OfflineAudioContext).
+/* ---------- звук: мотор и эффекты синтезируются на лету; песня вечеринки — файл игрока ---------- */
+// песня вечеринки — 8 с из трека игрока (arcade/refs/music/party.mp3); в офлайн-сборке встроена в файл (data:)
 const PARTY_MUSIC = "refs/music/party.mp3";   /*PARTY-MUSIC*/
-const SONG = (() => {
-  const BPM = 128, B = 60 / BPM, BAR = B * 4, BARS = 16, LEN = BAR * BARS;
-  const nf = n => 440 * Math.pow(2, (n - 69) / 12);               // MIDI → Гц
-  const CH = [[57, 60, 64], [53, 57, 60], [55, 60, 64], [55, 59, 62]], ROOT = [45, 41, 48, 43];   // Am F C G
-  const HOOK = [0, -1, 2, 1, -1, 2, 0, -1, 1, 2, -1, 0, 2, -1, 1, 3];   // ход мелодии по ступеням аккорда (-1 — пауза)
-  // слова: по восьмым долям; ноты — свои, не из чужой песни
-  const WORDS = [
-    [["л", "a", 64, 0, 1], ["д", "a", 64, 1, 1], ["с", "e", 67, 2, 1], ["д", "a", 69, 3, 3, "н"]],
-    [["б", "a", 67, 0, 1], ["кл", "a", 64, 1, 1], ["ж", "a", 62, 2, 4, "н"]],
-  ];
-  const noiseOf = new WeakMap();
-  const noise = ac => { let b = noiseOf.get(ac); if (!b) { const n = ac.sampleRate; b = ac.createBuffer(1, n, n); const d = b.getChannelData(0); let s = 7; for (let i = 0; i < n; i++) { s = (s * 16807) % 2147483647; d[i] = s / 1073741823.5 - 1; } noiseOf.set(ac, b); } return b; };
-  function bus(ac, dest) {                                      // общая шина: компрессор, эхо для мелодии
-    const inp = ac.createGain(), comp = ac.createDynamicsCompressor(), out = ac.createGain();
-    comp.threshold.value = -16; comp.ratio.value = 4; comp.attack.value = .004; comp.release.value = .18; out.gain.value = .8;
-    inp.connect(comp).connect(out).connect(dest);
-    const fx = ac.createGain(), dl = ac.createDelay(1), fb = ac.createGain(); dl.delayTime.value = B * .75; fb.gain.value = .32; fx.gain.value = .28;
-    fx.connect(dl).connect(fb).connect(dl); dl.connect(inp);
-    return { inp, fx, out };
-  }
-  const env = (g, t, a, peak, d) => { g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + d); };
-  function noiseHit(ac, to, t, type, f, q, peak, d) {
-    const n = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(); n.buffer = noise(ac); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
-    env(g, t, .002, peak, d); n.connect(fl).connect(g).connect(to); n.start(t, Math.random() * .5); n.stop(t + d + .02);
-  }
-  const VOW = { a: [800, 1180, 2550], e: [470, 1850, 2500] };
-  function syl(ac, to, t, dur, midi, cons, vow, coda) {        // робо-голос: пила через три форманты, согласные — шумом
-    let v0 = t;
-    if (cons === "с") { noiseHit(ac, to, t, "highpass", 5200, .7, .35, .11); v0 = t + .08; }
-    if (cons === "ж") { noiseHit(ac, to, t, "bandpass", 2700, 1.5, .4, .12); v0 = t + .06; }
-    if (cons === "д" || cons === "б") noiseHit(ac, to, t, cons === "д" ? "bandpass" : "lowpass", cons === "д" ? 3200 : 700, 1, .3, .02);
-    if (cons === "кл") { noiseHit(ac, to, t, "bandpass", 1900, 2, .45, .03); v0 = t + .035; }
-    const end = t + dur, f = VOW[vow], src = ac.createOscillator(), vib = ac.createOscillator(), vg = ac.createGain(), out = ac.createGain();
-    src.type = "sawtooth"; src.frequency.setValueAtTime(nf(midi), v0); if (dur > .4) src.frequency.linearRampToValueAtTime(nf(midi) * .985, end);
-    vib.frequency.value = 5.5; vg.gain.value = nf(midi) * .012; vib.connect(vg).connect(src.frequency);
-    f.forEach((fr, i) => {
-      const bp = ac.createBiquadFilter(), g = ac.createGain(); bp.type = "bandpass"; bp.Q.value = 9 + i * 3; g.gain.value = [7, 4, 1.8][i];
-      if (cons === "л" || cons === "кл") { bp.frequency.setValueAtTime(i ? 1000 + i * 600 : 360, v0); bp.frequency.linearRampToValueAtTime(fr, v0 + .06); }
-      else bp.frequency.setValueAtTime(fr, v0);
-      if (coda === "н") { bp.frequency.setValueAtTime(fr, end - dur * .3); bp.frequency.linearRampToValueAtTime([280, 1600, 2600][i], end - dur * .2); }
-      src.connect(bp).connect(g).connect(out);
-    });
-    const e = ac.createGain(); e.gain.setValueAtTime(.0001, v0); e.gain.exponentialRampToValueAtTime(.2, v0 + .015);
-    e.gain.setValueAtTime(.2, end - .05); e.gain.exponentialRampToValueAtTime(.0001, end);
-    out.connect(e).connect(to); src.start(v0); src.stop(end + .02); vib.start(v0); vib.stop(end + .02);
-  }
-  function bar(ac, b, t, i) {                                   // такт i (0…15) с началом в t
-    const to = b.inp, ch = CH[i % 4], root = ROOT[i % 4], intro = i < 2, brk = i >= 14;
-    // бочка — каждую долю (в проигрыше — реже), хлопок на 2 и 4, тарелка — на слабые восьмые
-    for (let k = 0; k < 4; k++) {
-      const s = t + k * B;
-      if (!intro && (!brk || k % 2 === 0)) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(155, s); o.frequency.exponentialRampToValueAtTime(42, s + .13); env(g, s, .003, .9, .32); o.connect(g).connect(to); o.start(s); o.stop(s + .34); }
-      if (!intro && k % 2) [0, .012, .024].forEach(d => noiseHit(ac, to, s + d, "bandpass", 1500, .9, .28, .12));
-      noiseHit(ac, to, s + B / 2, "highpass", 8000, .6, intro ? .06 : .12, .045);
-    }
-    if (i === 15) for (let k = 0; k < 8; k++) noiseHit(ac, to, t + 2 * B + k * B / 4, "bandpass", 1800, .8, .08 + k * .03, .08);   // дробь перед новым кругом
-    // бас — на слабые восьмые («качает»), пэд — аккорд с «дыханием» под бочку
-    if (!intro) for (let k = 0; k < 4; k++) {
-      const s = t + k * B + B / 2, o = ac.createOscillator(), fl = ac.createBiquadFilter(), g = ac.createGain();
-      o.type = "sawtooth"; o.frequency.value = nf(root); fl.type = "lowpass"; fl.frequency.setValueAtTime(900, s); fl.frequency.exponentialRampToValueAtTime(220, s + .2);
-      env(g, s, .006, .32, .22); o.connect(fl).connect(g).connect(to); o.start(s); o.stop(s + .24);
-    }
-    { const fl = ac.createBiquadFilter(), g = ac.createGain(); fl.type = "lowpass"; fl.frequency.value = intro ? 700 + i * 500 : 1600;
-      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05, t + .08);
-      for (let k = 0; k < 4 && !intro; k++) { g.gain.setValueAtTime(.015, t + k * B + .01); g.gain.linearRampToValueAtTime(.05, t + k * B + B * .7); }
-      g.gain.setValueAtTime(.05, t + BAR - .05); g.gain.exponentialRampToValueAtTime(.0001, t + BAR);
-      fl.connect(g).connect(to);
-      ch.forEach(n => [-6, 6].forEach(dt => { const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.value = nf(n); o.detune.value = dt; o.connect(fl); o.start(t); o.stop(t + BAR + .02); }));
-    }
-    // мелодия-крючок шестнадцатыми — со 2-го такта до проигрыша
-    if (!intro && !brk) HOOK.forEach((h, k) => {
-      if (h < 0) return; const s = t + k * B / 4, o = ac.createOscillator(), fl = ac.createBiquadFilter(), g = ac.createGain();
-      o.type = "square"; o.frequency.value = nf((h === 3 ? ch[0] + 12 : ch[h]) + 12); fl.type = "lowpass"; fl.frequency.value = 2600;
-      env(g, s, .004, .05, .11); o.connect(fl).connect(g); g.connect(to); g.connect(b.fx); o.start(s); o.stop(s + .13);
-    });
-    // слова: «Ла-да се-дан» / «ба-кла-жан» — такты 4–5, 8–9, 12–13 и в проигрыше
-    const w = i >= 4 && i <= 13 ? (i % 4 === 0 ? 0 : i % 4 === 1 ? 1 : -1) : i === 14 ? 0 : i === 15 ? 1 : -1;
-    if (w >= 0) WORDS[w].forEach(([c, v, m, at, len, coda]) => syl(ac, to, t + at * B / 2, len * B / 2 - .02, m, c, v, coda));
-  }
-  return { B, BAR, BARS, LEN, bus, bar };
-})();
 const sfx = (() => {
   let ac = null, master, eng, eng2, engF, engG, jetG, skidG, noise;
   const on = () => save.sound !== false;
@@ -4296,13 +4214,18 @@ const sfx = (() => {
   document.addEventListener("visibilitychange", () => { if (ac) document.hidden ? ac.suspend() : on() && ac.resume(); });
   let jet = 0;
   const set = (p, v, t = .06) => p.setTargetAtTime(v, ac.currentTime, t);
-  // песня вечеринки — файл игрока (PARTY_MUSIC, в офлайн-сборке встроен); не загрузился — своя синтезированная, такты подкладываются заранее
+  // песня вечеринки — только файл игрока. Встроенную (data:) раскодируем сами, без fetch: в окне артефакта сеть закрыта
   let song = null, music = null, musicP = null;
-  function loadMusic() { if (musicP || !ac || (location.protocol === "file:" && !PARTY_MUSIC.startsWith("data:"))) return; musicP = fetch(PARTY_MUSIC).then(r => r.arrayBuffer()).then(b => new Promise((ok, no) => ac.decodeAudioData(b, ok, no))).then(b => { music = b; }).catch(() => {}); }
-  function songTick() { while (song && song.synth && song.n < SONG.BARS && song.t0 + song.n * SONG.BAR < ac.currentTime + .8) { SONG.bar(ac, song.b, song.t0 + song.n * SONG.BAR, song.n); song.n++; } }
+  function loadMusic() {
+    if (musicP || !ac) return;
+    let bytes;
+    if (PARTY_MUSIC.startsWith("data:")) { const bin = atob(PARTY_MUSIC.slice(PARTY_MUSIC.indexOf(",") + 1)); bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); }
+    else if (location.protocol === "file:") return;                                     // без сборки браузер не даёт прочитать файл с диска
+    musicP = (bytes ? Promise.resolve(bytes.buffer) : fetch(PARTY_MUSIC).then(r => r.arrayBuffer()))
+      .then(b => new Promise((ok, no) => ac.decodeAudioData(b, ok, no))).then(b => { music = b; }).catch(e => console.warn("музыка вечеринки", e));
+  }
   function tick(dt, st) {
     if (!ac) return;
-    songTick();
     jet = Math.max(0, jet - dt * 6);
     const v = Math.abs(st.speed), gear = Math.min(5, Math.floor(v / 12)), within = (v - gear * 12) / 12;
     const f = 48 + gear * 9 + within * 70 + st.throttle * 12;  // «передачи»: тон растёт и проседает при переключении
@@ -4365,12 +4288,13 @@ const sfx = (() => {
       if (!ac) return;
       if (play && !song && on() && partyMus()) {
         const g = ac.createGain(), t0 = ac.currentTime + .03; g.gain.value = .85; g.connect(master);
-        if (music) { const src = ac.createBufferSource(); src.buffer = music; src.connect(g); src.start(t0); song = { g, src, t0 }; }
-        else song = { g, b: SONG.bus(ac, g), t0, n: 0, synth: true };
+        if (!music) { g.disconnect(); return; }                                         // песня ещё не готова — вечеринка без музыки
+        const src = ac.createBufferSource(); src.buffer = music; src.connect(g); src.start(t0); song = { g, src, t0 };
       } else if (!play && song) { const { g, src } = song; g.gain.setTargetAtTime(0, ac.currentTime, .25); setTimeout(() => { try { src && src.stop(); } catch (e) {} g.disconnect(); }, 1500); song = null; }
     },
     songPos: () => song && ac && ac.state === "running" ? ac.currentTime - song.t0 : null,
-    partyLen: () => music ? music.duration : SONG.LEN,
+    partyLen: () => PARTY_LEN,
+    musicReady: () => !!music, playing: () => !!song,
     state: () => ac ? ac.state : "off"
   };
 })();
@@ -4781,7 +4705,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   heading: () => car.yaw,
   simTime: () => time,
   drift: () => ({ vl: car.vl || 0, bodyRoll: car.bodyRoll || 0, bodyPitch: car.bodyPitch || 0, score: free.score }),
-  sound: () => sfx.state(),
+  sound: () => sfx.state(), music: () => ({ ready: sfx.musicReady(), playing: sfx.playing() }),
   cam: () => { const c = camera.position; return { x: c.x, y: c.y, z: c.z, inside: solidsNear(c.x, c.z).some(b => b.h > c.y && inBox(b, c.x, c.z, 0)) }; },
   houses: () => solids.filter(b => b.h > 8).map(b => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, h: b.h })),
   roads: () => ROADS.filter(r => r.c <= 3).map(r => r.pts),
@@ -4896,19 +4820,6 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
     window.__camOv = cam; time += dt;
     tickTraffic(dt); tickPuffs(dt); tickSignals(performance.now() / 1000); SHOW.tick(dt); PARTY.tick(dt);
     if (!skip) render(dt);
-  },
-  async songWav(secs) {          // песня вечеринки в WAV (base64) — звук для ролика
-    const sr = 44100, ac = new OfflineAudioContext(2, Math.ceil(sr * secs), sr), b = SONG.bus(ac, ac.destination);
-    for (let n = 0; n * SONG.BAR < secs; n++) SONG.bar(ac, b, n * SONG.BAR, n % SONG.BARS);
-    const buf = await ac.startRendering(), L = buf.getChannelData(0), R = buf.getChannelData(1), N = L.length, out = new DataView(new ArrayBuffer(44 + N * 4));
-    const w = (o, str) => [...str].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
-    w(0, "RIFF"); out.setUint32(4, 36 + N * 4, true); w(8, "WAVEfmt "); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 2, true);
-    out.setUint32(24, sr, true); out.setUint32(28, sr * 4, true); out.setUint16(32, 4, true); out.setUint16(34, 16, true); w(36, "data"); out.setUint32(40, N * 4, true);
-    let peak = 0; for (let i = 0; i < N; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
-    const k = peak > .98 ? .98 / peak : 1;
-    for (let i = 0; i < N; i++) { out.setInt16(44 + i * 4, Math.max(-1, Math.min(1, L[i] * k)) * 32767, true); out.setInt16(46 + i * 4, Math.max(-1, Math.min(1, R[i] * k)) * 32767, true); }
-    const u8 = new Uint8Array(out.buffer); let bin = ""; for (let i = 0; i < u8.length; i += 32768) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
-    return { b64: btoa(bin), peak };
   },
   showSet: o => { if (free.show) Object.assign(free.show, o); },
   driftKit: () => ({ on: !!free.driftKit, ui: driftUI(), ang: dwheel.ang, badge: !!save.badge888, wheels: carObj.userData.wheels.map(w => w.drift.visible) }),
