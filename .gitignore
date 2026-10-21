@@ -3,3 +3,4 @@ dist/three.min.js
 # скриншоты автотестов (пишутся в текущую папку)
 /*.png
 tools/__pycache__/
+/video/
