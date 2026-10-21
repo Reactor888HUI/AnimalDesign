@@ -126,6 +126,14 @@ h1 span { color: var(--amber); }
 .showcard { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.9); z-index: 6; pointer-events: none; min-width: 250px; max-width: 86%;
   padding: 14px 20px 16px; border-radius: 18px; text-align: center; color: #fff; background: linear-gradient(160deg, rgba(70,24,110,.92), rgba(30,14,52,.92));
   border: 3px solid #ffc93c; box-shadow: 0 0 0 4px rgba(255,59,107,.5), 0 12px 40px rgba(0,0,0,.45); font-family: Golos Text, system-ui, sans-serif; transition: transform .25s, opacity .4s; }
+.partycap { position: absolute; left: 50%; top: 13%; transform: translateX(-50%); z-index: 5; pointer-events: none; text-align: center; white-space: nowrap;
+  font-weight: 900; font-size: 22px; letter-spacing: .06em; color: #ff3b6b; text-shadow: 0 0 12px currentColor, 0 2px 0 #2c0a44; }
+.partycap small { display: block; font-size: 14px; font-weight: 700; color: #fff6d8; letter-spacing: .03em; }
+body.cine .top, body.cine .stage > *:not(canvas):not(#partycap):not(#cinecap) { display: none !important; }
+body.cine .stage { position: fixed; inset: 0; width: 100vw; height: 100vh; max-height: none; border-radius: 0; margin: 0; z-index: 50; }
+.cinecap { position: absolute; left: 0; right: 0; bottom: 7%; z-index: 6; pointer-events: none; text-align: center; color: #fff6d8; font-weight: 900; font-size: 34px;
+  letter-spacing: .04em; text-shadow: 0 3px 0 #2c0a44, 0 0 18px rgba(180,107,255,.8); transition: opacity .4s; opacity: 0; }
+.cinecap small { display: block; font-size: 18px; font-weight: 700; color: #ffc93c; }
 .showcard.on { transform: translate(-50%, -50%) scale(1); }
 .showcard .t { color: #ffc93c; font-weight: 800; letter-spacing: .04em; font-size: 15px; }
 .showcard .big { font-size: 40px; font-weight: 900; line-height: 1.1; margin: 4px 0; text-shadow: 0 2px 0 #b46bff; }
@@ -310,6 +318,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
     <div class="loading" id="loading">Загружаю город…</div>
     <div class="speedfx" id="speedfx"></div>
     <div class="showcard" id="showcard" hidden></div>
+    <div class="partycap" id="partycap" hidden>ВЕЧЕРИНКА 888<small>♪ Лада Седан — Баклажан ♪</small></div>
     <div class="dwheel" id="dwheel" hidden><svg id="dwheel-svg" viewBox="-100 -100 200 200" aria-hidden="true">
       <circle r="90" fill="none" stroke="#18181c" stroke-width="20"/>
       <circle r="90" fill="none" stroke="#2c2c33" stroke-width="2" stroke-dasharray="3 5"/>
@@ -373,7 +382,8 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
           <p><b>Езда.</b> Джойстик (палец по экрану) вверх — газ, вниз — тормоз, влево / вправо — руль. Тормоз в повороте — занос.</p>
           <p><b>Прыжок.</b> ПРЫГ — сопла подбрасывают машину. В воздухе джойстик крутит её; у земли держите газ — баллон смягчит посадку.</p>
           <p><b>Присоски.</b> С разгона въезжайте в стену Арены: влево — вверх, вправо — вниз, ПРЫГ — оттолкнуться.</p>
-          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или после 5 кругов катапульта: высоко над городом с тройной бочкой, чем быстрее — тем выше и дальше); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее. <b>Дрифт-трек 888</b> (две петли «Восьмёрки»): на треке — широкая резина (держит лучше) и управление двумя руками: левая — дрифтовый руль (влево-вправо), правая — газ, вниз — тормоз; проезд старта под аркой — начало, 3 круга, указатели — по ходу. Очки за езду по асфальту — множитель до ×5, пока не съезжаете; занос — очки дрифта; закрутило или авария — все очки шоу сгорают. В конце — итог, звёзды, рекорд, фейерверк; прошли трек — наклейка «888» на крыше.</p>
+          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или после 5 кругов катапульта: высоко над городом с тройной бочкой, чем быстрее — тем выше и дальше); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее. <b>Дрифт-трек 888</b> (две петли «Восьмёрки»): на треке — широкая резина (держит лучше) и управление двумя руками: левая — дрифтовый руль (влево-вправо), правая — газ, вниз — тормоз; проезд старта под аркой — начало, 3 круга, указатели — по ходу. Очки за езду по асфальту — множитель до ×5, пока не съезжаете; занос — очки дрифта; закрутило или авария — все очки шоу сгорают. В конце — итог, звёзды, рекорд, фейерверк; прошли трек — номер «888» становится золотым.</p>
+          <p><b>Вечеринка 888.</b> У «восьмёрки» гоночный номер 888 на крыше и дверях. После крутого трюка (бочка, штопор, от 800 очков), катапульты или финиша шоу машина минуту светится: неон снизу, фары и фонари мигают в такт, пар в стороны, цветные пушки, лазеры вокруг и песня «Лада Седан — Баклажан». Новый трюк продлевает вечеринку. На крыше Арены — 10 неоновых колец для круга по крыше.</p>
           <p><b>PRO ∞.</b> Баллоны не кончаются: держите ПРЫГ — летите вверх, газ — вперёд, отпустили — плавно вниз. Фиолетовые дорожки и кольца — разгоны.</p>
           <p><b>Клавиатура.</b> ↑ газ, ↓ тормоз, ← → руль и вращение, Пробел — прыжок, C — камера, R — заново, M — меню.</p>
           <p><b>Вид и наклон.</b> Кнопка «ВИД» — сзади, дальняя, из кабины. «Наклон телефона» — руль наклоном; положение при включении — ноль, от себя — газ, на себя — тормоз.</p>
@@ -1758,7 +1768,7 @@ if (ARENA) (() => {
     g.position.set(x, 0, z); scene.add(g);
     ARENA.gates.push({ x, z, tx, tz });
   }
-  ARENA.trackLen = len;
+  ARENA.trackLen = len; ARENA.along = along;
   {   // шахматная линия старта поперёк трассы
     const ck = canvasTex(128, 16, (g, w, h) => { for (let i = 0; i < 16; i++) for (let j = 0; j < 2; j++) { g.fillStyle = (i + j) % 2 ? "#111" : "#f4f4f0"; g.fillRect(i * 8, j * 8, 8, 8); } }, false);
     const [x, z, tx, tz] = along(0), m = new T.Mesh(new T.PlaneGeometry(13, 1.6).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: ck, side: DS }));
@@ -1767,6 +1777,15 @@ if (ARENA) (() => {
   // трамплины на трассе — пролететь мимо стадиона; кольца у стены — для прыжков и езды на присосках
   [.3, .72].forEach(f => { const [x, z, tx, tz] = along(f * len); kicker(x, z, Math.atan2(-tz, tx), 12, 7, 3.6, 0xd8322c); });
   for (let i = 0; i < 8; i++) { const p = ARENA.at((i + .5) / 8 * ARENA.len); ring(p.x + p.nx * 3.5, 9 + (i % 3) * 5, p.z + p.nz * 3.5, Math.atan2(-p.tz, p.tx)); }
+  {   // круг по крыше: 10 неоновых арок-колец (одна сетка), каждое — +300, как обычные кольца
+    const g = [], torus = new T.TorusGeometry(3.4, .3, 8, 28).toNonIndexed(), C = ARENA.C, k = ARENA.roofK = .85;
+    for (let i = 0; i < 10; i++) {
+      const p = ARENA.at(sMain + (i + .5) / 10 * ARENA.len), x = C[0] + (p.x - C[0]) * k, z = C[1] + (p.z - C[1]) * k, y = H + 2.6, yaw = Math.atan2(-p.tz, p.tx);
+      g.push(torus.clone().applyMatrix4(M4(x, y, z, Math.PI / 2 + yaw)));
+      rings.push({ m: { material: { color: new T.Color() } }, x, y, z, got: false, roof: true });
+    }
+    const m = new T.Mesh(mergeGeos(g), new T.MeshBasicMaterial({ color: 0x39e6ff, toneMapped: false })); m.userData.dyn = true; scene.add(m);
+  }
   // мега-трамплины «НА КРЫШУ»: четверть-трубы 14 м за трассой, смотрят на стадион. Ставим там, где для разгона
   // свободно дольше всего (без домов и воды), и не у главного входа — туда прилетают с крыши
   const pdist = (a, b) => { const d = Math.abs(a - b) % ARENA.len; return Math.min(d, ARENA.len - d); };
@@ -2519,15 +2538,21 @@ function makeVaz2108() {
       [cylG(.055, .29, 8, dz), 0x9b4dff]]);
     w.drift.visible = false; w.spin.add(w.drift);
   });
-  // наклейка «888» на крыше — награда за дрифт-трек 888 (видна, если трек пройден)
+  // гоночный номер «888» на базовой машине: крупно на крыше и на обеих дверях — одна сетка, одна текстура.
+  // Награда за дрифт-трек 888 — «золотой» номер (та же сетка, другая текстура)
   {
-    const bc = document.createElement("canvas"); bc.width = 256; bc.height = 128; const bg = bc.getContext("2d");
-    bg.fillStyle = "#2c0a44"; bg.beginPath(); bg.roundRect ? bg.roundRect(6, 6, 244, 116, 26) : bg.rect(6, 6, 244, 116); bg.fill();
-    bg.lineWidth = 8; bg.strokeStyle = "#ffc93c"; bg.stroke();
-    bg.font = "900 92px Golos Text, Arial, sans-serif"; bg.textAlign = "center"; bg.textBaseline = "middle"; bg.lineWidth = 10; bg.strokeStyle = "#ff3b6b"; bg.strokeText("888", 128, 70); bg.fillStyle = "#ffc93c"; bg.fillText("888", 128, 70);
-    const bt = new T.CanvasTexture(bc); bt.encoding = T.sRGBEncoding; bt.anisotropy = 4;
-    const badge = new T.Mesh(new T.PlaneGeometry(.72, .36).rotateX(-Math.PI / 2).rotateY(-Math.PI / 2), new T.MeshLambertMaterial({ map: bt, transparent: true }));
-    badge.position.set((X(1950) + X(2500)) / 2, H(1402) + .012, 0); badge.userData.dyn = true; badge.visible = false; opt.badge = badge; g.add(badge);
+    const num = gold => { const c = document.createElement("canvas"); c.width = c.height = 256; const q = c.getContext("2d");
+      q.fillStyle = gold ? "#ffc93c" : "#111"; q.beginPath(); q.arc(128, 128, 126, 0, 7); q.fill();
+      q.fillStyle = gold ? "#2c0a44" : "#f6f6f2"; q.beginPath(); q.arc(128, 128, 112, 0, 7); q.fill();
+      q.font = "900 104px Golos Text, Arial Black, Arial, sans-serif"; q.textAlign = "center"; q.textBaseline = "middle";
+      if (gold) { q.lineWidth = 10; q.strokeStyle = "#ff3b6b"; q.strokeText("888", 128, 136, 200); }
+      q.fillStyle = gold ? "#ffc93c" : "#111"; q.fillText("888", 128, 136, 200);
+      const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; };
+    const tex = [num(false), num(true)], numM = new T.MeshLambertMaterial({ map: tex[0], alphaTest: .5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const xr = (X(1950) + X(2950)) / 2, roofG = new T.PlaneGeometry(.86, .86).rotateX(-Math.PI / 2).rotateY(-Math.PI / 2).translate(xr, H(1402) + .006, 0);   // читается с камеры сзади
+    const doorG = sd => { const gg = new T.PlaneGeometry(.44, .44); if (sd < 0) gg.rotateY(Math.PI); return gg.translate(X(1800), H(690), sd * .842); };
+    const badge = new T.Mesh(mergeGeos([roofG, doorG(1), doorG(-1)].map(q => q.toNonIndexed())), numM);
+    badge.userData.dyn = true; badge.userData.tex = tex; opt.badge = badge; g.add(badge);
   }
   [-1, 1].forEach(sd => { const sk = new T.Mesh(new T.BoxGeometry(XF - XR - (RF + RR) * 1.15, .14, .1), paint); sk.position.set((XF + XR) / 2 + (RR - RF) * .5, H(215), sd * .86); pro.add(sk); });
   // спойлер на кромке крыши: крыло в цвет кузова с приподнятой задней кромкой и чёрными торцевыми пластинами
@@ -2538,7 +2563,7 @@ function makeVaz2108() {
   rg.addColorStop(0, "rgba(176,64,255,.85)"); rg.addColorStop(.6, "rgba(150,40,240,.45)"); rg.addColorStop(1, "rgba(150,40,240,0)"); gg.fillStyle = rg; gg.fillRect(0, 0, 64, 64);
   const glow = new T.Mesh(new T.PlaneGeometry(4.4, 2.4).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: new T.CanvasTexture(gc), transparent: true, depthWrite: false, toneMapped: false }));
   glow.position.y = -.62; pro.add(glow);
-  g.userData.opt = opt; g.userData.wheels = wheels; g.userData.redM = redM;
+  g.userData.opt = opt; g.userData.wheels = wheels; g.userData.redM = redM; g.userData.headM = headM; g.userData.amberM = amberM;
   // сопла снизу — это всё-таки испытательная «восьмёрка»
   const glowM = new T.MeshBasicMaterial({ color: 0x9fe3ff });
   [[1.5, .42], [1.5, -.42], [-1.5, .42], [-1.5, -.42]].forEach(([x, z]) => { const n = new T.Mesh(new T.CylinderGeometry(.11, .11, .05, 10), glowM); n.position.set(x, H(150), z); g.add(n); });
@@ -2561,7 +2586,7 @@ const carObj = makeVaz2108(); scene.add(carObj);
 const TUNES = ["заводской", "брызговики и ветровики", "+ литые диски"];
 function setTune(n) {                          // n = "pro" — широкий обвес режима PRO; на дрифт-треке 888 — широкая резина и дрифтовые диски
   const o = carObj.userData.opt, pro = n === "pro", dk = !pro && mode === "free" && !!free.driftKit;
-  o.flaps.visible = o.visors.visible = pro || n >= 1; o.pro.visible = pro; o.badge.visible = !!save.badge888;
+  o.flaps.visible = o.visors.visible = pro || n >= 1; o.pro.visible = pro; o.badge.material.map = o.badge.userData.tex[save.badge888 ? 1 : 0];
   carObj.userData.wheels.forEach(w => { w.stock.visible = !pro && !dk && n < 2; w.alloy.visible = !pro && !dk && n >= 2; w.pro.visible = pro; w.drift.visible = dk; });
 }
 const EGGPLANT = { n: "баклажан", c: 0x2c0a44 };
@@ -2732,6 +2757,98 @@ function tickPuffs(dt) {
     else { splashRing.scale.setScalar(1.5 + 7 * Math.sqrt(k)); splashRing.material.opacity = .75 * (1 - k); }
   }
 }
+
+/* ---------- вечеринка 888: после трюка машина минуту светится — неон, мигалки, пар, цветные пушки, лазеры, песня ---------- */
+const PARTY_T = 60;
+const PARTY = (() => {
+  const st = { on: false, t: 0, left: 0, steam: 0, beat: -1 };
+  const COLS = FEST_COLS.map(c => new T.Color(c).convertSRGBToLinear());
+  const tmp = new T.Color();
+  // неон под машиной: белое пятно, цвет меняется по тактам
+  const gc = document.createElement("canvas"); gc.width = gc.height = 64; const gg = gc.getContext("2d"), rg = gg.createRadialGradient(32, 32, 2, 32, 32, 32);
+  rg.addColorStop(0, "rgba(255,255,255,1)"); rg.addColorStop(.55, "rgba(255,255,255,.45)"); rg.addColorStop(1, "rgba(255,255,255,0)"); gg.fillStyle = rg; gg.fillRect(0, 0, 64, 64);
+  const neonM = new T.MeshBasicMaterial({ map: new T.CanvasTexture(gc), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false, fog: false });
+  const neon = new T.Mesh(new T.PlaneGeometry(7.5, 4.4).rotateX(-Math.PI / 2), neonM); neon.position.y = -.6; neon.visible = false; neon.userData.dyn = true; carObj.add(neon);
+  // лазеры: 16 лучей из точки над крышей, в одну сетку; вращаются и «дышат» по высоте
+  const grp = new T.Group(); grp.visible = false; grp.userData.dyn = true; scene.add(grp);
+  const beams = [];
+  for (let i = 0; i < 16; i++) {
+    const b = new T.BoxGeometry(48, .09, .09).translate(24, 0, 0).toNonIndexed(), c = COLS[i % COLS.length], a = new Float32Array(b.attributes.position.count * 3);
+    for (let k = 0; k < a.length; k += 3) { a[k] = c.r; a[k + 1] = c.g; a[k + 2] = c.b; }
+    b.setAttribute("color", new T.BufferAttribute(a, 3)); b.deleteAttribute("uv"); beams.push(b);
+  }
+  const laserM = new T.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: .8, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false });
+  const fan = []; for (let r = 0; r < 2; r++) { const m = new T.Mesh(mergeGeos(beams.slice(r * 8, r * 8 + 8).map((b, i) => b.clone().rotateZ(.12 + r * .22).rotateY(i / 8 * Math.PI * 2 + r * .4))), laserM); m.frustumCulled = false; grp.add(m); fan.push(m); }
+  // цветные пушки: струи конфетти-искр из четырёх углов машины
+  const CN = 480, cpos = new Float32Array(CN * 3), ccol = new Float32Array(CN * 3), cv = new Float32Array(CN * 3), clife = new Float32Array(CN), cbase = new Float32Array(CN * 3);
+  const cgeo = new T.BufferGeometry(); cgeo.setAttribute("position", new T.BufferAttribute(cpos, 3)); cgeo.setAttribute("color", new T.BufferAttribute(ccol, 3));
+  const dot = document.createElement("canvas"); dot.width = dot.height = 32; { const q = dot.getContext("2d"), r = q.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, "#fff"); r.addColorStop(.35, "rgba(255,255,255,.9)"); r.addColorStop(1, "rgba(255,255,255,0)"); q.fillStyle = r; q.fillRect(0, 0, 32, 32); }
+  const cpts = new T.Points(cgeo, new T.PointsMaterial({ size: .32, map: new T.CanvasTexture(dot), vertexColors: true, transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
+  cpts.frustumCulled = false; cpts.userData.dyn = true; cpts.visible = false; scene.add(cpts);
+  let ci = 0;
+  const v3 = new T.Vector3(), fwd = new T.Vector3(), side = new T.Vector3(), up = new T.Vector3();
+  function cannon(corner, col) {
+    const [fx, sx] = corner; v3.set(fx * 1.6, .1, sx * .8).applyMatrix4(carObj.matrixWorld);
+    for (let k = 0; k < 40; k++) {
+      const i = ci++ % CN, sp = 13 + Math.random() * 6;
+      const dx = side.x * sx * .55 + fwd.x * fx * .25 + up.x, dy = side.y * sx * .55 + fwd.y * fx * .25 + up.y, dz = side.z * sx * .55 + fwd.z * fx * .25 + up.z;
+      cpos.set([v3.x, v3.y, v3.z], i * 3); cv.set([(dx + (Math.random() - .5) * .35) * sp, (dy + (Math.random() - .5) * .3) * sp, (dz + (Math.random() - .5) * .35) * sp], i * 3);
+      cbase.set([col.r * 1.3, col.g * 1.3, col.b * 1.3], i * 3); clife[i] = 1.4 + Math.random() * .6;
+    }
+  }
+  const lightsOff = () => { const U = carObj.userData; U.headM.emissiveIntensity = st.head0; U.amberM.emissiveIntensity = .5; };
+  function start() {
+    st.left = PARTY_T;
+    if (st.on) return;
+    st.on = true; st.t = 0; st.beat = -1; st.head0 = carObj.userData.headM.emissiveIntensity;
+    neon.visible = grp.visible = cpts.visible = true; sfx.song(true);
+    const el = $("partycap"); if (el) el.hidden = false;
+  }
+  function stop() {
+    if (!st.on) return; st.on = false; neon.visible = grp.visible = false; lightsOff(); sfx.song(false);
+    puffMat.uniforms.color.value.setHex(0xe9f3fb); const el = $("partycap"); if (el) el.hidden = true;
+  }
+  function tick(dt) {
+    let alive = 0;
+    for (let i = 0; i < CN; i++) {
+      if (clife[i] <= 0) { ccol[i * 3] = ccol[i * 3 + 1] = ccol[i * 3 + 2] = 0; continue; }
+      alive++; clife[i] -= dt; cv[i * 3 + 1] -= 9 * dt; for (let k = 0; k < 3; k++) { cv[i * 3 + k] *= 1 - dt * .9; cpos[i * 3 + k] += cv[i * 3 + k] * dt; }
+      const f = Math.max(0, Math.min(1, clife[i] / .6)); for (let k = 0; k < 3; k++) ccol[i * 3 + k] = cbase[i * 3 + k] * f;
+    }
+    if (alive || st.on) { cgeo.attributes.position.needsUpdate = cgeo.attributes.color.needsUpdate = true; } else cpts.visible = false;
+    if (!st.on) return;
+    st.t += dt; st.left -= dt; if (st.left <= 0) return stop();
+    const ts = st.t % SONG.LEN, beat = Math.floor(ts / SONG.B), ph = ts / SONG.B - beat, barN = Math.floor(beat / 4), U = carObj.userData;
+    const fade = Math.min(1, st.left / 2, st.t * 2);             // плавно загорается и гаснет
+    const col = COLS[barN % COLS.length], col2 = COLS[(barN + 2) % COLS.length];
+    tmp.copy(col).lerp(col2, .5 + .5 * Math.sin(st.t * 3)); neonM.color.copy(tmp).multiplyScalar((1.1 + .9 * (1 - ph)) * fade);
+    neon.scale.setScalar(1 + .12 * (1 - ph));
+    // мигалки под ритм: фары — на сильные доли, поворотники — восьмыми; стоп-сигналы — в render (на слабые)
+    U.headM.emissiveIntensity = beat % 2 === 0 ? st.head0 + 6 * (1 - ph) * fade : st.head0;
+    U.amberM.emissiveIntensity = .5 + (Math.floor(ts / (SONG.B / 2)) % 2 ? 3.5 * fade : 0);
+    st.red = beat % 2 ? 1.2 + 4 * (1 - ph) : 1.2;
+    carObj.updateMatrixWorld(); fwd.set(1, 0, 0).transformDirection(carObj.matrixWorld); side.set(0, 0, 1).transformDirection(carObj.matrixWorld); up.set(0, 1, 0).transformDirection(carObj.matrixWorld);
+    grp.position.set(car.x, car.y + WHEEL + 1.3, car.z); grp.rotation.set(0, st.t * 1.1, 0);
+    fan.forEach((m, r) => { m.rotation.set(0, r ? -st.t * 1.7 : 0, Math.sin(st.t * (r ? 1.3 : .9)) * .18); });
+    laserM.opacity = (.45 + .45 * (beat % 4 === 0 ? 1 - ph : .5)) * fade;
+    // пушки — каждую вторую долю, по очереди из углов
+    if (beat !== st.beat) {
+      st.beat = beat;
+      if (beat % 2 === 0 && st.left > 1.5) { const cs = [[1, 1], [-1, -1], [1, -1], [-1, 1]]; cannon(cs[(beat / 2) % 4], COLS[(beat / 2) % COLS.length]); cannon(cs[(beat / 2 + 1) % 4], COLS[(beat / 2 + 3) % COLS.length]); cpts.visible = true; }
+      if (beat % 16 === 0 && beat) SHOW.salute(car.x, car.y + 12, car.z, 2);
+    }
+    // пар из-под машины в стороны, подсвеченный неоном
+    st.steam -= dt;
+    if (st.steam <= 0 && st.left > 1) {
+      st.steam = .09;
+      [-1, 1].forEach(s => { v3.set((Math.random() - .5) * 2.4, -.45, s * .7).applyMatrix4(carObj.matrixWorld); puff(v3, new T.Vector3(side.x * s * 9 + Math.cos(car.yaw) * car.v * .6, 1.2 + Math.random(), side.z * s * 9 + -Math.sin(car.yaw) * car.v * .6), 1.5, .75); });
+    }
+    puffMat.uniforms.color.value.setRGB(.91, .95, .98).lerp(tmp, .45 * fade);
+    const el = $("partycap");
+    if (el) { const s = Math.ceil(st.left); el.firstChild.textContent = `ВЕЧЕРИНКА 888 · 0:${String(s).padStart(2, "0")}`; el.style.transform = `translateX(-50%) scale(${1 + .06 * (1 - ph)})`; el.style.color = "#" + col.clone().convertLinearToSRGB().getHexString(); }
+  }
+  return { start, stop, tick, get on() { return st.on; }, get red() { return st.red; }, state: () => ({ on: st.on, t: st.t, left: st.left }) };
+})();
 
 /* ---------- ряд машин на полигоне ---------- */
 let levelObjs = [], rowSolids = [];
@@ -2983,9 +3100,9 @@ function showFinish() {
     `<div class="row"><span>Чистая езда</span><b>${Math.round(s.clean).toLocaleString("ru")}</b></div><div class="row"><span>Дрифт</span><b>${Math.round(s.drift).toLocaleString("ru")}</b></div>` +
     `<div class="row"><span>Срывов</span><b>${s.spins}</b></div><div class="stars">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</div>` +
     (rec ? `<div class="rec">Новый рекорд! Было ${prev.toLocaleString("ru")}</div>` : `<div class="row"><span>Рекорд</span><b>${prev.toLocaleString("ru")}</b></div>`) +
-    (save.badge888 ? "" : `<div class="rec">Награда: наклейка «888» на крышу</div>`));
-  SHOW.fireworks(stars * 5 + 6); sfx.cheer(1.2);
-  if (!save.badge888) { save.badge888 = true; persist(); applyLook(); queueToast("Награда: наклейка «888» на крыше!", "good", 3200); }
+    (save.badge888 ? "" : `<div class="rec">Награда: золотой номер «888»</div>`));
+  SHOW.fireworks(stars * 5 + 6); sfx.cheer(1.2); PARTY.start();
+  if (!save.badge888) { save.badge888 = true; persist(); applyLook(); queueToast("Награда: золотой номер «888» на крыше и дверях!", "good", 3200); }
   SHOW.drawBoard([`ИТОГ ${total.toLocaleString("ru")}  ${"★".repeat(stars)}`, `чисто ${Math.round(s.clean)} · дрифт ${Math.round(s.drift)}`, `рекорд ${(save.eightShowBest || 0).toLocaleString("ru")}`], true);
 }
 function eightShow() {
@@ -3334,7 +3451,7 @@ function flowFinale() {
   if (fast) completeMission("flowShot");
   queueToast(`Баклажановая катапульта! Тройная бочка над городом  +${pts}`, "good", 2800); sfx.burst(); sfx.whoosh();
   for (let i = 0; i < 40; i++) puff(new T.Vector3(car.x, car.y, car.z), new T.Vector3((Math.random() - .5) * 14, -5 - Math.random() * 8, (Math.random() - .5) * 14), 1.1, .5);
-  SHOW.salute(car.x, car.y + 6, car.z, 4);
+  SHOW.salute(car.x, car.y + 6, car.z, 4); PARTY.start();
 }
 function tubeScore() {
   const t = free.tube, pts = Math.round(t.dist);
@@ -3585,7 +3702,7 @@ function landFree(g) {
   free.score += pts;
   save.freeBest = Math.max(save.freeBest, free.score); save.trickBest = Math.max(save.trickBest, pts); persist();
   showToast(`${parts.join(" · ")}  +${pts}`, q === "clean" ? "good" : "", 2600);
-  if (barrels > 0 || free.cork || pts >= 800) { SHOW.salute(car.x, car.y + 10, car.z, Math.min(5, 2 + barrels)); }   // праздник: салют над крутым трюком
+  if (barrels > 0 || free.cork || pts >= 800) { SHOW.salute(car.x, car.y + 10, car.z, Math.min(5, 2 + barrels)); PARTY.start(); }   // праздник: салют над крутым трюком и минута вечеринки 888
   if (pts > (free.bestPts || 0) && !free.pend) free.pend = { pts, from: free.takeoffT - 1, until: time + .8 };   // лучший трюк — сохраним для повтора
 }
 
@@ -4008,6 +4125,89 @@ $("m-snd").onclick = () => { save.sound = save.sound === false; persist(); sfx.u
 $("m-mini").onclick = () => { save.mini = save.mini === false; persist(); syncDock(); };
 
 /* ---------- звук: всё синтезируется на лету, без файлов ---------- */
+/* ---------- песня «Лада Седан Баклажан»: своя мелодия, 128 уд/мин, 16 тактов = 30 с, синтез в WebAudio ---------- */
+// Одна и та же партитура играет в игре (по тактам, без подгрузки) и пишется в звук для ролика (OfflineAudioContext).
+const SONG = (() => {
+  const BPM = 128, B = 60 / BPM, BAR = B * 4, BARS = 16, LEN = BAR * BARS;
+  const nf = n => 440 * Math.pow(2, (n - 69) / 12);               // MIDI → Гц
+  const CH = [[57, 60, 64], [53, 57, 60], [55, 60, 64], [55, 59, 62]], ROOT = [45, 41, 48, 43];   // Am F C G
+  const HOOK = [0, -1, 2, 1, -1, 2, 0, -1, 1, 2, -1, 0, 2, -1, 1, 3];   // ход мелодии по ступеням аккорда (-1 — пауза)
+  // слова: по восьмым долям; ноты — свои, не из чужой песни
+  const WORDS = [
+    [["л", "a", 64, 0, 1], ["д", "a", 64, 1, 1], ["с", "e", 67, 2, 1], ["д", "a", 69, 3, 3, "н"]],
+    [["б", "a", 67, 0, 1], ["кл", "a", 64, 1, 1], ["ж", "a", 62, 2, 4, "н"]],
+  ];
+  const noiseOf = new WeakMap();
+  const noise = ac => { let b = noiseOf.get(ac); if (!b) { const n = ac.sampleRate; b = ac.createBuffer(1, n, n); const d = b.getChannelData(0); let s = 7; for (let i = 0; i < n; i++) { s = (s * 16807) % 2147483647; d[i] = s / 1073741823.5 - 1; } noiseOf.set(ac, b); } return b; };
+  function bus(ac, dest) {                                      // общая шина: компрессор, эхо для мелодии
+    const inp = ac.createGain(), comp = ac.createDynamicsCompressor(), out = ac.createGain();
+    comp.threshold.value = -16; comp.ratio.value = 4; comp.attack.value = .004; comp.release.value = .18; out.gain.value = .8;
+    inp.connect(comp).connect(out).connect(dest);
+    const fx = ac.createGain(), dl = ac.createDelay(1), fb = ac.createGain(); dl.delayTime.value = B * .75; fb.gain.value = .32; fx.gain.value = .28;
+    fx.connect(dl).connect(fb).connect(dl); dl.connect(inp);
+    return { inp, fx, out };
+  }
+  const env = (g, t, a, peak, d) => { g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + d); };
+  function noiseHit(ac, to, t, type, f, q, peak, d) {
+    const n = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(); n.buffer = noise(ac); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+    env(g, t, .002, peak, d); n.connect(fl).connect(g).connect(to); n.start(t, Math.random() * .5); n.stop(t + d + .02);
+  }
+  const VOW = { a: [800, 1180, 2550], e: [470, 1850, 2500] };
+  function syl(ac, to, t, dur, midi, cons, vow, coda) {        // робо-голос: пила через три форманты, согласные — шумом
+    let v0 = t;
+    if (cons === "с") { noiseHit(ac, to, t, "highpass", 5200, .7, .35, .11); v0 = t + .08; }
+    if (cons === "ж") { noiseHit(ac, to, t, "bandpass", 2700, 1.5, .4, .12); v0 = t + .06; }
+    if (cons === "д" || cons === "б") noiseHit(ac, to, t, cons === "д" ? "bandpass" : "lowpass", cons === "д" ? 3200 : 700, 1, .3, .02);
+    if (cons === "кл") { noiseHit(ac, to, t, "bandpass", 1900, 2, .45, .03); v0 = t + .035; }
+    const end = t + dur, f = VOW[vow], src = ac.createOscillator(), vib = ac.createOscillator(), vg = ac.createGain(), out = ac.createGain();
+    src.type = "sawtooth"; src.frequency.setValueAtTime(nf(midi), v0); if (dur > .4) src.frequency.linearRampToValueAtTime(nf(midi) * .985, end);
+    vib.frequency.value = 5.5; vg.gain.value = nf(midi) * .012; vib.connect(vg).connect(src.frequency);
+    f.forEach((fr, i) => {
+      const bp = ac.createBiquadFilter(), g = ac.createGain(); bp.type = "bandpass"; bp.Q.value = 9 + i * 3; g.gain.value = [7, 4, 1.8][i];
+      if (cons === "л" || cons === "кл") { bp.frequency.setValueAtTime(i ? 1000 + i * 600 : 360, v0); bp.frequency.linearRampToValueAtTime(fr, v0 + .06); }
+      else bp.frequency.setValueAtTime(fr, v0);
+      if (coda === "н") { bp.frequency.setValueAtTime(fr, end - dur * .3); bp.frequency.linearRampToValueAtTime([280, 1600, 2600][i], end - dur * .2); }
+      src.connect(bp).connect(g).connect(out);
+    });
+    const e = ac.createGain(); e.gain.setValueAtTime(.0001, v0); e.gain.exponentialRampToValueAtTime(.2, v0 + .015);
+    e.gain.setValueAtTime(.2, end - .05); e.gain.exponentialRampToValueAtTime(.0001, end);
+    out.connect(e).connect(to); src.start(v0); src.stop(end + .02); vib.start(v0); vib.stop(end + .02);
+  }
+  function bar(ac, b, t, i) {                                   // такт i (0…15) с началом в t
+    const to = b.inp, ch = CH[i % 4], root = ROOT[i % 4], intro = i < 2, brk = i >= 14;
+    // бочка — каждую долю (в проигрыше — реже), хлопок на 2 и 4, тарелка — на слабые восьмые
+    for (let k = 0; k < 4; k++) {
+      const s = t + k * B;
+      if (!intro && (!brk || k % 2 === 0)) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(155, s); o.frequency.exponentialRampToValueAtTime(42, s + .13); env(g, s, .003, .9, .32); o.connect(g).connect(to); o.start(s); o.stop(s + .34); }
+      if (!intro && k % 2) [0, .012, .024].forEach(d => noiseHit(ac, to, s + d, "bandpass", 1500, .9, .28, .12));
+      noiseHit(ac, to, s + B / 2, "highpass", 8000, .6, intro ? .06 : .12, .045);
+    }
+    if (i === 15) for (let k = 0; k < 8; k++) noiseHit(ac, to, t + 2 * B + k * B / 4, "bandpass", 1800, .8, .08 + k * .03, .08);   // дробь перед новым кругом
+    // бас — на слабые восьмые («качает»), пэд — аккорд с «дыханием» под бочку
+    if (!intro) for (let k = 0; k < 4; k++) {
+      const s = t + k * B + B / 2, o = ac.createOscillator(), fl = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = "sawtooth"; o.frequency.value = nf(root); fl.type = "lowpass"; fl.frequency.setValueAtTime(900, s); fl.frequency.exponentialRampToValueAtTime(220, s + .2);
+      env(g, s, .006, .32, .22); o.connect(fl).connect(g).connect(to); o.start(s); o.stop(s + .24);
+    }
+    { const fl = ac.createBiquadFilter(), g = ac.createGain(); fl.type = "lowpass"; fl.frequency.value = intro ? 700 + i * 500 : 1600;
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05, t + .08);
+      for (let k = 0; k < 4 && !intro; k++) { g.gain.setValueAtTime(.015, t + k * B + .01); g.gain.linearRampToValueAtTime(.05, t + k * B + B * .7); }
+      g.gain.setValueAtTime(.05, t + BAR - .05); g.gain.exponentialRampToValueAtTime(.0001, t + BAR);
+      fl.connect(g).connect(to);
+      ch.forEach(n => [-6, 6].forEach(dt => { const o = ac.createOscillator(); o.type = "sawtooth"; o.frequency.value = nf(n); o.detune.value = dt; o.connect(fl); o.start(t); o.stop(t + BAR + .02); }));
+    }
+    // мелодия-крючок шестнадцатыми — со 2-го такта до проигрыша
+    if (!intro && !brk) HOOK.forEach((h, k) => {
+      if (h < 0) return; const s = t + k * B / 4, o = ac.createOscillator(), fl = ac.createBiquadFilter(), g = ac.createGain();
+      o.type = "square"; o.frequency.value = nf((h === 3 ? ch[0] + 12 : ch[h]) + 12); fl.type = "lowpass"; fl.frequency.value = 2600;
+      env(g, s, .004, .05, .11); o.connect(fl).connect(g); g.connect(to); g.connect(b.fx); o.start(s); o.stop(s + .13);
+    });
+    // слова: «Ла-да се-дан» / «ба-кла-жан» — такты 4–5, 8–9, 12–13 и в проигрыше
+    const w = i >= 4 && i <= 13 ? (i % 4 === 0 ? 0 : i % 4 === 1 ? 1 : -1) : i === 14 ? 0 : i === 15 ? 1 : -1;
+    if (w >= 0) WORDS[w].forEach(([c, v, m, at, len, coda]) => syl(ac, to, t + at * B / 2, len * B / 2 - .02, m, c, v, coda));
+  }
+  return { B, BAR, BARS, LEN, bus, bar };
+})();
 const sfx = (() => {
   let ac = null, master, eng, eng2, engF, engG, jetG, skidG, noise;
   const on = () => save.sound !== false;
@@ -4032,8 +4232,11 @@ const sfx = (() => {
   document.addEventListener("visibilitychange", () => { if (ac) document.hidden ? ac.suspend() : on() && ac.resume(); });
   let jet = 0;
   const set = (p, v, t = .06) => p.setTargetAtTime(v, ac.currentTime, t);
+  let song = null;                                         // песня вечеринки: такты подкладываются заранее на ~0,8 с
+  function songTick() { while (song && song.t0 + song.n * SONG.BAR < ac.currentTime + .8) { SONG.bar(ac, song.b, song.t0 + song.n * SONG.BAR, song.n % SONG.BARS); song.n++; } }
   function tick(dt, st) {
     if (!ac) return;
+    songTick();
     jet = Math.max(0, jet - dt * 6);
     const v = Math.abs(st.speed), gear = Math.min(5, Math.floor(v / 12)), within = (v - gear * 12) / 12;
     const f = 48 + gear * 9 + within * 70 + st.throttle * 12;  // «передачи»: тон растёт и проседает при переключении
@@ -4092,6 +4295,11 @@ const sfx = (() => {
       g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.28, t + .2); g.gain.exponentialRampToValueAtTime(.001, t + 1.6);
       n.connect(fl).connect(g).connect(master); n.start(t); n.stop(t + 1.7);
     }),
+    song(play) {
+      if (!ac) return;
+      if (play && !song && on()) song = { b: SONG.bus(ac, master), t0: ac.currentTime + .05, n: 0 };
+      else if (!play && song) { const b = song.b; b.out.gain.setTargetAtTime(0, ac.currentTime, .35); setTimeout(() => b.out.disconnect(), 2500); song = null; }
+    },
     state: () => ac ? ac.state : "off"
   };
 })();
@@ -4306,6 +4514,7 @@ function render(dt) {
     const t = free.tube; wallBasis.z.crossVectors(t.f, t.n); wallBasis.m.makeBasis(t.f, t.n, wallBasis.z);
     carObj.quaternion.setFromRotationMatrix(wallBasis.m); carObj.position.set(car.x + t.n.x * WHEEL, car.y + t.n.y * WHEEL, car.z + t.n.z * WHEEL);
   }
+  if (CINE.q) { carObj.quaternion.copy(CINE.q); if (CINE.up) carObj.position.set(car.x + CINE.up.x * WHEEL, car.y + CINE.up.y * WHEEL, car.z + CINE.up.z * WHEEL); }   // съёмка ролика: поза машины задана сценарием
   if (INNER) INNER.anim(dt);
   DON_WATER.userData.u.uTime.value += dt; DON_WATER.userData.u.uFlow.value = perf.q >= 1 ? 1 : 0;   // рябь — на среднем и высоком качестве
   {   // колёса крутятся по скорости, передние поворачивают; стоп-сигналы горят при торможении
@@ -4313,11 +4522,11 @@ function render(dt) {
     U.wa = ((U.wa || 0) + v * dt / .288) % (Math.PI * 2);
     U.st = (U.st || 0) + ((phase === "free" && !free.air ? -turn() * .45 : 0) - (U.st || 0)) * Math.min(1, dt * 8);
     U.wheels.forEach(w => { w.spin.rotation.z = -U.wa; w.steer.rotation.y = w.front ? U.st : 0; });
-    U.redM.emissiveIntensity = !replay && brk() > .1 ? 2.4 : .55;
+    U.redM.emissiveIntensity = PARTY.on ? PARTY.red : !replay && brk() > .1 ? 2.4 : .55;
   }
   const gh = mode === "free" ? groundAt(car.x, car.z, car.y + .5).h : 0;
   const hgt = Math.max(0, car.y - gh);
-  shadow.visible = !(mode === "free" && (free.wall || free.tube));
+  shadow.visible = !(mode === "free" && (free.wall || free.tube)) && !CINE.noShadow;
   shadow.position.set(car.x, gh + .15, car.z); shadow.rotation.z = car.yaw;
   shadow.material.opacity = .35 * Math.max(.15, 1 - hgt / 25); shadow.scale.set(2.6 * (1 + hgt / 30), 1.2 * (1 + hgt / 30), 1);
   marker.visible = !replay && (phase === "air" || (mode === "free" && free.air));
@@ -4387,8 +4596,8 @@ function render(dt) {
     camera.lookAt(look); camera.fov = 60 + (mode === "free" ? Math.min(14, Math.abs(car.v) * .25) : 0);
   }
   camera.updateProjectionMatrix();
-  cullChunks(); tickSky();
   if (window.__camOv) { const o = window.__camOv; camera.position.set(o[0], o[1], o[2]); camera.up.set(0, 1, 0); camera.lookAt(o[3], o[4], o[5]); camera.fov = o[6] || 40; camera.updateProjectionMatrix(); }   // только автотесты: снимок с заданной точки
+  cullChunks(); tickSky();
   renderer.render(scene, camera);
   drawStat.calls = renderer.info.render.calls; drawStat.tris = renderer.info.render.triangles;
 }
@@ -4448,7 +4657,9 @@ function trackPerf(raw) {
 }
 let last = performance.now();
 let testFast = false, testFrame = 0;
+const CINE = { on: false, q: null, up: null, noShadow: false };   // покадровая съёмка ролика (только #test)
 function frame(now) {
+  if (CINE.on) { last = now; requestAnimationFrame(frame); return; }
   // до 10 к/с игра идёт в реальном времени (физика всё равно считается шагами по 1/120 с), ниже — плавно замедляется
   const raw = (now - last) / 1000, dt = Math.min(.1, raw); last = now;
   trackPerf(raw);
@@ -4465,7 +4676,7 @@ function frame(now) {
     if (["run", "ramp", "air", "roll", "crash"].includes(phase) && !result && rec.length < 6000) rec.push({ t: simT, x: car.x, y: car.y, roll: car.roll, pitch: car.pitch });
   } else time += dt;
   if (mode === "train" && !replay && $("ov-res").hidden) trainTick();
-  tickTraffic(dt); tickPuffs(dt); tickSignals(performance.now() / 1000); SHOW.tick(dt); driftKitTick(dt);
+  tickTraffic(dt); tickPuffs(dt); tickSignals(performance.now() / 1000); SHOW.tick(dt); PARTY.tick(dt); driftKitTick(dt);
   const airNow = mode === "free" ? free.air : phase === "air" || phase === "drill";
   sfx.tick(dt, { speed: mode === "free" ? car.v : phase === "run" || phase === "ramp" ? car.v : phase === "roll" ? car.vx : 0, throttle: thr(), air: airNow, skid: mode === "free" && !free.air ? Math.abs(car.vl || 0) : 0 });
   ui(); if (!testFast || ++testFrame % 20 === 0) render(dt);   // в быстрых автотестах рисуем редко — физика идёт в полную скорость
@@ -4586,6 +4797,36 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   show: () => free.show && { lap: free.show.lap, clean: free.show.clean, drift: free.show.drift, mult: free.show.mult, spins: free.show.spins, seq: free.show.seq },
   showBest: () => save.eightShowBest || 0,
   camSet: (...a) => { window.__camOv = a.length ? a : null; },
+  party: on => on === false ? PARTY.stop() : on ? PARTY.start() : PARTY.state(),
+  ARENA, INNER, EIGHT, salute: (x, y, z, n) => SHOW.salute(x, y, z, n), puff: (x, y, z, vx, vy, vz, life, s) => puff(new T.Vector3(x, y, z), new T.Vector3(vx, vy, vz), life, s),
+  setTime: k => setTime(k), paint: i => setPaint(i),
+  cine(on, cap) {                // съёмка: игра стоит, кадр рисуется по cineStep; интерфейс спрятан, поле — на весь экран
+    CINE.on = !!on; document.body.classList.toggle("cine", CINE.on);
+    if (!$("cinecap")) { const d = document.createElement("div"); d.id = "cinecap"; d.className = "cinecap"; stage.appendChild(d); }
+    resize();
+  },
+  cineCap(html) { const d = $("cinecap"); d.innerHTML = html || ""; d.style.opacity = html ? 1 : 0; },
+  cineStep(dt, p, cam, skip) {         // p: { x, y, z, yaw, pitch, roll (°), v, air, q: [x,y,z,w], up: [x,y,z] }; cam: [x,y,z, lx,ly,lz, fov]
+    car.x = p.x; car.y = p.y; car.z = p.z; car.yaw = p.yaw || 0; car.pitch = p.pitch || 0; car.roll = p.roll || 0; car.v = p.v || 0;
+    car.bodyRoll = car.bodyPitch = car.slopeRoll = 0; free.air = !!p.air; free.wall = free.tube = free.aero = null; free.cat = null;
+    CINE.q = p.q ? new T.Quaternion().fromArray(p.q) : null; CINE.up = p.up ? new T.Vector3().fromArray(p.up) : null; CINE.noShadow = !!p.noShadow;
+    window.__camOv = cam; time += dt;
+    tickTraffic(dt); tickPuffs(dt); tickSignals(performance.now() / 1000); SHOW.tick(dt); PARTY.tick(dt);
+    if (!skip) render(dt);
+  },
+  async songWav(secs) {          // песня вечеринки в WAV (base64) — звук для ролика
+    const sr = 44100, ac = new OfflineAudioContext(2, Math.ceil(sr * secs), sr), b = SONG.bus(ac, ac.destination);
+    for (let n = 0; n * SONG.BAR < secs; n++) SONG.bar(ac, b, n * SONG.BAR, n % SONG.BARS);
+    const buf = await ac.startRendering(), L = buf.getChannelData(0), R = buf.getChannelData(1), N = L.length, out = new DataView(new ArrayBuffer(44 + N * 4));
+    const w = (o, str) => [...str].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+    w(0, "RIFF"); out.setUint32(4, 36 + N * 4, true); w(8, "WAVEfmt "); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 2, true);
+    out.setUint32(24, sr, true); out.setUint32(28, sr * 4, true); out.setUint16(32, 4, true); out.setUint16(34, 16, true); w(36, "data"); out.setUint32(40, N * 4, true);
+    let peak = 0; for (let i = 0; i < N; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
+    const k = peak > .98 ? .98 / peak : 1;
+    for (let i = 0; i < N; i++) { out.setInt16(44 + i * 4, Math.max(-1, Math.min(1, L[i] * k)) * 32767, true); out.setInt16(46 + i * 4, Math.max(-1, Math.min(1, R[i] * k)) * 32767, true); }
+    const u8 = new Uint8Array(out.buffer); let bin = ""; for (let i = 0; i < u8.length; i += 32768) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
+    return { b64: btoa(bin), peak };
+  },
   showSet: o => { if (free.show) Object.assign(free.show, o); },
   driftKit: () => ({ on: !!free.driftKit, ui: driftUI(), ang: dwheel.ang, badge: !!save.badge888, wheels: carObj.userData.wheels.map(w => w.drift.visible) }),
   flowSet: (laps, v) => { if (free.tube) { free.tube.laps = laps; free.tube.v = v; } },
