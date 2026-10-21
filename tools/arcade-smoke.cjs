@@ -32,7 +32,7 @@ const PAGE = "file://" + path.resolve(__dirname, "../arcade/index.html");
 
   // меню «⋯» и перенос на полигон
   await p.click("#dock-btn"); await p.clock.runFor(200); await shot("dock");
-  await p.click("#m-go button:nth-child(3)"); await p.clock.runFor(300);
+  await p.click("#m-go button:nth-child(4)"); await p.clock.runFor(300);
   const zone = await p.textContent("#zone");
 
   const ok = errs.length === 0 && speed > 20 && zone === "Полигон";

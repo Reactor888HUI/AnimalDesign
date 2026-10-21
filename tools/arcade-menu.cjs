@@ -30,7 +30,7 @@ const path = require("path");
     r.modes = [];
     for (const sel of ['.lvl[data-i="train"]', ...[0, 1, 2, 3, 4].map(i => `.lvl[data-i="${i}"]`), '.lvl[data-i="free"]']) r.modes.push(await tapLvl(sel));
     await open(); const goN = await p.$$eval("#m-go button", bs => bs.length);
-    await p.tap("#m-go button:nth-child(8)"); await p.clock.runFor(300); r.go8 = await p.evaluate(() => __t.zone());
+    await p.tap("#m-go button:nth-child(9)"); await p.clock.runFor(300); r.go8 = await p.evaluate(() => __t.zone());
     out.modes.push(r); await ctx.close();
   }
   // площадка «H»: садимся сверху
