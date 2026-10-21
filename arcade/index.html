@@ -3745,7 +3745,7 @@ function landFree(g) {
   free.score += pts;
   save.freeBest = Math.max(save.freeBest, free.score); save.trickBest = Math.max(save.trickBest, pts); persist();
   showToast(`${parts.join(" · ")}  +${pts}`, q === "clean" ? "good" : "", 2600);
-  if (barrels > 0 || free.cork || pts >= 800) { SHOW.salute(car.x, car.y + 10, car.z, Math.min(5, 2 + barrels)); PARTY.start(); }   // праздник: салют над крутым трюком и минута вечеринки 888
+  if (barrels > 0 || free.cork || pts >= 800) { SHOW.salute(car.x, car.y + 10, car.z, Math.min(5, 2 + barrels)); if (barrels > 0 || free.cork || !free.pro) PARTY.start(); }   // в PRO долгий полёт — дёшево: вечеринка только за бочку и штопор   // праздник: салют над крутым трюком и минута вечеринки 888
   if (pts > (free.bestPts || 0) && !free.pend) free.pend = { pts, from: free.takeoffT - 1, until: time + .8 };   // лучший трюк — сохраним для повтора
 }
 

@@ -59,8 +59,8 @@ const path = require("path");
   out.card = await p.$eval("#showcard", e => e.hidden ? "" : e.innerText.replace(/\s+/g, " "));
   out.top = await p.textContent("#h-top");
   out.badge = (await ev(() => __t.driftKit())).badge;
-  // дрифт и срыв: после финиша 6 с паузы, затем снова на старт, разгон до перекрёстка, занос и «закрутило»
-  await run(7000);
+  // дрифт и срыв: после финиша 6 с паузы (финиш запускает вечеринку 888 — 7 с замедления), затем снова на старт, разгон до перекрёстка, занос и «закрутило»
+  await run(11000);
   await ev(() => __t.teleport(1010, 150, -Math.PI / 2)); await ev(() => __t.setCar({ v: 15 })); await run(1500);
   out.started = !!(await ev(() => __t.show()));
   await ev(() => __t.setCar({ v: 22, vl: 7 })); await run(120);
