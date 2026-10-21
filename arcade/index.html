@@ -373,7 +373,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
           <p><b>Езда.</b> Джойстик (палец по экрану) вверх — газ, вниз — тормоз, влево / вправо — руль. Тормоз в повороте — занос.</p>
           <p><b>Прыжок.</b> ПРЫГ — сопла подбрасывают машину. В воздухе джойстик крутит её; у земли держите газ — баллон смягчит посадку.</p>
           <p><b>Присоски.</b> С разгона въезжайте в стену Арены: влево — вверх, вправо — вниз, ПРЫГ — оттолкнуться.</p>
-          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или после 5 кругов катапульта: высоко над городом с тройной бочкой, чем быстрее — тем выше и дальше); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее. <b>Дрифт-трек 888</b> (две петли «Восьмёрки»): на треке — широкая резина (держит лучше) и дрифтовый руль на экране (показывает поворот, управление обычное); проезд старта под аркой — начало, 3 круга, указатели — по ходу. Очки за езду по асфальту — множитель до ×5, пока не съезжаете; занос — очки дрифта; закрутило или авария — все очки шоу сгорают. В конце — итог, звёзды, рекорд, фейерверк; прошли трек — наклейка «888» на крыше.</p>
+          <p><b>Арена.</b> Мега-трамплины «НА КРЫШУ» сажают на крышу; над главным входом — трамплин «ПРЫЖОК С КРЫШИ»; на крыше — вход в горку-трубу. В чаше: знак «888» — аэротруба (ПРЫГ — вверх, газ — вперёд, выход — опуститься в стороне от знака); знак с баклажаном — поток (газ — турбо, руль — по стенке; выход — ПРЫГ или после 5 кругов катапульта: высоко над городом с тройной бочкой, чем быстрее — тем выше и дальше); 8 колец вокруг аэротрубы — слалом, жёлтое — следующее. <b>Дрифт-трек 888</b> (две петли «Восьмёрки»): на треке — широкая резина (держит лучше) и управление двумя руками: левая — дрифтовый руль (влево-вправо), правая — газ, вниз — тормоз; проезд старта под аркой — начало, 3 круга, указатели — по ходу. Очки за езду по асфальту — множитель до ×5, пока не съезжаете; занос — очки дрифта; закрутило или авария — все очки шоу сгорают. В конце — итог, звёзды, рекорд, фейерверк; прошли трек — наклейка «888» на крыше.</p>
           <p><b>PRO ∞.</b> Баллоны не кончаются: держите ПРЫГ — летите вверх, газ — вперёд, отпустили — плавно вниз. Фиолетовые дорожки и кольца — разгоны.</p>
           <p><b>Клавиатура.</b> ↑ газ, ↓ тормоз, ← → руль и вращение, Пробел — прыжок, C — камера, R — заново, M — меню.</p>
           <p><b>Вид и наклон.</b> Кнопка «ВИД» — сзади, дальняя, из кабины. «Наклон телефона» — руль наклоном; положение при включении — ноль, от себя — газ, на себя — тормоз.</p>
@@ -1701,6 +1701,24 @@ if (ARENA) (() => {
   const pm = ARENA.at(sMain);
   const rk = kicker(pm.x - pm.nx * 15, pm.z - pm.nz * 15, Math.atan2(-pm.nz, pm.nx), 13, 7, 4, 0xd8322c, false, H);
   rk.id = "arenaRoof"; ARENA.roofKick = rk;
+  // баннер «Миша, с днём рождения!» — снаружи над главным входом и внутри чаши под кромкой крыши напротив; ночью светится
+  {
+    const c = document.createElement("canvas"); c.width = 1536; c.height = 260; const g = c.getContext("2d");
+    const gr = g.createLinearGradient(0, 0, 1536, 0); gr.addColorStop(0, "#5a1b8c"); gr.addColorStop(.5, "#c42a8a"); gr.addColorStop(1, "#5a1b8c");
+    g.fillStyle = gr; g.fillRect(0, 0, 1536, 260);
+    let hs = 5; const hr = () => (hs = (hs * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 140; i++) { g.fillStyle = ["#ffc93c", "#3ddc84", "#39b6ff", "#ffffff", "#ff7a2f"][i % 5]; g.save(); g.translate(hr() * 1536, hr() * 260); g.rotate(hr() * 3); g.fillRect(-5, -2.5, 10, 5); g.restore(); }   // конфетти
+    g.lineWidth = 12; g.strokeStyle = "#ffc93c"; g.strokeRect(8, 8, 1520, 244);
+    g.textAlign = "center"; g.textBaseline = "middle"; g.font = "900 118px Golos Text, Arial, sans-serif";
+    g.lineWidth = 14; g.strokeStyle = "#2c0a44"; g.strokeText("МИША, С ДНЁМ РОЖДЕНИЯ!", 768, 136, 1300); g.fillStyle = "#fff6d8"; g.fillText("МИША, С ДНЁМ РОЖДЕНИЯ!", 768, 136, 1300);   // ужать под ширину между шариками
+    [[80, 70], [1456, 70]].forEach(([x, y], i) => { g.fillStyle = i ? "#3ddc84" : "#ffc93c"; g.beginPath(); g.ellipse(x, y, 26, 32, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = "#fff"; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y + 32); g.quadraticCurveTo(x + 10, y + 70, x - 4, y + 110); g.stroke(); });   // шарики
+    const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4;
+    const bm = new T.MeshBasicMaterial({ map: t, toneMapped: false });
+    const hang = (x, y, z, nx, nz, w) => { const m = new T.Mesh(new T.PlaneGeometry(w, w * 260 / 1536), bm); m.position.set(x, y, z); m.rotation.y = Math.atan2(nx, nz); scene.add(m); };
+    hang(pm.x + pm.nx * .8, 16.5, pm.z + pm.nz * .8, pm.nx, pm.nz, 44);                                   // снаружи, над главным входом
+    const q = ARENA.at((sMain + ARENA.len / 2) % ARENA.len), k = .6;                                       // внутри: напротив, под кромкой крыши, лицом к полю
+    hang(ARENA.C[0] + (q.x - ARENA.C[0]) * k, H - 4.5, ARENA.C[1] + (q.z - ARENA.C[1]) * k, ARENA.C[0] - q.x, ARENA.C[1] - q.z, 36);
+  }
   const chevM = new T.MeshBasicMaterial({ color: 0xffb347, side: DS, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const chev = new T.Shape(); chev.moveTo(0, -3); chev.lineTo(2.2, 0); chev.lineTo(0, 3); chev.lineTo(-1.2, 3); chev.lineTo(1, 0); chev.lineTo(-1.2, -3); chev.closePath();
   for (let i = 1; i <= 4; i++) {
@@ -4080,9 +4098,11 @@ const joy = { id: null, x: 0, y: 0 }, JOY_R = 60;
 const ctrl = () => save.ctrl || "joy";                       // joy | wheel | buttons
 const joyMode = () => ctrl() !== "buttons";                 // любой сенсорный режим без кнопок
 const wheel = { id: null, steer: 0, ox: 0 }, pedal = { id: null, gas: 0, brake: 0, oy: 0 };
-// дрифтовый руль трека 888 — показывает поворот (управление обычное, как везде); быстрый: ±120° — без «вялого» оборота
+// трек 888: управление двумя руками — левая половина экрана: дрифтовый руль (ведите пальцем влево-вправо, руль до ±120°),
+// правая — педаль (газ, потянуть вниз — тормоз). Старый маленький руль и джойстик в зоне не появляются
 const DRIFT_VIS = 120, dwheel = { ang: 0 };
 const driftUI = () => mode === "free" && !!free.driftKit;
+const driftHands = () => driftUI() && joyMode();
 const dz = v => Math.abs(v) < .14 ? 0 : (v - Math.sign(v) * .14) / .86;
 const thr = () => Math.max(input.thrust ? 1 : 0, dz(Math.max(0, joy.y)), pedal.gas, tilt.on ? Math.max(0, tilt.y) : 0);          // газ / подушка 0…1
 const brk = () => Math.max(input.brake ? 1 : 0, dz(Math.max(0, -joy.y)), pedal.brake, tilt.on ? Math.max(0, -tilt.y) : 0);        // тормоз 0…1
@@ -4091,6 +4111,16 @@ let joyHintUntil = performance.now() + 7000;
 stage.addEventListener("pointerdown", e => {
   if (!joyMode() || e.target.closest("button, .ov, .dock, .lesson")) return;
   const r = stage.getBoundingClientRect();
+  if (driftHands()) {                                        // трек 888: левая рука — дрифтовый руль, правая — газ/тормоз
+    joyHintUntil = 0;
+    if (e.clientX - r.left < r.width / 2 && wheel.id === null) { wheel.id = e.pointerId; wheel.ox = e.clientX; }
+    else if (e.clientX - r.left >= r.width / 2 && pedal.id === null) {
+      pedal.id = e.pointerId; pedal.oy = e.clientY; pedal.gas = 1; pedal.brake = 0;
+      const el = $("pedal"); el.style.left = `${e.clientX - r.left}px`; el.style.top = `${e.clientY - r.top}px`; el.hidden = false; el.textContent = "ГАЗ";
+    } else return;
+    stage.setPointerCapture?.(e.pointerId);
+    return;
+  }
   if (ctrl() === "wheel") {                                  // левая половина — руль, правая — педаль
     joyHintUntil = 0;
     if (e.clientX - r.left < r.width / 2 && wheel.id === null) {
@@ -4111,7 +4141,7 @@ stage.addEventListener("pointerdown", e => {
 stage.addEventListener("pointermove", e => {
   if (e.pointerId === wheel.id) {
     wheel.steer = Math.max(-1, Math.min(1, (e.clientX - wheel.ox) / 70));
-    $("wheel").style.transform = `rotate(${wheel.steer * 100}deg)`;
+    if (!driftHands()) $("wheel").style.transform = `rotate(${wheel.steer * 100}deg)`;   // на треке 888 крутится дрифтовый руль
     return;
   }
   if (e.pointerId === pedal.id) {
@@ -4184,7 +4214,8 @@ function driftKitTick(dt) {
   const want = mode === "free" && !free.pro && !replay && Math.abs(car.x - 1010) < 140 && Math.abs(car.z - EIGHT.z) < 95;
   if (want !== !!free.driftKit) {
     free.driftKit = want; applyLook(); dwheel.ang = 0;
-    if (want) queueToast("Трек 888: широкая резина и дрифтовые диски — держат лучше", "good", 2400);
+    if (want) queueToast(joyMode() ? "Трек 888: левая рука — руль (влево-вправо), правая — газ, вниз — тормоз" : "Трек 888: широкая резина и дрифтовые диски — держат лучше", "good", 3000);
+    if (joy.id !== null) { joy.id = null; joy.x = joy.y = 0; $("joy").hidden = true; }   // джойстик, если держали, отпускаем — в зоне управление двумя руками
   }
   const el = $("dwheel"), show = driftUI();
   if (el.hidden === show) el.hidden = !show;

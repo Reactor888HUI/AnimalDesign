@@ -42,6 +42,13 @@ const path = require("path");
     out.wheelHeld = { ...(await ev(() => __t.driftKit())), turn: (await ev(() => __t.ctl())).turn };
     await p.keyboard.up("ArrowRight"); await run(800);
     out.wheelBack = (await ev(() => __t.driftKit())).ang;
+    // две руки: левая половина экрана — руль (палец вправо — руль вправо), правая — газ; старый маленький руль не появляется
+    await p.mouse.move(100, 520); await p.mouse.down(); await p.mouse.move(175, 520, { steps: 4 }); await run(400);
+    out.hands = { turn: (await ev(() => __t.ctl())).turn, ang: (await ev(() => __t.driftKit())).ang, oldWheel: await p.$eval("#wheel", e => !e.hidden) };
+    await p.mouse.up(); await run(200);
+    await p.mouse.move(300, 520); await p.mouse.down(); await run(200);
+    out.hands.thr = (await ev(() => __t.ctl())).thr; out.hands.pedal = await p.$eval("#pedal", e => !e.hidden && e.textContent);
+    await p.mouse.up(); await run(200);
     await ev(() => __t.fast(true));
   }
   await ev(() => __t.teleport(1010, 150, -Math.PI / 2));
@@ -61,7 +68,7 @@ const path = require("path");
   await ev(() => __t.setCar({ v: 10, vl: 16 })); await run(300);
   out.spin = await ev(() => __t.show());
   await p.screenshot({ path: path.join(process.env.SHOTS || ".", "eight-spin.png") });
-  const ok = !errs.length && out.kit.on && out.kit.ui && out.kit.wheels.every(Boolean) && out.wheelHeld.ang > 100 && out.wheelHeld.turn > .5 && Math.abs(out.wheelBack) < 5 && out.badge && out.drive.seenShow && out.drive.maxMult >= 3 && out.best > 500 && /ТРЕК 888/.test(out.card) &&
+  const ok = !errs.length && out.kit.on && out.kit.ui && out.kit.wheels.every(Boolean) && out.wheelHeld.ang > 100 && out.wheelHeld.turn > .5 && Math.abs(out.wheelBack) < 5 && out.hands.turn > .9 && out.hands.ang > 90 && !out.hands.oldWheel && out.hands.thr === 1 && out.hands.pedal === "ГАЗ" && out.badge && out.drive.seenShow && out.drive.maxMult >= 3 && out.best > 500 && /ТРЕК 888/.test(out.card) &&
     out.started && out.drift > 0 && out.spin && out.spin.spins === 1 && out.spin.clean === 0 && out.spin.drift === 0;
   console.log(JSON.stringify({ ok, ...out, errors: errs }, null, 2));
   await b.close(); process.exit(ok ? 0 : 1);
