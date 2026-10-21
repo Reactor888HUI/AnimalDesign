@@ -4284,7 +4284,7 @@ const sfx = (() => {
   const set = (p, v, t = .06) => p.setTargetAtTime(v, ac.currentTime, t);
   // песня вечеринки — файл игрока (PARTY_MUSIC, в офлайн-сборке встроен); не загрузился — своя синтезированная, такты подкладываются заранее
   let song = null, music = null, musicP = null;
-  function loadMusic() { if (musicP || !ac) return; musicP = fetch(PARTY_MUSIC).then(r => r.arrayBuffer()).then(b => new Promise((ok, no) => ac.decodeAudioData(b, ok, no))).then(b => { music = b; }).catch(() => {}); }
+  function loadMusic() { if (musicP || !ac || (location.protocol === "file:" && !PARTY_MUSIC.startsWith("data:"))) return; musicP = fetch(PARTY_MUSIC).then(r => r.arrayBuffer()).then(b => new Promise((ok, no) => ac.decodeAudioData(b, ok, no))).then(b => { music = b; }).catch(() => {}); }
   function songTick() { while (song && song.synth && song.n < SONG.BARS && song.t0 + song.n * SONG.BAR < ac.currentTime + .8) { SONG.bar(ac, song.b, song.t0 + song.n * SONG.BAR, song.n); song.n++; } }
   function tick(dt, st) {
     if (!ac) return;
