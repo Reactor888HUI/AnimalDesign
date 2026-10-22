@@ -2,7 +2,7 @@
 
 Скопируйте всё, что ниже черты, в новую сессию Claude Code (или отдайте разработчику). Порядок задач — по приоритету, сверху вниз.
 
-**Следующий этап — графика:** см. `docs/next-graphics-prompt.md`.
+**Актуальный передаточный документ — `docs/HANDOFF.md`** (правила, настройки, ссылки, промт для новой сессии). Этот файл — история P0–P3. Следующий этап графики — `docs/next-graphics-prompt.md`.
 
 ---
 
@@ -13,7 +13,7 @@
 - Репозиторий: `reactor888hui/animaldesign`, ветка `ccr-db926758-gzqv44`.
 - Игра — **один файл** `arcade/index.html` (~1650 строк: HTML + CSS + JS). Сборки нет.
 - 3D: Three.js **r149**, UMD с `cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js` (глобальный `THREE`, алиас `T`). Не обновлять: в r160+ UMD-сборки нет.
-- Опубликовано как claude.ai Artifact: https://claude.ai/artifact/7WtD5ZBgqy7EQbo21s7GNs. Обновлять публикацией того же файла.
+- Опубликовано как claude.ai Artifact: https://claude.ai/artifact/W1TUmH6qKjdqGvaFqH1nJ5. Обновлять публикацией того же файла.
 - Старая 2D-версия: `arcade/2d.html`, только для истории.
 - Сверка модели с заводским чертежом: `arcade/refs/vaz2108-overlay.png`.
 - Дымовой тест: `tools/arcade-smoke.cjs`; тесты P0–P2 — `tools/arcade-*.cjs`.

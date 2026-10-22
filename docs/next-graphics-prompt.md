@@ -20,7 +20,7 @@
 - **Офлайн-сборка:** `python3 -I tools/build-offline.py` создаёт `dist/vosmerka-baklazhan/index.html` с встроенным Three.js и `dist/vosmerka-baklazhan.zip`.
   - **Именно zip — главный способ доставки заказчику.** Передавать его через SendUserFile (`display: attach`).
   - Ссылка на raw-файл на GitHub: `https://github.com/Reactor888HUI/AnimalDesign/raw/ccr-db926758-gzqv44/dist/vosmerka-baklazhan.zip`.
-- **Артефакт claude.ai** https://claude.ai/artifact/7WtD5ZBgqy7EQbo21s7GNs — обновлять тем же файлом для просмотра с компьютера.
+- **Артефакт claude.ai** https://claude.ai/artifact/W1TUmH6qKjdqGvaFqH1nJ5 — обновлять тем же файлом для просмотра с компьютера.
   - **Не объявлять** у артефакта возможности (`capabilities`): `db`, `user` и прочие. С ними у заказчика на Android страница не открылась (`net::ERR_BLOCKED_BY_RESPONSE`).
 - **Карта:** `arcade/refs/rostov-center.osm` → `python3 -I tools/osm-to-game.py arcade/refs/rostov-center.osm arcade/index.html`. Подпись «© участники OpenStreetMap» не убирать.
 
