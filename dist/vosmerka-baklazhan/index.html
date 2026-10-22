@@ -2328,17 +2328,29 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
   const N = [0, 0], S = [0, 0];                       // N — конец у города (больше z), S — левый берег
   long.forEach(p => { let a = p[0], b = p[p.length - 1]; if (a[1] < b[1]) [a, b] = [b, a]; N[0] += a[0] / long.length; N[1] += a[1] / long.length; S[0] += b[0] / long.length; S[1] += b[1] / long.length; });
   const L = Math.hypot(S[0] - N[0], S[1] - N[1]), dx = (S[0] - N[0]) / L, dz = (S[1] - N[1]) / L, nx = -dz, nz = dx;
-  const Y0 = 10, HW = 5.2, A1 = L * .39, A2 = L * .61, ARCH = 24, TOW = 52, LIFT = 40, RAMP = 95, SPANL = A2 - A1;
+  const Y0 = 10, HW = 5.5, A1 = L * .39, A2 = L * .61, ARCH = 24, TOW = 52, LIFT = 40, RAMP = 95, SPANL = A2 - A1;
   const at = (s, l, y = 0) => new T.Vector3(N[0] + dx * s + nx * l, y, N[1] + dz * s + nz * l);
   const loc = (x, z) => { const ox = x - N[0], oz = z - N[1]; return [ox * dx + oz * dz, ox * nx + oz * nz]; };   // → (s, l)
   const yaw = Math.atan2(-dz, dx), C = at((A1 + A2) / 2, 0);
   const st = { y: 0, v: 0, t: 0, up: false, loaded: false, train: { s: -9999, on: false }, rings: [], ringT: 0, lights: null };
   const archH = (s, sa, sb) => { const u = (s - sa) / (sb - sa); return Y0 + ARCH * 4 * u * (1 - u); };
   const archD = (s, sa, sb) => { const u = (s - sa) / (sb - sa); return ARCH * 4 * (1 - 2 * u) / (sb - sa); };
+  // верх пояса арки (по нему едут): у опор — вровень с настилом, дальше — на толщину пояса (0,95 м) над осью
+  const chordTop = (s, sa, sb) => archH(s, sa, sb) + .95 * Math.max(0, Math.min(1, (s - sa) / 6, (sb - s) / 6));
+  const archOf = s => s <= A1 ? [0, A1] : s >= A2 ? [A2, L] : null;
   const ramp = (s, a, b, h0, h1) => h0 + (h1 - h0) * smooth(Math.max(0, Math.min(1, (s - a) / (b - a))));
   // ---------- поверхности (s — вдоль моста от города, l — поперёк) ----------
   // каждая: [s0, s1, l0, l1, h(s), slope(s), допуск снизу, разгон]
-  const KS = 12, KH = 2.2;                               // трамплины: длина и высота
+  const KS = 12, KH = 2.2, KB = 7;                       // трамплины: длина, высота, задний скат (горб — проезжается в обе стороны)
+  // горб: с lo по hi подъём на KH (вылет на hi), за hi — пологий спуск KB м к back; поверх пролёта — вместе с ним (lift)
+  const hump = (lo, hi, l0, l1, lift) => {
+    const sg = Math.sign(hi - lo), back = hi + sg * KB, y0 = () => Y0 + (lift ? st.y : 0);
+    const h = s => { const u = (s - lo) * sg; return y0() + (u <= KS ? KH * u / KS : KH * Math.max(0, 1 - (u - KS) / KB)); };
+    const sl = s => ((s - lo) * sg <= KS ? sg * Math.atan(KH / KS) : -sg * Math.atan(KH / KB));
+    return [Math.min(lo, back), Math.max(lo, back), l0, l1, h, sl, 1.2, 0, !!lift];
+  };
+  const HUMPS = [[A1 - 8 - KS, A1 - 8, -2.2, 2.2, false], [A2 + 8 + KS, A2 + 8, -2.2, 2.2, false],   // «ступеньки» на арках к пролёту
+                 [A1 + 8 + KS, A1 + 8, 2.4, 4.6, true], [A2 - 8 - KS, A2 - 8, -4.6, -2.4, true]];     // на самом пролёте
   const RL = HW - .9, RW = .6;                         // перила южной арки: ось лана и полуширина балки
   const GAP0 = A2 + (L - A2) * .44, GAP1 = A2 + (L - A2) * .58;
   const SURF = [
@@ -2346,24 +2358,30 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     [L, L + RAMP, -HW, HW, s => ramp(s, L, L + RAMP, Y0, 0), s => -Y0 / RAMP * 1.2, 2.5],             // въезд с левого берега
     [0, A1 - .4, -HW, HW, () => Y0, () => 0, 2.5],
     [A2 + .4, L, -HW, HW, () => Y0, () => 0, 2.5],
-    [A1 + .4, A2 - .4, -HW, HW, () => Y0 + st.y, () => 0, 3, 0, true],                                 // подъёмный пролёт
-    // северная арка: верхний пояс с обеих сторон, на подъёме — разгон
-    ...[-1, 1].map(k => [0, A1 - .4, k * HW - .95, k * HW + .95, s => archH(s, 0, A1), s => Math.atan(archD(s, 0, A1)), 1.2, 0, false, k * HW]),
-    ...[-1, 1].map(k => [3, 11, k * HW - .95, k * HW + .95, s => archH(s, 0, A1) + .02, s => Math.atan(archD(s, 0, A1)), 1.2, 34, false, k * HW]),
+    [A1 - .45, A2 + .45, -HW, HW, () => Y0 + st.y, () => 0, 3, 0, true],                               // подъёмный пролёт (внизу закрывает стыки — не провалиться в щель)
+    // верхние пояса арок с обеих сторон (на северной на подъёме — разгон); южные — тоже твёрдые сверху
+    ...[-1, 1].map(k => [0, A1 - .4, k * HW - .75, k * HW + .75, s => chordTop(s, 0, A1), s => Math.atan(archD(s, 0, A1)), 1.2, 0, false, k * HW]),
+    ...[-1, 1].map(k => [3, 11, k * HW - .75, k * HW + .75, s => chordTop(s, 0, A1) + .02, s => Math.atan(archD(s, 0, A1)), 1.2, 34, false, k * HW]),
+    ...[-1, 1].map(k => [A2 + 6, L - 6, k * HW - .75, k * HW + .75, s => chordTop(s, A2, L), s => Math.atan(archD(s, A2, L)), 1.2, 0, false, k * HW]),
+    // верхняя ферма между башнями и крыши домиков механизмов — на них можно сесть сверху
+    [A1 + 3, A2 - 3, -HW - 2.2, HW + 2.2, () => Y0 + TOW - .55, () => 0, 1.2],
+    ...[A1, A2].map(a => [a - 3.6, a + 3.6, -HW - 1.8, HW + 1.8, () => Y0 + TOW + 5.65, () => 0, 1.2]),
     // южная арка: въезд на перила (жёлтые пандусы) и сами перила с разрывом
+    // в разрыве перил — пандусы с настила на оба конца балки (машина у края не упирается в торец); у трамплина зазор 2,5 м — прыжок с перил не съедает
+    ...[-1, 1].flatMap(k => [[GAP1 - 12.5, GAP1 - 2.5, k * RL - RW, k * RL + RW, s => ramp(s, GAP1 - 12.5, GAP1 - 2.5, Y0, Y0 + 2.2), () => Math.atan(2.2 / 10), 1.2, 0, false, k * RL],
+                             [GAP0, GAP0 + 8, k * RL - RW, k * RL + RW, s => ramp(s, GAP0 + 8, GAP0, Y0, Y0 + 1.4), () => -Math.atan(1.4 / 8), 1.2, 0, false, k * RL]]),
+    ...[-1, 1].map(k => [A2 + 1, A2 + 9, k * RL - RW - .25, k * RL + RW + .25, s => ramp(s, A2 + 1, A2 + 9, Y0, Y0 + 1.4), () => Math.atan(1.4 / 8), 1.2, 0, false, k * RL]),   // и с севера: с пролёта прямо на перила
     ...[-1, 1].map(k => [L - 16, L - 8, k * RL - RW - .25, k * RL + RW + .25, s => ramp(s, L - 8, L - 16, Y0, Y0 + 1.4), () => -Math.atan(1.4 / 8), 1.2, 30]),
-    ...[-1, 1].flatMap(k => [[GAP1, L - 16, k * RL - RW, k * RL + RW, s => Y0 + 1.4 + 1.2 * Math.max(0, 1 - (s - GAP1) / 6), s => s < GAP1 + 6 ? -Math.atan(1.2 / 6) : 0, 1.2, 0, false, k * RL], [A2 + 4, GAP0, k * RL - RW, k * RL + RW, () => Y0 + 1.4, () => 0, 1.2, 0, false, k * RL]]),   // перед разрывом — трамплинчик
+    ...[-1, 1].flatMap(k => [[GAP1, L - 16, k * RL - RW, k * RL + RW, s => Y0 + 1.4 + 1.2 * Math.max(0, 1 - (s - GAP1) / 6), s => s < GAP1 + 6 ? -Math.atan(1.2 / 6) : 0, 1.2, 0, false, k * RL], [A2 + 9, GAP0, k * RL - RW, k * RL + RW, () => Y0 + 1.4, () => 0, 1.2, 0, false, k * RL]]),   // перед разрывом — трамплинчик
     // «ступеньки»: трамплины по середине арок к подъёмному пролёту
-    [A1 - 2 - KS, A1 - 2, -2.2, 2.2, s => Y0 + KH * (s - (A1 - 2 - KS)) / KS, () => Math.atan(KH / KS), 1.2],
-    [A2 + 2, A2 + 2 + KS, -2.2, 2.2, s => Y0 + KH * ((A2 + 2 + KS) - s) / KS, () => -Math.atan(KH / KS), 1.2],
+    ...HUMPS.slice(0, 2).map(a => hump(...a)),
     // трамплины на самом пролёте (по краям): с поднятого пролёта — вылет над арками
-    [A1 + 2, A1 + 2 + KS, 2.4, 4.6, s => Y0 + st.y + KH * ((A1 + 2 + KS) - s) / KS, () => -Math.atan(KH / KS), 1.2, 0, true],
-    [A2 - 2 - KS, A2 - 2, -4.6, -2.4, s => Y0 + st.y + KH * (s - (A2 - 2 - KS)) / KS, () => Math.atan(KH / KS), 1.2, 0, true],
+    ...HUMPS.slice(2).map(a => hump(...a)),
   ];
   const TRAIN = { len: 62, l: -2.2, h: 4.4 };
   function ground(x, z, y) {                            // для groundAt: поверхность моста под точкой
     if (!st.loaded) return null;
-    const [s, l] = loc(x, z); if (s < -RAMP - 2 || s > L + RAMP + 2 || Math.abs(l) > HW + 2) return null;
+    const [s, l] = loc(x, z); if (s < -RAMP - 2 || s > L + RAMP + 2 || Math.abs(l) > HW + 2.5) return null;
     let best = null;
     for (const f of SURF) {
       if (s < f[0] || s > f[1] || l < f[2] || l > f[3]) continue;
@@ -2374,11 +2392,32 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     if (tr.on && s > tr.s - TRAIN.len && s < tr.s && Math.abs(l - TRAIN.l) < 1.6) { const h = Y0 + TRAIN.h; if (y >= h - 1.2 && (!best || h > best.h)) best = { h, slope: 0, rx: dx, rz: dz, deck: true, vx: dx * tr.v, vz: dz * tr.v }; }
     return best;
   }
-  function hit(x, z, y) {                               // препятствия: ноги башен, балки перил сбоку, поезд
+  const BR = []; for (const [sa, sb] of [[0, A1], [A2, L]]) for (let i = 3; i < 14; i += 2) { const s0 = sa + (sb - sa) * i / 16, h = archH(s0, sa, sb) + .3; if (h - Y0 > 6) BR.push([s0, h]); }   // поперечные связи под арками
+  function hit(x, z, y) {                               // препятствия: всё стальное твёрдое — фермы, башни, связи, перила, поезд, опоры
     if (!st.loaded) return null;
     const [s, l] = loc(x, z); if (s < -5 || s > L + 5 || Math.abs(l) > HW + 4) return null;
-    for (const a of [A1, A2]) for (const ss of [a - 3, a + 3]) for (const ll of [-HW - 1.8, HW + 1.8]) if (Math.abs(s - ss) < 1.1 && Math.abs(l - ll) < 1.1 && y < Y0 + TOW) return { name: "башню моста", h: Y0 + TOW };
-    for (const k of [-1, 1]) if (Math.abs(l - k * RL) < RW + .6 && y > Y0 - .5 && y < Y0 + 1.2 && ((s > GAP1 && s < L - 16) || (s > A2 + 4 && s < GAP0))) return { name: "перила моста", h: Y0 + 1.4 };
+    const al = Math.abs(l), TW = HW + 1.8, bridge = n => ({ name: n, h: Y0 + TOW });
+    for (const a of [A1, A2]) {
+      if (Math.abs(s - a) < 4.2 && Math.abs(al - TW) < 1.1 && y < Y0 + TOW) return bridge("башню моста");               // ноги и боковые решётки башни
+      if (Math.abs(Math.abs(s - a) - 3) < .7 && al < TW && y > Y0 + LIFT + 7 && y < Y0 + TOW) return bridge("башню моста");   // поперечные решётки выше пролёта
+      if (Math.abs(s - a) < 3.3 && al < TW && y > Y0 + TOW + .6 && y < Y0 + TOW + 5.5) return bridge("домик механизма");
+    }
+    if (s > A1 + 3 && s < A2 - 3 && Math.abs(al - TW) < .6 && y > Y0 + TOW - 7.6 && y < Y0 + TOW - 1) return bridge("верхнюю ферму");
+    const ar = archOf(s);
+    if (ar) {
+      const ct = chordTop(s, ar[0], ar[1]);
+      if (Math.abs(al - HW) < .45 && y > Y0 - .5 && y < ct - .3 && ct - Y0 > .6) return bridge("ферму моста");            // раскосы и подвески
+      if (Math.abs(al - HW) < .6 && y > ct - 2.2 && y < ct - .3 && ct - Y0 > 2.5) return bridge("пояс арки");            // пояс арки снизу
+      for (const [s0, h] of BR) if (Math.abs(s - s0) < .6 && al < HW && y > h - 1.7 && y < h + .4) return bridge("связь фермы");
+    } else if (s > A1 && s < A2) {
+      const yl = Y0 + st.y;
+      if (Math.abs(al - HW - .6) < .35 && y > yl - .5 && y < yl + 6.3) return bridge("ферму пролёта");   // фермы пролёта чуть шире настила: с пояса арки съезжаешь между ними
+      if (al < HW && y > yl + 4.6 && y < yl + 6.4) for (let i = 0; i <= 5; i++) if (Math.abs(s - (A1 + .4 + (SPANL - .8) * i / 5)) < .6) return bridge("связь пролёта");
+    }
+    const gapOpen = st.y > 1 && s > A1 - .45 && s < A2 + .45;
+    if (s > 0 && s < L && al < HW + .1 && y > Y0 - 2.2 && y < Y0 - .4 && !gapOpen) return bridge("настил моста");          // в торец настила снизу и сбоку
+    for (const [p, big] of [[0, 0], [A1, 1], [A2, 1], [L, 0]]) if (Math.abs(s - p) < (big ? 6.5 : 3.5) && al < HW + (big ? 3 : 1) && y < Y0 - 2.4) return bridge("опору моста");
+    for (const k of [-1, 1]) if (Math.abs(l - k * RL) < RW + .6 && y > Y0 - .5 && y < Y0 + 1.2 && ((s > GAP1 && s < L - 16) || (s > A2 + 9 && s < GAP0))) return { name: "перила моста", h: Y0 + 1.4 };
     const tr = st.train;
     if (tr.on && s > tr.s - TRAIN.len - 1 && s < tr.s + 1 && Math.abs(l - TRAIN.l) < 2.4 && y > Y0 - .5 && y < Y0 + TRAIN.h - .3) return { name: "поезд", h: Y0 + TRAIN.h };
     return null;
@@ -2409,7 +2448,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
       [-2.2, 2.2].forEach(tl => [-.72, .72].forEach(o => push(beam(at(sa, tl + o, Y0 + .08), at(sb, tl + o, Y0 + .08), .14, .16, RAILC))));
       const n = 16;
       [-HW, HW].forEach(l => {
-        for (let i = 0; i < n; i++) { const s0 = sa + (sb - sa) * i / n, s1 = sa + (sb - sa) * (i + 1) / n; push(beam(at(s0, l, archH(s0, sa, sb) + .45), at(s1, l, archH(s1, sa, sb) + .45), 1.4, 1, STEEL)); }
+        for (let i = 0; i < n * 2; i++) { const s0 = sa + (sb - sa) * i / n / 2, s1 = sa + (sb - sa) * (i + 1) / n / 2; push(beam(at(s0, l, chordTop(s0, sa, sb) - .5), at(s1, l, chordTop(s1, sa, sb) - .5), 1.4, 1, STEEL)); }
         for (let i = 1; i < n; i++) { const s0 = sa + (sb - sa) * i / n; push(beam(at(s0, l, Y0), at(s0, l, archH(s0, sa, sb)), .35, .35, STEEL2));
           const s1 = sa + (sb - sa) * (i + (i < n / 2 ? 1 : -1)) / n; if (i % 2) push(beam(at(s0, l, archH(s0, sa, sb)), at(s1, l, Y0), .3, .3, STEEL2)); }
       });
@@ -2417,13 +2456,16 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
       if (si === 1) {                                     // южная: перила-балки (жёлтые) на стойках и пандусы на них
         [-1, 1].forEach(k => {
           push(beam(at(GAP1 + 6, k * RL, Y0 + 1.4), at(GAP1, k * RL, Y0 + 2.6), RW * 2 + .1, .3, 0xd8322c));   // трамплинчик перед разрывом
-          [[A2 + 4, GAP0], [GAP1, L - 16]].forEach(([a, b]) => { push(beam(at(a, k * RL, Y0 + 1.2), at(b, k * RL, Y0 + 1.2), RW * 2, .4, YEL)); for (let s = a + 2; s < b; s += 6) push(beam(at(s, k * RL, Y0), at(s, k * RL, Y0 + 1), .18, .18, DARK)); });
+          [[A2 + 9, GAP0], [GAP1, L - 16]].forEach(([a, b]) => { push(beam(at(a, k * RL, Y0 + 1.2), at(b, k * RL, Y0 + 1.2), RW * 2, .4, YEL)); for (let s = a + 2; s < b; s += 6) push(beam(at(s, k * RL, Y0), at(s, k * RL, Y0 + 1), .18, .18, DARK)); });
           push(beam(at(L - 8, k * RL, Y0 + .02), at(L - 16, k * RL, Y0 + 1.2), RW * 2 + .5, .3, YEL));
+          push(beam(at(A2 + 1, k * RL, Y0 + .02), at(A2 + 9, k * RL, Y0 + 1.2), RW * 2 + .5, .3, YEL));
+          push(beam(at(GAP1 - 12.5, k * RL, Y0 + .02), at(GAP1 - 2.5, k * RL, Y0 + 2), RW * 2, .3, 0xd9a52e));
+          push(beam(at(GAP0 + 8, k * RL, Y0 + .02), at(GAP0, k * RL, Y0 + 1.2), RW * 2, .3, 0xd9a52e));
         });
       }
     });
     // «ступеньки» — трамплины по середине арок к пролёту
-    [[A1 - 2 - KS, A1 - 2, 1], [A2 + 2 + KS, A2 + 2, -1]].forEach(([a, b]) => push(beam(at(a, 0, Y0 + .02), at(b, 0, Y0 + KH), 4.4, .3, 0xd8322c)));
+    HUMPS.slice(0, 2).forEach(([a, b]) => { const c = b + Math.sign(b - a) * KB; push(beam(at(a, 0, Y0 + .02), at(b, 0, Y0 + KH), 4.4, .3, 0xd8322c)); push(beam(at(b, 0, Y0 + KH), at(c, 0, Y0 + .02), 4.4, .3, 0xb02a26)); });
     // башни: четыре ноги, крест-накрест связи, площадки, домики механизмов, верхняя ферма
     [A1, A2].forEach(a => {
       const legs = [[-3, -HW - 1.8], [3, -HW - 1.8], [-3, HW + 1.8], [3, HW + 1.8]];
@@ -2447,13 +2489,13 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     const sa = A1 + .4, sb = A2 - .4, H = 6;
     push(beam(at(sa, 0, Y0 - .25), at(sb, 0, Y0 - .25), 2 * HW, .5, 0x5f5a55));
     [-2.2, 2.2].forEach(tl => [-.72, .72].forEach(o => push(beam(at(sa, tl + o, Y0 + .08), at(sb, tl + o, Y0 + .08), .14, .16, RAILC))));
-    [-HW, HW].forEach(l => {
+    [-HW - .6, HW + .6].forEach(l => {
       [Y0 - .7, Y0 + H].forEach(y => push(beam(at(sa, l, y), at(sb, l, y), .8, 1, STEEL)));
       const n = 10; for (let i = 0; i < n; i++) { const s0 = sa + (sb - sa) * i / n, s1 = sa + (sb - sa) * (i + 1) / n; push(beam(at(s0, l, Y0 - .2), at(s1, l, Y0 + H - .4), .3, .3, STEEL2)); push(beam(at(s1, l, Y0 - .2), at(s1, l, Y0 + H - .4), .3, .3, STEEL2)); }
     });
-    for (let i = 0; i <= 5; i++) { const s0 = sa + (sb - sa) * i / 5; push(beam(at(s0, -HW, Y0 + H), at(s0, HW, Y0 + H), .35, .35, STEEL2)); }
-    push(beam(at(A1 + 2 + KS, 3.5, Y0 + .02), at(A1 + 2, 3.5, Y0 + KH), 2.2, .3, 0xff4fd8));         // трамплины пролёта
-    push(beam(at(A2 - 2 - KS, -3.5, Y0 + .02), at(A2 - 2, -3.5, Y0 + KH), 2.2, .3, 0xff4fd8));
+    for (let i = 0; i <= 5; i++) { const s0 = sa + (sb - sa) * i / 5; push(beam(at(s0, -HW - .6, Y0 + H), at(s0, HW + .6, Y0 + H), .35, .35, STEEL2)); }
+    HUMPS.slice(2).forEach(([a, b, l0, l1]) => { const c = b + Math.sign(b - a) * KB, l = (l0 + l1) / 2;          // трамплины пролёта
+      push(beam(at(a, l, Y0 + .02), at(b, l, Y0 + KH), 2.2, .3, 0xff4fd8)); push(beam(at(b, l, Y0 + KH), at(c, l, Y0 + .02), 2.2, .3, 0xc23aa6)); });
   }
   const steelM = new T.MeshLambertMaterial({ vertexColors: true });
   let liftMesh = null, lightM = null;
@@ -2482,7 +2524,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
       tp.push(beam(new T.Vector3(s0 - 14.5, T0 + 4.3, 0), new T.Vector3(s0, T0 + 4.3, 0), 2.9, .25, 0x8d9096));
       if (!i) tp.push(beam(new T.Vector3(-.2, T0 + 3.1, -.8), new T.Vector3(.1, T0 + 3.1, -.8), .7, .5, 0xfff1c8), beam(new T.Vector3(-.2, T0 + 3.1, .8), new T.Vector3(.1, T0 + 3.1, .8), .7, .5, 0xfff1c8)); }
     st.trainMesh = new T.Mesh(mergeGeos(tp.filter(Boolean)), steelM); st.trainMesh.visible = false; sc.group.add(st.trainMesh);
-    st.loaded = true;
+    st.meshes = [m, liftMesh]; st.loaded = true;
   }
   function drop() { st.loaded = false; st.rings = []; liftMesh = null; st.trainMesh = null; }
   // ---------- работа моста: пролёт, поезд, кольца, разгоны ----------
@@ -2600,6 +2642,82 @@ const SHIPS = (() => {
   }
   list.forEach(place);
   return { list, tick, ground, hit, LEN, pts };
+})();
+/* ---------- фото-режим ж/д моста (пробный): тени от солнца, окрашенный металл с потёками, отражения в воде ---------- */
+// Сейчас включается только хуком __t.photo() — для пробного кадра «как может быть». Дальше — как опция качества «фото».
+const PHOTO = (() => {
+  const st = { on: false };
+  // металл: краска с неровностью, потёки ржавчины вниз от узлов, грязь у воды; бетон опор — пятна. Всё по мировым координатам, без текстур.
+  const NOISE = `
+    float ph(vec3 p) { p = fract(p * .3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+    float pn(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(mix(ph(i), ph(i + vec3(1, 0, 0)), f.x), mix(ph(i + vec3(0, 1, 0)), ph(i + vec3(1, 1, 0)), f.x), f.y),
+                 mix(mix(ph(i + vec3(0, 0, 1)), ph(i + vec3(1, 0, 1)), f.x), mix(ph(i + vec3(0, 1, 1)), ph(i + vec3(1, 1, 1)), f.x), f.y), f.z); }`;
+  function steelMat(env) {
+    const m = new T.MeshStandardMaterial({ vertexColors: true, roughness: .62, metalness: .3, envMap: env, envMapIntensity: .15 });
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = "varying vec3 vWP;\n" + sh.vertexShader.replace("#include <worldpos_vertex>", "#include <worldpos_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+      sh.fragmentShader = "varying vec3 vWP;\n" + NOISE + "\n" + sh.fragmentShader
+        .replace("#include <color_fragment>", `#include <color_fragment>
+          float grey = 1.0 - smoothstep(.03, .09, max(vColor.r, max(vColor.g, vColor.b)) - min(vColor.r, min(vColor.g, vColor.b)));   // серые — сталь и бетон, цветное (огни, знаки) не трогаем
+          float n1 = pn(vWP * 1.3), n2 = pn(vWP * 7.0), streak = smoothstep(.58, .92, pn(vec3(vWP.x * 2.1, vWP.y * .09, vWP.z * 2.1)));
+          vec3 rust = vec3(.42, .24, .13), dirt = vec3(.30, .30, .28);
+          diffuseColor.rgb *= mix(1.0, .55, grey) * (.84 + .2 * n1 + .08 * n2);                     // краска темнее и неровная — «старая» сталь
+          diffuseColor.rgb = mix(diffuseColor.rgb, rust * (.8 + .4 * n2), streak * .55 * grey);
+          diffuseColor.rgb = mix(diffuseColor.rgb, dirt, (1.0 - smoothstep(-1.0, 9.0, vWP.y)) * .45);   // грязь и мокрый след у воды`)
+        .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>\n roughnessFactor = clamp(roughnessFactor * (.75 + .55 * pn(vWP * 2.3)), .25, 1.0);");
+    };
+    return m;
+  }
+  // вода с отражением: зеркальная камера под водой, кадр в текстуру, на воде — по экрану, с рябью и френелем
+  const RT = new T.WebGLRenderTarget(1024, 512), vcam = new T.PerspectiveCamera(), texM = new T.Matrix4();
+  const waterM = new T.ShaderMaterial({
+    uniforms: { tRefl: { value: RT.texture }, texM: { value: texM }, uTime: { value: 0 }, uDeep: { value: new T.Color(0x1d3b3a) }, uShallow: { value: new T.Color(0x3f5f55) }, uCam: { value: new T.Vector3() }, sunDir: { value: SUN_DIR } },
+    vertexShader: "uniform mat4 texM; varying vec4 vR; varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vR = texM * w; gl_Position = projectionMatrix * viewMatrix * w; }",
+    fragmentShader: `uniform sampler2D tRefl; uniform float uTime; uniform vec3 uDeep, uShallow, uCam, sunDir; varying vec4 vR; varying vec3 vW;
+      ${NOISE}
+      void main() {
+        vec2 q = mod(vW.xz, 512.0);                       // хэш шума теряет точность на больших координатах
+        float dist = length(uCam - vW), fine = 1.0 - smoothstep(30.0, 160.0, dist);
+        vec2 rip = vec2(pn(vec3(q * .22, uTime * .4)) - .5, pn(vec3(q.yx * .2, uTime * .37 + 7.0)) - .5) + fine * .5 * vec2(pn(vec3(q * 1.1, uTime)) - .5, pn(vec3(q.yx * 1.2, uTime + 3.0)) - .5);
+        vec3 V = normalize(uCam - vW), N = normalize(vec3(rip.x * .35, 1.0, rip.y * .35));
+        float fres = .04 + .96 * pow(1.0 - max(dot(V, N), 0.0), 5.0);
+        vec4 r = texture2DProj(tRefl, vR + vec4(rip * .014 * vR.w, 0.0, 0.0));
+        vec3 base = mix(uShallow, uDeep, clamp(length(uCam.xz - vW.xz) / 600.0, 0.0, 1.0));
+        vec3 col = mix(base, r.rgb * .8, clamp(fres * .9 + .2, 0.0, .7));
+        float sp = pow(max(dot(reflect(-sunDir, N), V), 0.0), 220.0);
+        gl_FragColor = vec4(col + vec3(1.0, .86, .6) * sp * 2.2, 1.0);
+        #include <tonemapping_fragment>
+        #include <encodings_fragment>
+      }`,
+  });
+  const swaps = [], clip = [new T.Plane(new T.Vector3(0, 1, 0), -.12)], bias = new T.Matrix4().set(.5, 0, 0, .5, 0, .5, 0, .5, 0, 0, .5, .5, 0, 0, 0, 1);
+  function reflect() {                                   // как Reflector из примеров three.js: зеркальная камера, без косой плоскости отсечения
+    const cp = camera.position, tgt = new T.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).add(cp);
+    vcam.copy(camera); vcam.position.set(cp.x, -cp.y + .08, cp.z); vcam.up.set(0, -1, 0); vcam.lookAt(tgt.x, -tgt.y + .08, tgt.z); vcam.updateMatrixWorld(); vcam.projectionMatrix.copy(camera.projectionMatrix);
+    texM.copy(bias).multiply(vcam.projectionMatrix).multiply(vcam.matrixWorldInverse);
+    swaps.forEach(o => o.visible = false); const fog = scene.fog; scene.fog = null;
+    renderer.clippingPlanes = clip; renderer.setRenderTarget(RT); renderer.clear(); renderer.render(scene, vcam); renderer.setRenderTarget(null); renderer.clippingPlanes = [];
+    swaps.forEach(o => o.visible = true); scene.fog = fog;
+    waterM.uniforms.uCam.value.copy(cp); waterM.uniforms.uTime.value = performance.now() / 1000;
+  }
+  function enable(on = true) {
+    if (!RAILB || !RAILB.st.loaded) return false;
+    st.on = on;
+    renderer.shadowMap.enabled = on; renderer.shadowMap.type = T.PCFSoftShadowMap;
+    sun.castShadow = on; sun.shadow.mapSize.set(4096, 4096);
+    const C = RAILB.C, sc = sun.shadow.camera; sc.left = sc.bottom = -230; sc.right = sc.top = 230; sc.near = 10; sc.far = 1500; sun.shadow.bias = -.0004; sun.shadow.normalBias = .03;
+    sun.target.position.set(C.x, 0, C.z); sun.position.copy(SUN_DIR).multiplyScalar(700).add(sun.target.position); scene.add(sun.target); sc.updateProjectionMatrix();
+    const env = carEnv.rt ? carEnv.rt.texture : null, sm = steelMat(env);
+    RAILB.st.meshes.forEach(m => { m.userData.mat0 = m.userData.mat0 || m.material; m.material = on ? sm : m.userData.mat0; m.castShadow = m.receiveShadow = on; });
+    carObj.traverse(o => { if (o.isMesh) o.castShadow = on; });
+    SCENES.forEach(sc => sc.group && sc.group.traverse(o => { if (o.isMesh && !o.material.transparent) o.receiveShadow = on; }));
+    swaps.length = 0;
+    scene.traverse(o => { if (o.isMesh && (o.material === DON_WATER || o.material === waterM)) { o.userData.w0 = o.userData.w0 || o.material; o.material = on ? waterM : o.userData.w0; swaps.push(o); } });
+    scene.traverse(o => { if (o.material && !Array.isArray(o.material)) o.material.needsUpdate = true; });
+    return true;
+  }
+  return { enable, reflect, RT, waterM, get on() { return st.on; } };
 })();
 /* ---------- под водой: дно, поверхность снизу, бирюзовый туман, приглушённый звук ---------- */
 const UNDER = (() => {
@@ -5060,7 +5178,7 @@ function render(dt) {
   }
   camera.updateProjectionMatrix();
   if (window.__camOv) { const o = window.__camOv; camera.position.set(o[0], o[1], o[2]); camera.up.set(0, 1, 0); camera.lookAt(o[3], o[4], o[5]); camera.fov = o[6] || 40; camera.updateProjectionMatrix(); }   // только автотесты: снимок с заданной точки
-  cullChunks(); tickSky(); UNDER.tick();
+  cullChunks(); tickSky(); UNDER.tick(); if (PHOTO.on) PHOTO.reflect();
   renderer.render(scene, camera);
   drawStat.calls = renderer.info.render.calls; drawStat.tris = renderer.info.render.triangles;
 }
@@ -5263,7 +5381,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   party: on => on === false ? PARTY.stop() : on ? PARTY.start(false, true) : PARTY.state(),
   ARENA, INNER, EIGHT, salute: (x, y, z, n) => SHOW.salute(x, y, z, n), puff: (x, y, z, vx, vy, vz, life, s) => puff(new T.Vector3(x, y, z), new T.Vector3(vx, vy, vz), life, s),
   setTime: k => setTime(k), paint: i => setPaint(i),
-  RAILB, SHIPS, UNDER,
+  RAILB, SHIPS, UNDER, photo: on => PHOTO.enable(on !== false), PHOTO,
   scenes: () => SCENES.map(sc => ({ name: sc.name, state: sc.state, d: Math.round(sc.d), ms: sc.ms, work: Math.round(sc.work || 0), chunks: sc.chunks.length, solids: sc.solids.length })),
   cine(on, cap) {                // съёмка: игра стоит, кадр рисуется по cineStep; интерфейс спрятан, поле — на весь экран
     CINE.on = !!on; document.body.classList.toggle("cine", CINE.on);
