@@ -5,6 +5,11 @@
 данные объединяются по id OpenStreetMap, обрезка — по общей рамке всех выгрузок.
 Пишет JSON между маркерами /*OSM-DATA*/ … /*/OSM-DATA*/ в index.html.
 
+Сцены (подгружаются в игре, когда к ним подъезжаешь): MARK=WEST-DATA python3 -I tools/osm-to-game.py \
+  arcade/refs/rostov-center.osm arcade/refs/rostov-west.osm arcade/index.html
+— координаты по первой выгрузке (якорь), обрезка — только по остальным; пишет между /*WEST-DATA*/ … /*/WEST-DATA*/.
+Мостовые пути железной дороги в сценах идут отдельным списком "lb" — мост строится своей моделью.
+
 Координаты игры: метры, x — вдоль автобана, z — поперёк, «север» карты смотрит на автобан (+z).
 Полоса карты повёрнута на 180°: старый центр примыкает к автобану, левый берег — дальше всего.
 Данные © участники OpenStreetMap, лицензия ODbL.
@@ -12,7 +17,9 @@
 import sys, math, json, re, hashlib
 import xml.etree.ElementTree as ET
 
+import os
 SRCS, DST = sys.argv[1:-1], sys.argv[-1]
+MARK = os.environ.get("MARK", "OSM-DATA")                # имя маркера: OSM-DATA — основная карта, иначе — сцена
 X_CENTER, Z_TOP = 280.0, -82.0          # середина полосы по x и её «верхний» край у автобана
 
 roots = [ET.parse(f).getroot() for f in SRCS]
@@ -25,12 +32,12 @@ def local(lat, lon): return ((lon - LO0) * KX, (lat - LA0) * KY)
 def game(e, n): return (X_CENTER - (e - W / 2), Z_TOP - (H - n))
 
 # рамка обрезки — объединение рамок всех выгрузок (в локальных метрах якоря)
-_bs = [r.find("bounds").attrib for r in roots]
+_bs = [r.find("bounds").attrib for r in (roots if MARK == "OSM-DATA" else roots[1:])]
 CX0 = min(local(float(b["minlat"]), float(b["minlon"]))[0] for b in _bs); CX1 = max(local(float(b["maxlat"]), float(b["maxlon"]))[0] for b in _bs)
 CY0 = min(local(float(b["minlat"]), float(b["minlon"]))[1] for b in _bs); CY1 = max(local(float(b["maxlat"]), float(b["maxlon"]))[1] for b in _bs)
 
 nodes, ways, rels = {}, {}, {}
-for root in roots:                                      # объединяем по id: что уже есть — не трогаем
+for root in (roots if MARK == "OSM-DATA" else roots[1:]):   # объединяем по id; у сцены якорь даёт только систему координат
     for n in root.iter("node"):
         if n.get("id") not in nodes: nodes[n.get("id")] = (local(float(n.get("lat")), float(n.get("lon"))), {t.get("k"): t.get("v") for t in n.findall("tag")})
     for w in root.iter("way"):
@@ -171,7 +178,7 @@ AREA_KIND = [
     ("k", lambda t: t.get("amenity") == "parking" or t.get("highway") == "pedestrian" or t.get("place") == "square"),
     ("c", lambda t: t.get("landuse") in ("construction", "industrial", "railway", "brownfield")),
 ]
-out = {"b": [], "a": [], "r": [], "l": [], "t": [], "z": [], "p": [], "n": [], "bounds": [round(v * 10) for v in game(0, 0) + game(W, H)],
+out = {"b": [], "a": [], "r": [], "l": [], "t": [], "z": [], "p": [], "n": [], **({"lb": []} if MARK != "OSM-DATA" else {}), "bounds": [round(v * 10) for v in game(0, 0) + game(W, H)],
        "clip": [round(v * 10) for v in game(CX0, CY0) + game(CX1, CY1)]}
 names = {}
 def name_idx(n):
@@ -206,7 +213,9 @@ for wid, (refs, t) in ways.items():
         for seg in clip_line(pts_of(refs)):
             out["r"].append([ROAD[h], name_idx(t["name"]) if "name" in t else -1, 1 if t.get("bridge") else 0, enc(seg)])
     elif t.get("railway") in ("rail", "tram", "light_rail"):
-        for seg in clip_line(pts_of(refs)): out["l"].append([0 if t["railway"] == "rail" else 1, enc(seg)])
+        for seg in clip_line(pts_of(refs)):
+            if MARK != "OSM-DATA" and t.get("bridge"): out["lb"].append([0 if t["railway"] == "rail" else 1, enc(seg)])
+            else: out["l"].append([0 if t["railway"] == "rail" else 1, enc(seg)])
     elif t.get("man_made") == "pier" and refs[0] != refs[-1]:
         for seg in clip_line(pts_of(refs)): out["p"].append(enc(seg))
     elif t.get("natural") == "tree_row":
@@ -221,7 +230,8 @@ for (p, t) in nodes.values():
 
 js = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
 html = open(DST, encoding="utf8").read()
-new = re.sub(r"/\*OSM-DATA\*/.*?/\*/OSM-DATA\*/", lambda m: "/*OSM-DATA*/" + js + "/*/OSM-DATA*/", html, count=1, flags=re.S)
-assert new != html or "/*OSM-DATA*/" + js in html, "в index.html нет маркеров /*OSM-DATA*/ … /*/OSM-DATA*/"
+M0, M1 = "/*" + MARK + "*/", "/*/" + MARK + "*/"
+new = re.sub(re.escape(M0) + r".*?" + re.escape(M1), lambda m: M0 + js + M1, html, count=1, flags=re.S)
+assert new != html or M0 + js in html, f"в index.html нет маркеров {M0} … {M1}"
 open(DST, "w", encoding="utf8").write(new)
 print(f"полоса {W:.0f}×{H:.0f} м: домов {len(out['b'])}, дорог {len(out['r'])}, площадей {len(out['a'])}, деревьев {len(out['t']) // 2}, зон {len(out['z'])}, {len(js) // 1024} КБ")
