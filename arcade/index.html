@@ -2567,7 +2567,8 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     st.liftLamps = new T.Mesh(mergeGeos(lg2), st.edgeM);
     sc.group.add(new T.Mesh(mergeGeos(eg), st.edgeM), st.liftLamps);
     // вывески
-    const sign = (lines, bg, fg, s, l, y, w) => { const sgn = new T.Mesh(new T.PlaneGeometry(w, w / 4), new T.MeshBasicMaterial({ map: textTex(lines, 512, 128, bg, fg), side: T.DoubleSide })); sgn.position.copy(at(s, l, y)); sgn.rotation.y = yaw + Math.PI / 2; sc.group.add(sgn); };
+    // таблички — два листа спина к спине: надпись читается с обеих сторон, а не зеркально
+    const sign = (lines, bg, fg, s, l, y, w) => { const m = new T.MeshBasicMaterial({ map: textTex(lines, 512, 128, bg, fg) }); [0, Math.PI].forEach(r => { const sgn = new T.Mesh(new T.PlaneGeometry(w, w / 4), m); sgn.position.copy(at(s, l, y)); sgn.rotation.y = yaw + Math.PI / 2 + r; sc.group.add(sgn); }); };
     sign(["НА АРКУ ↗"], "#d8322c", "#ffffff", -10, -HW - 2.5, Y0 + 4, 7); sign(["НА АРКУ ↗"], "#d8322c", "#ffffff", -10, HW + 2.5, Y0 + 4, 7);
     sign(["ПЕРИЛА"], "#2c0a44", "#ffc93c", L + 10, 0, Y0 + 5.5, 8);
     sign(["ПРЫЖОК В ДОН: 3 КОЛЕСА →"], "#1f4f7a", "#ffffff", A1 / 2 - 22, HW + 2.6, Y0 + 3.2, 9);
