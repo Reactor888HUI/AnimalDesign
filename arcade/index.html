@@ -317,6 +317,10 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
   .lesson { bottom: 76px; }
   .toast { font-size: 12px; max-width: calc(100% - 150px); top: 46px; }
 }
+.kino-bars::before, .kino-bars::after { content: ""; position: absolute; left: 0; right: 0; height: 9%; background: #000; z-index: 4; pointer-events: none; transition: transform .35s ease; }
+.kino-bars::before { top: 0; transform: translateY(-100%); } .kino-bars::after { bottom: 0; transform: translateY(100%); }
+.kino-bars.on::before, .kino-bars.on::after { transform: none; }
+.stage.kino .hud, .stage.kino .mini { opacity: 0; transition: opacity .3s; }
 </style>
 
 <div class="page">
@@ -418,6 +422,7 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <button type="button" id="m-snd">Звук: вкл</button>
         <button type="button" id="m-pmus">Музыка вечеринки: вкл</button>
         <button type="button" id="m-pfx">Спецэффекты вечеринки: вкл</button>
+        <button type="button" id="m-kino">Кино-камеры у моста: вкл</button>
         <button type="button" id="m-q">Качество: авто</button>
         <button type="button" id="m-mini">Мини-карта: вкл</button>
         <button type="button" id="m-restart">Заново</button>
@@ -2325,6 +2330,9 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
   // верх пояса арки (по нему едут): у опор — вровень с настилом, дальше — на толщину пояса (0,95 м) над осью
   const chordTop = (s, sa, sb) => archH(s, sa, sb) + .95 * Math.max(0, Math.min(1, (s - sa) / 6, (sb - s) / 6));
   const archOf = s => s <= A1 ? [0, A1] : s >= A2 ? [A2, L] : null;
+  // контактная сеть: порталы поперёк пути под арками (где арка выше 9 м), провод над каждым путём на 5,4 м; служебные проходы снаружи ферм
+  const PORT = []; for (const [sa, sb] of [[0, A1], [A2, L]]) for (let s = sa + 12; s < sb - 12; s += 24) if (Y0 + ARCH * 4 * ((s - sa) / (sb - sa)) * (1 - (s - sa) / (sb - sa)) - Y0 > 9) PORT.push(s);
+  const WALK = HW + 1.15, RAILW = HW + 1.75, WIRE = 5.4;
   const ramp = (s, a, b, h0, h1) => h0 + (h1 - h0) * smooth(Math.max(0, Math.min(1, (s - a) / (b - a))));
   // ---------- поверхности (s — вдоль моста от города, l — поперёк) ----------
   // каждая: [s0, s1, l0, l1, h(s), slope(s), допуск снизу, разгон]
@@ -2341,8 +2349,8 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
   const RL = HW - .9, RW = .6;                         // перила южной арки: ось лана и полуширина балки
   const GAP0 = A2 + (L - A2) * .44, GAP1 = A2 + (L - A2) * .58;
   const SURF = [
-    [-RAMP, 0, -HW, HW, s => ramp(s, -RAMP, 0, 0, Y0), s => Y0 / RAMP * 1.2, 2.5],                     // въезд от города
-    [L, L + RAMP, -HW, HW, s => ramp(s, L, L + RAMP, Y0, 0), s => -Y0 / RAMP * 1.2, 2.5],             // въезд с левого берега
+    [-RAMP, 0, -HW - .3, HW + .3, s => ramp(s, -RAMP, 0, 0, Y0), s => Y0 / RAMP * 1.2, 2.5],           // въезд от города (по ширине насыпи)
+    [L, L + RAMP, -HW - .3, HW + .3, s => ramp(s, L, L + RAMP, Y0, 0), s => -Y0 / RAMP * 1.2, 2.5],             // въезд с левого берега
     [0, A1 - .4, -HW, HW, () => Y0, () => 0, 2.5],
     [A2 + .4, L, -HW, HW, () => Y0, () => 0, 2.5],
     [A1 - .45, A2 + .45, -HW, HW, () => Y0 + st.y, () => 0, 3, 0, true],                               // подъёмный пролёт (внизу закрывает стыки — не провалиться в щель)
@@ -2352,6 +2360,8 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     ...[-1, 1].map(k => [A2 + 6, L - 6, k * HW - .75, k * HW + .75, s => chordTop(s, A2, L), s => Math.atan(archD(s, A2, L)), 1.2, 0, false, k * HW]),
     // верхняя ферма между башнями и крыши домиков механизмов — на них можно сесть сверху
     [A1 + 3, A2 - 3, -HW - 2.2, HW + 2.2, () => Y0 + TOW - .55, () => 0, 1.2],
+    // служебные проходы снаружи ферм (на арочных пролётах) — сорвался с края, упал на проход
+    ...[-1, 1].flatMap(k => [[0, A1], [A2, L]].map(([a, b]) => [a + 1, b - 1, Math.min(k * (HW + .5), k * (HW + 1.8)), Math.max(k * (HW + .5), k * (HW + 1.8)), () => Y0 - .06, () => 0, 1.2])),
     ...[A1, A2].map(a => [a - 3.6, a + 3.6, -HW - 1.8, HW + 1.8, () => Y0 + TOW + 5.65, () => 0, 1.2]),
     // южная арка: въезд на перила (жёлтые пандусы) и сами перила с разрывом
     // в разрыве перил — пандусы с настила на оба конца балки (машина у края не упирается в торец); у трамплина зазор 2,5 м — прыжок с перил не съедает
@@ -2405,6 +2415,8 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     if (s > 0 && s < L && al < HW + .1 && y > Y0 - 2.2 && y < Y0 - .4 && !gapOpen) return bridge("настил моста");          // в торец настила снизу и сбоку
     for (const [p, big] of [[0, 0], [A1, 1], [A2, 1], [L, 0]]) if (Math.abs(s - p) < (big ? 6.5 : 3.5) && al < HW + (big ? 3 : 1) && y < Y0 - 2.4) return bridge("опору моста");
     for (const k of [-1, 1]) if (Math.abs(l - k * RL) < RW + .6 && y > Y0 - .5 && y < Y0 + 1.2 && ((s > GAP1 && s < L - 16) || (s > A2 + 9 && s < GAP0))) return { name: "перила моста", h: Y0 + 1.4 };
+    if (Math.abs(al - RAILW) < .2 && y > Y0 - .5 && y < Y0 + 1.05 && archOf(s) && s > 1 && s < L - 1 && !(s > A1 - 1 && s < A2 + 1)) return { name: "перила прохода", h: Y0 + 1.1 };
+    for (const sp of PORT) if (Math.abs(s - sp) < .4 && al < HW && y > Y0 + 6.2 && y < Y0 + 7.1) return bridge("портал контактной сети");
     const tr = st.train;
     if (tr.on && s > tr.s - TRAIN.len - 1 && s < tr.s + 1 && Math.abs(l - TRAIN.l) < 2.4 && y > Y0 - .5 && y < Y0 + TRAIN.h - .3) return { name: "поезд", h: Y0 + TRAIN.h };
     return null;
@@ -2441,6 +2453,15 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
       [-HW, HW].forEach(l => push(beam(at(sa, l, Y0 - .9), at(sb, l, Y0 - .9), .9, 1.8, STEEL)));
       push(beam(at(sa, 0, Y0 - .25), at(sb, 0, Y0 - .25), 2 * HW, .5, 0x5f5a55));
       track(push, sa, sb);
+      [-1, 1].forEach(k => {                                          // служебный проход: решётчатый настил, стойки, два ряда перил
+        push(beam(at(sa + 1, k * WALK, Y0 - .12), at(sb - 1, k * WALK, Y0 - .12), 1.3, .1, 0x6e6a64));
+        [1.05, .55].forEach(h => push(beam(at(sa + 1, k * RAILW, Y0 + h), at(sb - 1, k * RAILW, Y0 + h), .06, .06, STEEL2)));
+        for (let s = sa + 1; s <= sb - 1; s += 2.5) push(beam(at(s, k * RAILW, Y0 - .07), at(s, k * RAILW, Y0 + 1.08), .07, .07, STEEL2));
+      });
+      const ps = PORT.filter(p => p > sa && p < sb);
+      ps.forEach(sp => { push(beam(at(sp, -HW, Y0 + 6.65), at(sp, HW, Y0 + 6.65), .22, .3, STEEL2));   // портал и подвесы к проводам
+        [-2.2, 2.2].forEach(tl => push(beam(at(sp, tl, Y0 + 6.5), at(sp, tl, Y0 + WIRE), .07, .07, DARK))); });
+      if (ps.length) [-2.2, 2.2].forEach(tl => push(beam(at(sa + 2, tl, Y0 + WIRE), at(sb - 2, tl, Y0 + WIRE), .05, .05, DARK)));   // контактный провод
       const n = 16;
       [-HW, HW].forEach(l => {
         for (let i = 0; i < n * 2; i++) { const s0 = sa + (sb - sa) * i / n / 2, s1 = sa + (sb - sa) * (i + 1) / n / 2; push(beam(at(s0, l, chordTop(s0, sa, sb) - .5), at(s1, l, chordTop(s1, sa, sb) - .5), 1.4, 1, STEEL)); }
@@ -2484,6 +2505,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     const sa = A1 + .4, sb = A2 - .4, H = 6;
     push(beam(at(sa, 0, Y0 - .25), at(sb, 0, Y0 - .25), 2 * HW, .5, 0x5f5a55));
     track(push, sa, sb);
+    [-2.2, 2.2].forEach(tl => push(beam(at(sa, tl, Y0 + WIRE), at(sb, tl, Y0 + WIRE), .05, .05, DARK)));   // провод на пролёте — под его связями, едет вместе с ним
     [-HW - .6, HW + .6].forEach(l => {
       [Y0 - .7, Y0 + H].forEach(y => push(beam(at(sa, l, y), at(sb, l, y), .8, 1, STEEL)));
       const n = 10; for (let i = 0; i < n; i++) { const s0 = sa + (sb - sa) * i / n, s1 = sa + (sb - sa) * (i + 1) / n; push(beam(at(s0, l, Y0 - .2), at(s1, l, Y0 + H - .4), .3, .3, STEEL2)); push(beam(at(s1, l, Y0 - .2), at(s1, l, Y0 + H - .4), .3, .3, STEEL2)); }
@@ -2842,6 +2864,62 @@ const PHOTO = (() => {
     reflect();
   }
   return { tick, RT, waterM, st, nextSky, skyName: () => SKIES[TIME] ? skyOf(TIME).name : null, get on() { return st.on; }, force(on) { st.forced = on; } };
+})();
+/* ---------- кино-камеры ж/д моста: в полёте над мостом — монтаж планов, на мосту — короткие вставки ---------- */
+// Каждый план — где стоит камера (координаты моста s/l/y) и какое у неё «стекло». Неподвижные ставятся в момент склейки,
+// машина пролетает мимо; «дрон» облетает машину. В полёте склейка каждые 2,4 с, после посадки — назад за машину.
+// На мосту на скорости — раз в ~9 с вставка на 2,6 с (только «тянущиеся» планы, по которым видно, куда едешь).
+// Отключается: «⋯» → «Кино-камеры у моста».
+const KINO = (() => {
+  const st = { shot: null, t: 0, land: 0, gT: 6, last: null, bars: null };
+  const L = new T.Vector3();
+  function barsOn(on) {
+    if (!st.bars) { st.bars = document.createElement("div"); st.bars.className = "kino-bars"; stage.appendChild(st.bars); }
+    st.bars.classList.toggle("on", on); stage.classList.toggle("kino", on);   // в кадре — без спидометра и карты
+  }
+  // f(R, s, l, dir, side, t) → [x, y, z, fov] или null (план сюда не подходит)
+  const SHOTS = [
+    { name: "с воды у опоры", air: 1, f: (R, s, l, dir, side) => { const pr = [0, R.A1, R.A2, R.L].reduce((a, b) => Math.abs(b - s) < Math.abs(a - s) ? b : a); if (Math.abs(pr - s) > 70) return null; const p = R.at(pr + dir * 6, side * (R.HW + 15), 1.4); return [p.x, p.y, p.z, 52]; } },
+    { name: "с крыши башни", air: 1, f: (R, s, l, dir, side) => { const a = Math.abs(s - R.A1) < Math.abs(s - R.A2) ? R.A1 : R.A2; if (Math.abs(a - s) > 90) return null; const p = R.at(a, side * (R.HW + 3), R.Y0 + R.TOW + 9); return [p.x, p.y, p.z, 58]; } },
+    { name: "изнутри фермы", air: 1, ground: 1, f: (R, s, l, dir, side) => { const s1 = s + dir * 24; if (s1 < 2 || s1 > R.L - 2) return null; const y = R.Y0 + 1.3 + (s1 > R.A1 && s1 < R.A2 ? R.st.y : 0); const p = R.at(s1, -side * (R.HW - 1.1), y); return [p.x, p.y, p.z, 64]; } },
+    { name: "телеобъектив с реки", air: 1, ground: 1, f: (R, s, l, dir, side) => { const p = R.at(s - dir * 8, side * 150, 4); return [p.x, p.y, p.z, 20]; } },
+    { name: "над водой", air: 1, ground: 1, f: (R, s, l, dir, side) => { const p = R.at(s + dir * 34, side * 28, .9); return [p.x, p.y, p.z, 50]; } },
+    { name: "дрон", air: 1, ground: 1, move: 1, f: (R, s, l, dir, side, t, a0) => { const a = a0 + t * .55; return [car.x + Math.cos(a) * 22, car.y + 8, car.z + Math.sin(a) * 22, 56]; } },
+    { name: "с вершины арки", air: 1, f: (R, s, l, dir, side) => { const top = s < R.A1 + 5 ? R.A1 / 2 : s > R.A2 - 5 ? (R.A2 + R.L) / 2 : null; if (top == null || Math.abs(top - s) > 60 || Math.abs(top - s) < 6) return null; const p = R.at(top, side * R.HW, R.Y0 + R.ARCH + 3.5); return [p.x, p.y, p.z, 60]; } },
+    { name: "из-под пролёта", air: 1, f: (R, s, l, dir, side) => { if (R.st.y < 12 || car.y > R.Y0 + R.st.y - 2) return null; const p = R.at((R.A1 + R.A2) / 2 - dir * 20, -side * 3, R.Y0 + R.st.y - 3); return [p.x, p.y, p.z, 66]; } },
+  ];
+  function geo(R) {                                      // где машина на мосту и куда летит вдоль него
+    const [s, l] = R.loc(car.x, car.z), vx = Math.cos(car.yaw) * car.v, vz = -Math.sin(car.yaw) * car.v;
+    return { s, l, dir: (vx * R.dir.x + vz * R.dir.z) >= 0 ? 1 : -1, side: l >= 0 ? 1 : -1 };
+  }
+  function cut(R, air) {
+    const g = geo(R), ok = SHOTS.filter(sh => (air ? sh.air : sh.ground) && sh !== st.last && sh.f(R, g.s, g.l, g.dir, g.side, 0, 0));
+    if (!ok.length) return false;
+    const sh = ok[Math.floor(Math.random() * ok.length)], a0 = Math.atan2(camera.position.z - car.z, camera.position.x - car.x);
+    st.shot = { sh, air, a0, p: sh.f(R, g.s, g.l, g.dir, g.side, 0, a0), g }; st.t = 0; st.last = sh; barsOn(true); return true;
+  }
+  function release() { if (st.shot) { st.shot = null; barsOn(false); } }
+  function apply(dt) {
+    const R = RAILB;
+    if (!R || !R.st.loaded || mode !== "free" || replay || save.kino === false || camMode === "cockpit" || phase !== "free" || PARTY.orbit() || window.__camOv) return release();
+    const [s, l] = R.loc(car.x, car.z);
+    if (s < -60 || s > R.L + 60 || Math.abs(l) > 70 || car.y < -.5) return release();
+    const air = free.air && !free.aero && !free.tube && !free.wall && !free.cat;
+    if (air) {
+      st.land = .8;
+      if (!st.shot && free.airT > .3) cut(R, true);
+      else if (st.shot && (!st.shot.air || st.t > 2.4)) cut(R, true) || (st.t = 0);
+    } else if (st.shot && st.shot.air) { if ((st.land -= dt) <= 0) { release(); st.gT = 9; } }
+    else if (st.shot) { if (st.t > 2.6) { release(); st.gT = 9; } }
+    else if (Math.abs(car.v) > 10) { if ((st.gT -= dt) <= 0) { st.gT = 9; cut(R, false); } }
+    if (!st.shot) return;
+    st.t += dt;
+    const sh = st.shot, g = st.shot.g, p = sh.sh.move ? sh.sh.f(R, g.s, g.l, g.dir, g.side, st.t, sh.a0) : sh.p;
+    camera.position.set(p[0], p[1], p[2]); camera.up.set(0, 1, 0);
+    L.set(car.x + Math.cos(car.yaw) * car.v * .08, car.y + .7, car.z - Math.sin(car.yaw) * car.v * .08); camera.lookAt(L);
+    camera.fov = Math.max(12, Math.min(p[3], 2 * Math.atan(9 / camera.position.distanceTo(L)) / DEG));   // «оператор»: зум держит машину крупно (кадр ~18 м)
+  }
+  return { apply, get shot() { return st.shot ? st.shot.sh.name : null; }, cut: air => RAILB && cut(RAILB, air) };
 })();
 /* ---------- под водой: дно, поверхность снизу, бирюзовый туман, приглушённый звук ---------- */
 const UNDER = (() => {
@@ -4178,7 +4256,7 @@ function sink(w) {                           // заехали или упали
   const name = ZONES.find(z => inPoly(car.x, car.z, z.ring) && /Дон|канал|Акватор|Темерник|ковш/.test(z.name))?.name || "Дон";
   splash(car.x, car.z);
   for (let i = 0; i < 26; i++) { const a = Math.random() * 6.3, r = Math.random() * 2.5; puff(new T.Vector3(car.x + Math.cos(a) * r, .4, car.z + Math.sin(a) * r), new T.Vector3(Math.cos(a) * 3, 9 + Math.random() * 9, Math.sin(a) * 3), 1.6, .45 + Math.random() * .3, 13); }   // столб брызг
-  sfx.thump(1); sfx.whoosh(); sfx.glug();
+  sfx.thump(1); sfx.whoosh(); sfx.glug(); sfx.broken(12);   // вытащат на берег — мотор после воды ещё долго чихает
   phase = "fsink"; tPhase = 0; free.air = false; car.vy = Math.min(-1.5, car.vy * .15); car.v *= .35; car.spin = 0;
   showToast(`Утонули: ${name}. Сейчас вытащим на берег`, "bad", 2600);
 }
@@ -4190,7 +4268,7 @@ function sinkStep(dt) {                     // под водой: медленн
 }
 function freeCrash(reason) {
   if (free.show) showBurn("Авария");
-  sfx.crash(); free.ringStreak = 0; free.ab = null;
+  sfx.crash(); sfx.broken(8); free.ringStreak = 0; free.ab = null;
   phase = "fcrash"; tPhase = 0; free.air = false;
   car.floor = 0; car.vy = Math.abs(car.vy || 3) * .3; car.spin = 360 * (Math.random() < .5 ? -1 : 1);
   dust(car.x, car.y, car.z, 16);
@@ -4299,7 +4377,7 @@ function stepFree(dt) {
       const step = Math.hypot(nx - car.x, nz - car.z) + 1e-9;
       const slideX = Math.abs(nx - car.x) > .3 * step && !blocked(nx, car.z);
       const slideZ = Math.abs(nz - car.z) > .3 * step && !blocked(car.x, nz);
-      if (Math.abs(car.v) > 8 && !free.bumpCd) { showToast(out ? "Край карты — разворачивайтесь" : "Бум!", "bad", 1200); free.bumpCd = 1; sfx.thump(.5); }
+      if (Math.abs(car.v) > 8 && !free.bumpCd) { showToast(out ? "Край карты — разворачивайтесь" : "Бум!", "bad", 1200); free.bumpCd = 1; sfx.thump(.5); if (!out && Math.abs(car.v) > 14) sfx.broken(4); }
       car.vl = 0;
       if (slideX || slideZ) {
         if (slideX && (!slideZ || Math.abs(nx - car.x) >= Math.abs(nz - car.z))) car.x = nx; else car.z = nz;
@@ -4660,6 +4738,7 @@ function syncDock() {
   $("snd-btn").textContent = save.sound === false ? "🔇" : "🔊"; $("snd-btn").classList.toggle("off", save.sound === false);
   $("m-pmus").textContent = `Музыка вечеринки: ${partyMus() ? "вкл" : "выкл"}`;
   $("m-pfx").textContent = `Спецэффекты вечеринки: ${partyFx() ? "вкл" : "выкл"}`;
+  $("m-kino").textContent = `Кино-камеры у моста: ${save.kino === false ? "выкл" : "вкл"}`;
   $("fx-btn").classList.toggle("off", !partyFx());
   $("m-full").textContent = `Экран: ${save.full === false ? "с заголовком" : "во весь"}`;
   $("m-mini").textContent = `Мини-карта: ${save.mini === false ? "выкл" : "вкл"}`;
@@ -4862,6 +4941,7 @@ $("m-q").onclick = () => {
 };
 $("m-snd").onclick = $("snd-btn").onclick = () => { save.sound = save.sound === false; persist(); sfx.unlock(); if (save.sound === false) sfx.song(false); syncDock(); };
 $("m-pmus").onclick = () => { save.partyMusic = !partyMus(); persist(); if (!partyMus()) sfx.song(false); syncDock(); };
+$("m-kino").onclick = () => { save.kino = save.kino === false; persist(); syncDock(); };
 $("m-pfx").onclick = $("fx-btn").onclick = () => { save.partyFx = !partyFx(); persist(); syncDock(); showToast(`Спецэффекты: ${partyFx() ? "вкл" : "выкл"}`, "", 1200); };
 // во весь экран: игра занимает всё окно (шапки нет, меню — «⋯» сверху); на телефоне ещё и прячем панели браузера
 function goFull(on) {
@@ -4915,20 +4995,34 @@ const sfx = (() => {
     musicP = (bytes ? Promise.resolve(bytes.buffer) : fetch(PARTY_MUSIC).then(r => r.arrayBuffer()))
       .then(b => new Promise((ok, no) => ac.decodeAudioData(b, ok, no))).then(b => { music = b; }).catch(e => console.warn("музыка вечеринки", e));
   }
+  // поломанный двигатель (после аварии, жёсткого удара, утопления): мотор «чихает» — провалы и рывки оборотов, стук, хлопки
+  const brk = { t: 0, cut: 0, cutT: 0, knock: 0 };
   function tick(dt, st) {
     if (!ac) return;
     jet = Math.max(0, jet - dt * 6);
     const v = Math.abs(st.speed), gear = Math.min(5, Math.floor(v / 12)), within = (v - gear * 12) / 12;
-    const f = 48 + gear * 9 + within * 70 + st.throttle * 12;  // «передачи»: тон растёт и проседает при переключении
+    let f = 48 + gear * 9 + within * 70 + st.throttle * 12, g = 1;  // «передачи»: тон растёт и проседает при переключении
+    if (brk.t > 0) {
+      brk.t -= dt; const k = Math.min(1, brk.t / 2);             // к концу поломки — всё ровнее
+      if ((brk.cutT -= dt) <= 0) { brk.cut = Math.random() < .4 * k ? 1 : 0; brk.cutT = .06 + Math.random() * .2; }
+      f *= .78 + .12 * Math.sin(ac.currentTime * 23) * k; g = brk.cut ? .12 : 1 + .4 * k;
+      if ((brk.knock -= dt) <= 0 && !brk.cut) { brk.knock = .22 + Math.random() * .25; blip(t => { const o = ac.createOscillator(), gg = ac.createGain(); o.type = "square"; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(60, t + .05); gg.gain.setValueAtTime(.12 * k, t); gg.gain.exponentialRampToValueAtTime(.001, t + .07); o.connect(gg).connect(master); o.start(t); o.stop(t + .08); }); }
+      if (Math.random() < dt * .9 * k) pop();
+    }
     set(eng.frequency, f); set(eng2.frequency, f * .5);
     set(engF.frequency, 380 + st.throttle * 900 + v * 8);
-    set(engG.gain, on() ? (st.air ? .02 : .035 + st.throttle * .05 + Math.min(.03, v * .001)) : 0);
+    set(engG.gain, on() ? g * (st.air ? .02 : .035 + st.throttle * .05 + Math.min(.03, v * .001)) : 0, brk.t > 0 ? .015 : .06);
     set(jetG.gain, on() ? jet * .18 : 0, .03);
     set(skidG.gain, on() ? Math.min(.12, Math.max(0, st.skid - 3) * .02) : 0, .05);
   }
   function blip(fn) { if (ac && on()) fn(ac.currentTime); }
+  function pop() { blip(t => {                                  // хлопок в глушителе
+    const n = ac.createBufferSource(), g = ac.createGain(), fl = ac.createBiquadFilter(); n.buffer = noise; fl.type = "lowpass"; fl.frequency.value = 900;
+    g.gain.setValueAtTime(.45, t); g.gain.exponentialRampToValueAtTime(.001, t + .12); n.connect(fl).connect(g).connect(master); n.start(t); n.stop(t + .15);
+  }); }
   return {
     tick, unlock,
+    broken(sec) { if (sec === undefined) return brk.t; brk.t = Math.max(brk.t, sec); },
     jet() { jet = 1; },
     burst: () => blip(t => {                                    // посадочный баллон: резкое «пш-ш» со спадом тона
       const n = ac.createBufferSource(), g = ac.createGain(), fl = ac.createBiquadFilter(); n.buffer = noise; fl.type = "bandpass"; fl.Q.value = .7;
@@ -5303,6 +5397,10 @@ function render(dt) {
       look.set(car.x, car.y + ly, car.z); camera.lookAt(look); camera.fov = fov;
     }
   }
+  if (mode === "free" && phase === "free" && sfx.broken() > 0 && Math.random() < dt * 7) {   // поломка: дымок из-под капота
+    const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw); puff(new T.Vector3(car.x + fx * 1.6, car.y + 1.1, car.z + fz * 1.6), new T.Vector3(fx * .3, 1.4, fz * .3), 1.8, .35, -.2, 3);
+  }
+  KINO.apply(dt);
   camera.updateProjectionMatrix();
   if (window.__camOv) { const o = window.__camOv; camera.position.set(o[0], o[1], o[2]); camera.up.set(0, 1, 0); camera.lookAt(o[3], o[4], o[5]); camera.fov = o[6] || 40; camera.updateProjectionMatrix(); }   // только автотесты: снимок с заданной точки
   cullChunks(); tickSky(); UNDER.tick(); PHOTO.tick();
@@ -5508,7 +5606,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   party: on => on === false ? PARTY.stop() : on ? PARTY.start(false, true) : PARTY.state(),
   ARENA, INNER, EIGHT, salute: (x, y, z, n) => SHOW.salute(x, y, z, n), puff: (x, y, z, vx, vy, vz, life, s) => puff(new T.Vector3(x, y, z), new T.Vector3(vx, vy, vz), life, s),
   setTime: k => setTime(k), paint: i => setPaint(i),
-  RAILB, SHIPS, UNDER, photo: on => (PHOTO.force(on !== false), true), PHOTO,
+  RAILB, SHIPS, UNDER, KINO, photo: on => (PHOTO.force(on !== false), true), PHOTO,
   scenes: () => SCENES.map(sc => ({ name: sc.name, state: sc.state, d: Math.round(sc.d), ms: sc.ms, work: Math.round(sc.work || 0), chunks: sc.chunks.length, solids: sc.solids.length })),
   cine(on, cap) {                // съёмка: игра стоит, кадр рисуется по cineStep; интерфейс спрятан, поле — на весь экран
     CINE.on = !!on; document.body.classList.toggle("cine", CINE.on);
