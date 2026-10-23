@@ -2414,7 +2414,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
       }
     }
     const tr = st.train;                               // крыши поезда
-    if (tr.on && s > tr.s - TRAIN.len && s < tr.s && Math.abs(l - TRAIN.l) < 1.6) { const h = Y0 + TRAIN.h; if (y >= h - 1.2 && (!best || h > best.h)) best = { h, slope: 0, rx: dx, rz: dz, deck: true, vx: dx * tr.v, vz: dz * tr.v }; }
+    if (tr.on && s > tr.s - TRAIN.len && s < tr.s && Math.abs(l - TRAIN.l) < 1.6) { const h = Y0 + TRAIN.h; if (y >= h - 1.2 && (!best || h > best.h)) best = { h, slope: 0, rx: dx, rz: dz, deck: true, vx: dx * tr.v, vz: dz * tr.v, train: true }; }
     return best;
   }
   const BR = []; for (const [sa, sb] of [[0, A1], [A2, L]]) for (let i = 3; i < 14; i += 2) { const s0 = sa + (sb - sa) * i / 16, h = archH(s0, sa, sb) + .3; if (h - Y0 > 6) BR.push([s0, h]); }   // поперечные связи под арками
@@ -2599,7 +2599,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     };
     [-1, 1].forEach(k => addRing(at(A1 / 2, k * HW, Y0 + ARCH + 3), yaw + Math.PI / 2, 40));
     [[14, 30], [27, 23], [40, 15]].forEach(([o, y]) => addRing(at(A1 / 2, HW + o, y), yaw, 0));
-    [[A1 - 10, 3.5], [A2 + 10, -3.5]].forEach(([s0, l0]) => addRing(at(s0, l0, Y0 + LIFT + 3.6), yaw + Math.PI / 2, 0));   // вылет с трамплина поднятого пролёта
+    [[A1 - 10, 3.5], [A2 + 10, -3.5]].forEach(([s0, l0]) => { addRing(at(s0, l0, Y0 + LIFT + 3.6), yaw + Math.PI / 2, 0); st.rings[st.rings.length - 1].lift = true; });   // вылет с трамплина поднятого пролёта
     sc.group.add(new T.Mesh(mergeGeos(tyres), tyreM));
     // поезд: локомотив и три вагона — одна сетка
     const tp = [], T0 = Y0 + .2;
@@ -2638,6 +2638,9 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     st.edgeM.color.setHex(free_ ? 0x3ddc84 : blink ? 0xff3b30 : 0x5a0f0c); st.liftLamps.position.y = st.y;   // зелёный — путь свободен, мигает красный — пролёт идёт/поднят
     st.trainMesh.visible = tr.on; if (tr.on) { const p = at(tr.s, TRAIN.l); st.trainMesh.position.set(p.x, 0, p.z); st.trainMesh.rotation.y = yaw; }
     st.ringT = Math.max(0, st.ringT - dt);
+    if (!st.hello && mode === "free" && Math.hypot(car.x - C.x, car.z - C.z) < 260) {   // первый подъезд за игру — сколько испытаний пройдено
+      st.hello = true; queueToast(`Ж/д мост: испытания ${rbDone()} из ${rbAll()} — список в «⋯»`, "good", 2600);
+    }
     // подсказки: едем по настилу к разрыву при поднятом пролёте; машина на «лифте» поехала вверх
     st.warnT = Math.max(0, (st.warnT || 0) - dt);
     if (mode === "free" && phase === "free" && !free.air && !st.warnT) {
@@ -2648,12 +2651,14 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     }
     for (const r of st.rings) if (!r.got && Math.hypot(car.x - r.p.x, car.y + .6 - r.p.y, car.z - r.p.z) < 3.2) {
       r.got = true; r.m.material.color.setHex(0x6fdc8c); free.score += 300; save.freeBest = Math.max(save.freeBest, free.score); persist();
-      if (r.boost) { car.v = Math.max(car.v, r.boost); sfx.jet(); }
+      if (r.boost) { car.v = Math.max(car.v, r.boost); sfx.jet(); completeMission("rbArch"); }
+      if (r.lift) completeMission("rbLift");
+      if (st.rings.every(q => q.got)) completeMission("rbWheels");
       queueToast(r.boost ? "Вершина арки! Колесо паровоза и разгон  +300" : "Колесо паровоза  +300", "good", 1400); sfx.ring();
     }
     if (st.rings.length && st.rings.every(r => r.got) && Math.hypot(car.x - C.x, car.z - C.z) > 500) st.rings.forEach(r => { r.got = false; r.m.material.color.setHex(RING_ON); });   // уехали — кольца снова горят
   }
-  return { build, drop, tick, ground, hit, st, C, at, loc, L, A1, A2, Y0, HW, N: { x: N[0], z: N[1] }, S: { x: S[0], z: S[1] }, dir: { x: dx, z: dz }, nrm: { x: nx, z: nz }, yaw, RAMP, LIFT, ARCH, TOW };
+  return { build, drop, tick, ground, hit, st, C, at, loc, L, A1, A2, Y0, HW, N: { x: N[0], z: N[1] }, S: { x: S[0], z: S[1] }, dir: { x: dx, z: dz }, nrm: { x: nx, z: nz }, yaw, RAMP, LIFT, ARCH, TOW, GAP0, GAP1 };
 })() : null;
 /* ---------- суда на Дону: сухогруз и теплоход — по ним можно ездить и на них можно приземляться ---------- */
 // Фарватер — середина реки по всей карте (от железнодорожного моста до восточного края), через подъёмный пролёт.
@@ -3927,8 +3932,18 @@ const MISSIONS = [
   { id: "flow3", t: "Баклажановый поток: три круга", pts: 700 },
   { id: "flowShot", t: "Катапульта: 5 кругов в потоке быстрее 216 км/ч", pts: 1000 },
   { id: "eightShow", t: "Дрифт-трек 888: 3 круга, от 3000 очков", pts: 900 },
-  { id: "slalom", t: "Аэро-слалом: восемь колец вокруг аэротрубы по порядку", pts: 800 }
+  { id: "slalom", t: "Аэро-слалом: восемь колец вокруг аэротрубы по порядку", pts: 800 },
+  // испытания ж/д моста
+  { id: "rbArch", t: "Ж/д мост: по верхнему поясу арки — через колесо на вершине", pts: 500, rb: 1 },
+  { id: "rbRails", t: "Ж/д мост: разгон по голубым рельсам и прыжок со «ступеньки» на пролёт", pts: 600, rb: 1 },
+  { id: "rbTwo", t: "Ж/д мост: 3 секунды «на двух колёсах» — по перилам или поясу арки", pts: 500, rb: 1 },
+  { id: "rbRailGap", t: "Ж/д мост: перила — прыжок через разрыв на балку", pts: 700, rb: 1 },
+  { id: "rbLift", t: "Ж/д мост: подняться на «лифте» и вылететь в колесо", pts: 800, rb: 1 },
+  { id: "rbTrain", t: "Ж/д мост: 10 секунд на крыше поезда", pts: 700, rb: 1 },
+  { id: "rbBarge", t: "Ж/д мост: с моста — на палубу судна", pts: 900, rb: 1 },
+  { id: "rbWheels", t: "Ж/д мост: все 9 колёс паровоза", pts: 1000, rb: 1 }
 ];
+const rbDone = () => MISSIONS.filter(m => m.rb && save.missions && save.missions[m.id]).length, rbAll = () => MISSIONS.filter(m => m.rb).length;
 const toastQ = [];
 function queueToast(text, kind, ms) { if (performance.now() > toastUntil) showToast(text, kind, ms); else toastQ.push([text, kind, ms]); }
 function completeMission(id, extra = "") {
@@ -3937,6 +3952,7 @@ function completeMission(id, extra = "") {
   const m = MISSIONS.find(m => m.id === id);
   save.missions[id] = true; free.score += m.pts; save.freeBest = Math.max(save.freeBest, free.score); persist();
   toastQ.push([`Задание выполнено: ${m.t}${extra}  +${m.pts}`, "good", 3200]); sfx.ring();
+  if (m.rb) toastQ.push([rbDone() === rbAll() ? "Все испытания ж/д моста пройдены!" : `Испытания ж/д моста: ${rbDone()} из ${rbAll()}`, "good", 2200]);
 }
 // проверки, которые не привязаны к прыжку: заезд по автобану, мост, круг по «Восьмёрке»
 function slalomTick() {          // аэро-слалом: кольца по порядку, время — вверху экрана
@@ -4393,6 +4409,7 @@ function takeoff(cork) {
     car.vy = vy; car.v = dist / T;
   }
   free.overBus = false; free.takeoffT = time;
+  free.fromRB = RAILB && RAILB.st.loaded && KINO.near(car.x, car.z) && car.y > 4;   // взлёт с ж/д моста (для испытаний)
   free.air = true; free.airT = 0; free.cork = cork; free.ringBonus = 0; totalRoll = 0;
   rings.forEach(r => { r.got = false; r.m.material.color.setHex(0xffb347); });
   phase = "free";
@@ -4522,10 +4539,11 @@ function stepFree(dt) {
           free.tukT = (free.tukT || 0) - dt; if (free.tukT <= 0) { free.tukT = Math.max(.07, .8 / Math.abs(car.v)); sfx.thump(.05 + .05 * amp); }
         }
       }
-      if (!free.onRails) free.railBoost = false;
+      if (!free.onRails) free.railBoost = false; else if (free.railBoost) free.railBoostT = time;
+      free.trainT = g0.train ? (free.trainT || 0) + dt : 0; if (free.trainT > 10) completeMission("rbTrain");
       // на узкой балке — «на двух колёсах»: кузов кренится на 30° наружу, очки за время на балке
       free.onBeam = g0.pull ? (Math.sign(nfx * g0.rx + nfz * g0.rz) || 1) * g0.pull.k : 0;
-      if (free.onBeam && car.v > 3) free.beamT = (free.beamT || 0) + dt;
+      if (free.onBeam && car.v > 3) { free.beamT = (free.beamT || 0) + dt; if (free.beamT > 3) completeMission("rbTwo"); }
       else if (free.beamT > 1.2) { const pts = Math.round(free.beamT * 90); free.score += pts; save.freeBest = Math.max(save.freeBest, free.score); persist(); showToast(`На двух колёсах ${free.beamT.toFixed(1)} с  +${pts}`, "good", 1800); free.beamT = 0; }
       else free.beamT = 0;
       const gs = g0.rx !== undefined ? Math.atan(Math.tan(g0.slope) * (nfx * g0.rx + nfz * g0.rz)) : g0.slope;   // чаша, мост: вверх или вниз по ходу
@@ -4609,6 +4627,11 @@ function landFree(g) {
     queueToast(free.fromMega ? "С мега-трамплина на крышу Арены!  +500" : "На крыше Арены  +500", "good", 2200); completeMission("arenaRoof");
   }
   if (free.overBus) completeMission("bus");
+  if (free.fromRB && free.airT > .3 && RAILB) {                                   // испытания ж/д моста
+    if (g.ship) completeMission("rbBarge");
+    if (g.lift && time - (free.railBoostT || -99) < 4) completeMission("rbRails");
+    if (g.pull && free.airT > .5) { const [ls] = RAILB.loc(car.x, car.z); if (ls > RAILB.A2 + 9 && ls < RAILB.GAP0 + 1) completeMission("rbRailGap"); }
+  }
   if (free.fromOverpass && car.z < ZA - 19) completeMission("overpass");
   const trickRoll = totalRoll + (free.cork ? 180 : 0), turns = Math.floor((trickRoll + 40) / 360);
   if (free.airT < .6 && !turns) return;
