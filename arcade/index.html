@@ -2372,7 +2372,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     // верхние пояса арок с обеих сторон (на северной на подъёме — разгон); южные — тоже твёрдые сверху
     ...[-1, 1].map(k => [0, A1 - .4, k * HW - .75, k * HW + .75, s => chordTop(s, 0, A1), s => Math.atan(archD(s, 0, A1)), 1.2, 0, false, k * HW]),
     ...[-1, 1].map(k => [3, 11, k * HW - .75, k * HW + .75, s => chordTop(s, 0, A1) + .02, s => Math.atan(archD(s, 0, A1)), 1.2, 34, false, k * HW]),
-    ...[-1, 1].map(k => [A2 + 6, L - 6, k * HW - .75, k * HW + .75, s => chordTop(s, A2, L), s => Math.atan(archD(s, A2, L)), 1.2, 0, false, k * HW]),
+    ...[-1, 1].map(k => [A2 + .4, L - 6, k * HW - .75, k * HW + .75, s => chordTop(s, A2, L), s => Math.atan(archD(s, A2, L)), 1.2, 0, false, k * HW]),   // с края пролёта — прямо на пояс южной арки
     // верхняя ферма между башнями и крыши домиков механизмов — на них можно сесть сверху
     [A1 + 3, A2 - 3, -HW - 2.2, HW + 2.2, () => Y0 + TOW - .55, () => 0, 1.2],
     ...[A1, A2].map(a => [a - 6, a + 6, -HW - 3, HW + 3, () => Y0 - .7, () => 0, 1.2]),   // шапки больших опор под разрывом: упал — встал на бетон, дальше в воду
@@ -2581,7 +2581,8 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     const sign = (lines, bg, fg, s, l, y, w) => { const m = new T.MeshBasicMaterial({ map: textTex(lines, 512, 128, bg, fg) }); [0, Math.PI].forEach(r => { const sgn = new T.Mesh(new T.PlaneGeometry(w, w / 4), m); sgn.position.copy(at(s, l, y)); sgn.rotation.y = yaw + Math.PI / 2 + r; sc.group.add(sgn); }); };
     sign(["НА АРКУ ↗"], "#d8322c", "#ffffff", -10, -HW - 2.5, Y0 + 4, 7); sign(["НА АРКУ ↗"], "#d8322c", "#ffffff", -10, HW + 2.5, Y0 + 4, 7);
     sign(["ПЕРИЛА"], "#2c0a44", "#ffc93c", L + 10, 0, Y0 + 5.5, 8);
-    sign(["ПРЫЖОК В ДОН: 3 КОЛЕСА →"], "#1f4f7a", "#ffffff", A1 / 2 - 22, HW + 2.6, Y0 + 3.2, 9);
+    sign(["С ВЕРШИНЫ ВПРАВО: 3 КОЛЕСА → ДОН"], "#1f4f7a", "#ffffff", A1 / 2 - 16, HW + 2.8, chordTop(A1 / 2 - 16, 0, A1) + 3, 10);
+    sign(["ПОЯС → ПРОЛЁТ → ЮЖНАЯ АРКА · ЖДИ ЗЕЛЁНЫЙ"], "#1d6b3a", "#ffffff", A1 / 2 + 16, -HW - 2.8, chordTop(A1 / 2 + 16, 0, A1) + 3, 11);
     [[A1 - 4, 1], [A2 + 4, -1]].forEach(([s0, k]) => sign(["С ЛИФТА — В КОЛЕСО ↑"], "#d8322c", "#ffffff", s0, k * (HW + 2.4), Y0 + LIFT - 6, 8));
     sign(["ЖЕЛЕЗНОДОРОЖНЫЙ МОСТ"], "#1f4f7a", "#ffffff", -RAMP - 12, HW + 6, 6, 14);
     // кольца: на вершине северной арки (обе стороны) и три — прыжок в Дон
@@ -2594,7 +2595,8 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
       tyres.push(tyreG.clone().applyMatrix4(m.matrix)); st.rings.push({ m, p: p.clone(), got: false, boost });
     };
     [-1, 1].forEach(k => addRing(at(A1 / 2, k * HW, Y0 + ARCH + 3), yaw + Math.PI / 2, 40));
-    [[14, 30], [27, 23], [40, 15]].forEach(([o, y]) => addRing(at(A1 / 2, HW + o, y), yaw, 0));
+    // «прыжок в Дон»: с вершины северной арки (правый пояс) уводишь машину вправо — три колеса по дуге полёта, дальше — в реку
+    [[34, 11.6, 31.5], [55, 14.8, 24], [75, 17.8, 13.5]].forEach(([ds, l0, y]) => addRing(at(A1 / 2 + ds, l0, y), yaw + Math.PI / 2 - .15, 0));
     [[A1 - 10, 3.5], [A2 + 10, -3.5]].forEach(([s0, l0]) => { addRing(at(s0, l0, Y0 + LIFT + 3.6), yaw + Math.PI / 2, 0); st.rings[st.rings.length - 1].lift = true; });   // вылет с трамплина поднятого пролёта
     sc.group.add(new T.Mesh(mergeGeos(tyres), tyreM));
     // поезд: локомотив и три вагона — одна сетка
@@ -2645,7 +2647,10 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     if (mode === "free" && phase === "free" && !free.air && !st.warnT) {
       const [cs, cl] = loc(car.x, car.z), vs = car.v * (Math.cos(car.yaw) * dx - Math.sin(car.yaw) * dz), onDeck = Math.abs(cl) < HW && Math.abs(car.y - Y0) < 1.5;
       const dist = cs < A1 && vs > 3 ? A1 - cs : cs > A2 && vs < -3 ? cs - A2 : -1;
+      const onChord = Math.abs(Math.abs(cl) - HW) < .8 && car.y > Y0 + 3 && (cs < A1 ? vs > 3 && cs > A1 / 2 : cs > A2 && vs < -3 && cs < (A2 + L) / 2);   // на поясе арки, едем вниз к пролёту
       if (onDeck && st.y > 1 && dist > 5 && dist < 70) { queueToast("Пролёт поднят — впереди разрыв! Тормози или прыгай", "bad", 1600); st.warnT = 6; }
+      else if (onChord && st.y > 1) { queueToast(cs < A1 ? "Пролёт поднят — пояс уходит в обрыв! Уводи вправо: 3 колеса и в Дон" : "Пролёт поднят — пояс уходит в обрыв! Тормози", "bad", 2200); st.warnT = 7; }
+      else if (onChord && st.y < .05 && !st.up) { queueToast("Огни зелёные — по поясу прямо на пролёт и дальше на другую арку!", "good", 2000); st.warnT = 12; }
       else if (cs > A1 && cs < A2 && Math.abs(cl) < HW + .5 && st.v > .5 && Math.abs(car.y - Y0 - st.y) < 1.5 && st.y > 1 && st.y < 6) { queueToast("Лифт! Пролёт поднимает машину на 40 м — с трамплина наверху вылет в кольцо", "good", 2200); st.warnT = 20; }
     }
     for (const r of st.rings) if (!r.got && Math.hypot(car.x - r.p.x, car.y + .6 - r.p.y, car.z - r.p.z) < 3.2) {
@@ -2879,7 +2884,8 @@ const PHOTO = (() => {
   function sky(on) {
     let photo = false;
     if (on && SKIES[TIME]) { if (SKY.key !== TIME) { if (paintSky(TIME)) SKY.key = TIME; } photo = SKY.key === TIME; }
-    skyDome.material.map = photo ? SKY.tex : SKY.orig;
+    const map = photo ? SKY.tex : SKY.orig;
+    if (skyDome.material.map !== map) { skyDome.material.map = map; paintCarEnv(); }   // отражения в кузове — с того же неба
   }
   // вода
   const det = new T.TextureLoader().load(PHOTO_WATER_TEX); det.wrapS = det.wrapT = T.RepeatWrapping;
@@ -2951,13 +2957,14 @@ const PHOTO = (() => {
     if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
     scene.add(sun.target);
     if (!on) { sun.target.position.set(0, 0, 0); sun.position.copy(SUN_DIR).multiplyScalar(400); }
-    shadowFlags(on); bridge(on); sky(on);
+    shadowFlags(on); bridge(on); sky(true);
     swaps.length = 0;
     scene.traverse(o => { if (o.isMesh && (o.material.name === "don-water" || o.material === waterM)) { o.userData.w0 = o.userData.w0 || o.material; o.material = on ? waterM : o.userData.w0; swaps.push(o); } });
   }
   function tick() {
     const want = st.forced || save.quality === "photo";
     if (want !== st.on) enable(want);
+    sky(true);                                             // небо по фото — при любом качестве (это одна текстура купола)
     if (!st.on) return;
     if (performance.now() - st.recvAt > 1500) {            // новые сцены, суда, поток машин — раз в 1,5 с
       st.recvAt = performance.now(); shadowFlags(true);
@@ -2983,39 +2990,58 @@ const KINO = (() => {
     if (!st.bars) { st.bars = document.createElement("div"); st.bars.className = "kino-bars"; stage.appendChild(st.bars); }
     st.bars.classList.toggle("on", on); stage.classList.toggle("kino", on);   // в кадре — без спидометра и карты
   }
-  // f(R, s, l, dir, side, t, a0) → [x, y, z, fov] или null (план сюда не подходит)
+  // f(R, s, l, dir, side, t, a0) → [x, y, z, fov] или null (план сюда не подходит). Большинство планов — крупные, «привязаны» к машине
+  // (камера летит вместе с ней: спереди навстречу, снизу на фоне неба, сбоку у колеса); общие — чтобы мост был огромным
+  // (низко с воды и длинный объектив). План, в котором машину загораживают фермы или дома, не берётся; загородило по ходу — смена плана
+  const H = new T.Vector3(), Sd = new T.Vector3();
+  const rel = (ahead, side, up, fov) => [car.x + H.x * ahead + Sd.x * side, car.y + up, car.z + H.z * ahead + Sd.z * side, fov];
   const SHOTS = [
-    { name: "с воды у опоры", air: 1, f: (R, s, l, dir, side) => { const pr = [0, R.A1, R.A2, R.L].reduce((a, b) => Math.abs(b - s) < Math.abs(a - s) ? b : a); if (Math.abs(pr - s) > 70) return null; const p = R.at(pr + dir * 6, side * (R.HW + 15), 1.4); return [p.x, p.y, p.z, 52]; } },
-    { name: "с крыши башни", air: 1, f: (R, s, l, dir, side) => { const a = Math.abs(s - R.A1) < Math.abs(s - R.A2) ? R.A1 : R.A2; if (Math.abs(a - s) > 90) return null; const p = R.at(a, side * (R.HW + 3), R.Y0 + R.TOW + 9); return [p.x, p.y, p.z, 58]; } },
-    { name: "изнутри фермы", air: 1, ground: 1, f: (R, s, l, dir, side) => { const s1 = s + dir * 24; if (s1 < 2 || s1 > R.L - 2) return null; const y = R.Y0 + 1.3 + (s1 > R.A1 && s1 < R.A2 ? R.st.y : 0); const p = R.at(s1, -side * (R.HW - 1.1), y); return [p.x, p.y, p.z, 64]; } },
-    { name: "телеобъектив с реки", air: 1, ground: 1, f: (R, s, l, dir, side) => { const p = R.at(s - dir * 8, side * 150, 4); return [p.x, p.y, p.z, 20]; } },
-    { name: "над водой", air: 1, ground: 1, f: (R, s, l, dir, side) => { const p = R.at(s + dir * 34, side * 28, .9); return [p.x, p.y, p.z, 50]; } },
-    { name: "дрон", air: 1, ground: 1, move: 1, f: (R, s, l, dir, side, t, a0) => { const a = a0 + t * .55; return [car.x + Math.cos(a) * 22, car.y + 8, car.z + Math.sin(a) * 22, 56]; } },
-    { name: "с вершины арки", air: 1, f: (R, s, l, dir, side) => { const top = s < R.A1 + 5 ? R.A1 / 2 : s > R.A2 - 5 ? (R.A2 + R.L) / 2 : null; if (top == null || Math.abs(top - s) > 60 || Math.abs(top - s) < 6) return null; const p = R.at(top, side * R.HW, R.Y0 + R.ARCH + 3.5); return [p.x, p.y, p.z, 60]; } },
-    { name: "из-под пролёта", air: 1, f: (R, s, l, dir, side) => { if (R.st.y < 12 || car.y > R.Y0 + R.st.y - 2) return null; const p = R.at((R.A1 + R.A2) / 2 - dir * 20, -side * 3, R.Y0 + R.st.y - 3); return [p.x, p.y, p.z, 66]; } },
+    { name: "навстречу", w: 3, move: 1, f: (R, s, l, dir, side, t) => rel(8.5 - 2.6 * t, 1.6 * side, -.6 + .5 * t, 42) },
+    { name: "снизу, на фоне неба", w: 2, move: 1, f: (R, s, l, dir, side, t) => car.y < 4 ? null : rel(4.6 - 1.2 * t, 2.4 * side, -2.6, 64) },
+    { name: "сбоку крупно", w: 2, move: 1, f: (R, s, l, dir, side, t) => rel(2.4 - 3.4 * t, 5.2 * side, .25, 38) },
+    { name: "у колеса", w: 2, move: 1, f: (R, s, l, dir, side, t) => rel(1.9 - .6 * t, 2.5 * side, -.15, 72) },
+    { name: "сверху", w: 1, move: 1, f: (R, s, l, dir, side, t) => rel(1.5 + t, .8 * side, 7.5 - t, 50) },
+    { name: "облёт", w: 2, move: 1, f: (R, s, l, dir, side, t, a0) => { const a = Math.atan2(H.z, H.x) + side * (.5 + t * 1.1); return [car.x + Math.cos(a) * 6.2, car.y + 1.2 + .5 * t, car.z + Math.sin(a) * 6.2, 50]; } },
+    { name: "с воды у опоры", w: 1, f: (R, s, l, dir, side) => { const pr = [0, R.A1, R.A2, R.L].reduce((a, b) => Math.abs(b - s) < Math.abs(a - s) ? b : a); if (Math.abs(pr - s) > 70) return null; const p = R.at(pr + dir * 6, side * (R.HW + 15), 1.4); return [p.x, p.y, p.z, 52]; } },
+    { name: "телеобъектив с реки", w: 1, f: (R, s, l, dir, side) => { const p = R.at(s + dir * 30, side * 120, 2.5); return [p.x, p.y, p.z, 20]; } },
+    { name: "из-под пролёта", w: 1, f: (R, s, l, dir, side) => { if (R.st.y < 12 || car.y > R.Y0 + R.st.y - 2) return null; const p = R.at((R.A1 + R.A2) / 2 - dir * 20, -side * 3, R.Y0 + R.st.y - 3); return [p.x, p.y, p.z, 66]; } },
   ];
   const near = (x, z) => { const R = RAILB; if (!R || !R.st.loaded) return false; const [s, l] = R.loc(x, z); return s > -60 && s < R.L + 60 && Math.abs(l) < 70; };
+  // видно ли машину: идём по лучу от камеры к машине, всё твёрдое (фермы, башни, дома, земля) — помеха
+  const clear = p => { const dx = car.x - p[0], dy = car.y + .5 - p[1], dz = car.z - p[2], d = Math.hypot(dx, dy, dz);
+    if (p[1] < terrainH(p[0], p[2]) + .3 && !waterAt(p[0], p[2])) return false;
+    for (let u = .3; u < d - 2.2; u += .35) { const k = u / d, x = p[0] + dx * k, y = p[1] + dy * k, z = p[2] + dz * k;
+      if (hitSolid(x, z, y) || y < terrainH(x, z) - .2) return false;
+      const gh = groundAt(x, z, y + .7).h; if (gh > y - .25 && gh < y + .7) return false; }       // сквозь настил, крышу или палубу
+    return true; };
+  function heading() {
+    const v = Math.hypot(st.vel.x, st.vel.z); if (v > 2) H.set(st.vel.x / v, 0, st.vel.z / v); else H.set(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
+    Sd.set(-H.z, 0, H.x);
+  }
   function cut(R) {
-    const [s, l] = R.loc(car.x, car.z), dir = (st.vel.x * R.dir.x + st.vel.z * R.dir.z) >= 0 ? 1 : -1, side = l >= 0 ? 1 : -1;
-    const ok = SHOTS.filter(sh => sh.air && sh !== st.last && sh.f(R, s, l, dir, side, 0, 0));
+    heading();
+    const [s, l] = R.loc(car.x, car.z), dir = (st.vel.x * R.dir.x + st.vel.z * R.dir.z) >= 0 ? 1 : -1, side = (st.cuts = (st.cuts || 0) + 1) % 2 ? 1 : -1;
+    const ok = SHOTS.filter(sh => sh !== st.last && (() => { const p = sh.f(R, s, l, dir, side, 0, 0); return p && clear(p) && (!sh.move || clear(sh.f(R, s, l, dir, side, SHOT * .7, 0))); })());
     if (!ok.length) return;
-    const sh = ok[Math.floor(Math.random() * ok.length)], a0 = Math.random() * 6.28;
-    st.shot = { sh, a0, p: sh.f(R, s, l, dir, side, 0, a0), g: { s, l, dir, side } }; st.t = 0; st.last = sh;
+    let r = Math.random() * ok.reduce((a, sh) => a + sh.w, 0), sh = ok[0]; for (const q of ok) { r -= q.w; if (r <= 0) { sh = q; break; } }
+    st.shot = { sh, a0: 0, p: sh.f(R, s, l, dir, side, 0, 0), g: { s, l, dir, side } }; st.t = 0; st.last = sh;
   }
   function cam(dt) {                                     // повтор: вызывается вместо камеры повтора
     const R = RAILB; if (!R || !R.st.loaded) return false;
     if (dt > 0) { st.vel.subVectors(L.set(car.x, car.y, car.z), st.prev).divideScalar(dt); } st.prev.set(car.x, car.y, car.z);
-    if (!st.shot || st.t > SHOT) cut(R);
+    if (!st.shot || st.t > SHOT || (st.shot.sh.move && st.t > .25 && !st.ok)) cut(R);
     if (!st.shot) return false;
     st.t += dt; barsOn(true);
-    const sh = st.shot, g = sh.g, p = sh.sh.move ? sh.sh.f(R, g.s, g.l, g.dir, g.side, st.t, sh.a0) : sh.p;
+    const sh = st.shot, g = sh.g; if (sh.sh.move) heading();
+    const p = (sh.sh.move && sh.sh.f(R, g.s, g.l, g.dir, g.side, st.t, sh.a0)) || sh.p;
+    st.ok = !sh.sh.move || clear(p);
     camera.position.set(p[0], p[1], p[2]); camera.up.set(0, 1, 0);
-    L.set(car.x + st.vel.x * .08, car.y + .7, car.z + st.vel.z * .08); camera.lookAt(L);
-    camera.fov = Math.max(12, Math.min(p[3], 2 * Math.atan(9 / camera.position.distanceTo(L)) / DEG));   // «оператор»: зум держит машину крупно (кадр ~18 м)
+    L.set(car.x + st.vel.x * .06, car.y + .45, car.z + st.vel.z * .06); camera.lookAt(L);
+    camera.fov = sh.sh.move ? p[3] : Math.max(10, Math.min(p[3], 2 * Math.atan(4.5 / camera.position.distanceTo(L)) / DEG));   // общий план: зум держит машину крупно (кадр ~9 м)
     return true;
   }
   function end() { st.shot = null; st.last = null; barsOn(false); }
-  return { cam, end, near, get shot() { return st.shot ? st.shot.sh.name : null; } };
+  return { cam, end, near, clear, get shot() { return st.shot ? st.shot.sh.name : null; } };
 })();
 /* ---------- под водой: дно, поверхность снизу, бирюзовый туман, приглушённый звук ---------- */
 const UNDER = (() => {
@@ -3172,16 +3198,36 @@ const PAINTS = [
   { n: "белая", c: 0xe6dfcb }, { n: "мокрый асфальт", c: 0x46524d }, { n: "серебро", c: 0xa9a99d },
   { n: "вишня", c: 0x7a1c28 }, { n: "красная", c: 0x9c0c16 }
 ];
+// гладкие нормали для непроиндексированной сетки: в каждой вершине — среднее нормалей соседних граней (по площади),
+// но только тех, что повёрнуты не больше чем на crease° — рёбра (линия плеча, край капота) остаются чёткими
+function smoothNormals(geo, crease = 30) {
+  const P = geo.attributes.position.array, n = P.length / 9, F = new Float32Array(n * 3), map = new Map(), cs = Math.cos(crease * DEG);
+  const a = new T.Vector3(), b = new T.Vector3(), c = new T.Vector3(), keys = [];
+  for (let t = 0; t < n; t++) {
+    a.fromArray(P, t * 9); b.fromArray(P, t * 9 + 3).sub(a); c.fromArray(P, t * 9 + 6).sub(a); b.cross(c);   // длина — удвоенная площадь
+    F[t * 3] = b.x; F[t * 3 + 1] = b.y; F[t * 3 + 2] = b.z;
+    for (let k = 0; k < 3; k++) { const i = t * 9 + k * 3, key = Math.round(P[i] * 1e4) + "," + Math.round(P[i + 1] * 1e4) + "," + Math.round(P[i + 2] * 1e4); let l = map.get(key); if (!l) map.set(key, l = []); l.push(t); keys.push(key); }
+  }
+  const N = new Float32Array(P.length), u = new T.Vector3(), w = new T.Vector3();
+  for (let v = 0; v < n * 3; v++) {
+    const t = v / 3 | 0; u.fromArray(F, t * 3); const ul = u.length() || 1; w.set(0, 0, 0);
+    for (const f of map.get(keys[v])) { c.fromArray(F, f * 3); const cl = c.length() || 1; if (c.dot(u) / (cl * ul) >= cs) w.add(c); }
+    if (w.lengthSq() < 1e-20) w.copy(u); w.normalize(); N[v * 3] = w.x; N[v * 3 + 1] = w.y; N[v * 3 + 2] = w.z;
+  }
+  geo.setAttribute("normal", new T.BufferAttribute(N, 3)); return geo;
+}
 function makeVaz2108() {
   // Размеры сняты с заводского чертежа ВАЗ-2108 (мм → м). Система: x вперёд, земля на y = −0.65.
   // Длина 4006, база 2460 (перед 785, зад 761), высота 1402, ширина 1650, колея 1400/1370, клиренс 160.
   const g = new T.Group();
-  // глубокий матовый лак: полуматовая краска под мягким прозрачным слоем (clearcoat) — цвет «в глубину», блик широкий и мягкий
-  const paint = new T.MeshPhysicalMaterial({ color: PAINTS[0].c, roughness: .52, metalness: .08, clearcoat: .55, clearcoatRoughness: .36, side: T.DoubleSide, flatShading: true });
-  paint.userData.carShiny = true; paint.userData.envI = .18;   // отражение неба — только намёком, иначе цвет «выцветает»
+  // глубокий лак: цветной слой полуматовый (цвет не выцветает), сверху — гладкий прозрачный (clearcoat): узкий яркий блик солнца
+  // и отражение неба по френелю — сильное только на скользящих углах. Нормали сглажены (см. smoothNormals) — блик бежит по
+  // изгибу кузова, а не заливает целую грань
+  const paint = new T.MeshPhysicalMaterial({ color: PAINTS[0].c, roughness: .42, metalness: .02, clearcoat: 1, clearcoatRoughness: .07, side: T.DoubleSide });
+  paint.userData.carShiny = true; paint.userData.envI = .65;
   const black = mat(0x15171d, { roughness: .7, side: T.DoubleSide });
   // стекло: прозрачное тонированное, с отражением неба; внутри виден салон
-  const glassM = new T.MeshPhysicalMaterial({ color: 0x14262e, roughness: .03, metalness: 0, transparent: true, opacity: .4, depthWrite: false, side: T.DoubleSide, flatShading: true });
+  const glassM = new T.MeshPhysicalMaterial({ color: 0x14262e, roughness: .03, metalness: 0, transparent: true, opacity: .55, depthWrite: false, side: T.DoubleSide });   // тонировка темнее — как на фото: стекло тёмное, в нём небо
   glassM.userData.carShiny = true; glassM.userData.envI = 1.3;
   const H = mm => mm / 1000 - .65, X = mm => 2.003 - mm / 1000;          // высота и «от переднего бампера» по чертежу
   const tab = (t, x) => {
@@ -3234,7 +3280,7 @@ function makeVaz2108() {
       const c = R.reduce((a, p) => [a[0] + p[0] / R.length, a[1] + p[1] / R.length, a[2] + p[2] / R.length], [0, 0, 0]);
       for (let i = 0; i < R.length; i++) tri(c, R[i], R[(i + 1) % R.length]);
     });
-    const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); geo.computeVertexNormals();
+    const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); smoothNormals(geo, 32);
     const mesh = new T.Mesh(geo, m); g.add(mesh); return mesh;
   }
   const span = (a, b, n) => Array.from({ length: n + 1 }, (_, i) => a + (b - a) * i / n);
@@ -3265,7 +3311,7 @@ function makeVaz2108() {
         if (j < N - i - 1) pos.push(...pt(i + 1, j), ...pt(i + 1, j + 1), ...pt(i, j + 1));
       }
     }
-    const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); geo.computeVertexNormals();
+    const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); smoothNormals(geo, 32);
     g.add(new T.Mesh(geo, m));
   }
   const yWin = H(1282), yBelt = H(955);
@@ -3283,7 +3329,23 @@ function makeVaz2108() {
   const headM = nightReg(new T.MeshStandardMaterial({ color: 0xc9d6e2, emissive: 0xfff1c8, emissiveIntensity: .25, roughness: .15, metalness: .3 }), "emissiveIntensity", { sunset: .35, day: .2, night: 1.3 });
   const amberM = new T.MeshStandardMaterial({ color: 0xff9a2a, emissive: 0xff8a1a, emissiveIntensity: .5 });
   const redM = new T.MeshStandardMaterial({ color: 0x6a0206, emissive: 0x9a0008, emissiveIntensity: .55, roughness: .3 });   // насыщенный красный, не розовый
-  const ribM = mat(0x2a0306, { roughness: .4 });
+  // стекло задних фонарей: цвет и (для стоп-сигнала) свечение только красных секций
+  const tailTex = (mask) => { const c = document.createElement("canvas"); c.width = 512; c.height = 160; const q = c.getContext("2d");
+    q.fillStyle = mask ? "#000" : "#2a2c30"; q.fillRect(0, 0, 512, 160);
+    // как на настоящей «восьмёрке» (фото сзади): у номера — красная секция, в середине красная сверху и белый задний ход снизу,
+    // снаружи — оранжевый поворотник во всю высоту
+    const sec = [[8, 196, 14, 146, "#a00810", "#ff2a2a", 1], [202, 346, 14, 84, "#a00810", "#ff2a2a", 1], [202, 346, 88, 146, "#c9ced2", "#ffffff", 0], [352, 504, 14, 146, "#d8650c", "#ff9a30", 0]];
+    sec.forEach(([a, b, y0, y1, c0, c1, red]) => {
+      if (mask) { q.fillStyle = red ? "#fff" : "#000"; q.fillRect(a, y0, b - a, y1 - y0); return; }
+      const gr = q.createLinearGradient(0, y0, 0, y1); gr.addColorStop(0, c1); gr.addColorStop(.5, c0); gr.addColorStop(1, red ? "#4a0408" : c0); q.fillStyle = gr; q.fillRect(a, y0, b - a, y1 - y0);
+      q.fillStyle = "rgba(255,255,255,.14)"; for (let y = y0 + 6; y < y1; y += 12) q.fillRect(a + 2, y, b - a - 4, 3);   // рёбра-призмы рассеивателя
+      for (let x = a + 9; x < b - 4; x += 18) { q.fillStyle = "rgba(0,0,0,.16)"; q.fillRect(x, y0, 2, y1 - y0); }
+      const hl = q.createLinearGradient(0, y0, 0, y0 + 30); hl.addColorStop(0, "rgba(255,255,255,.4)"); hl.addColorStop(1, "rgba(255,255,255,0)"); q.fillStyle = hl; q.fillRect(a, y0, b - a, 30);   // блик по верху стекла
+    });
+    if (!mask) { q.fillStyle = "#151515"; [199, 349].forEach(x => q.fillRect(x - 3, 10, 6, 140)); q.fillRect(202, 84, 144, 4); q.strokeStyle = "#1a1a1a"; q.lineWidth = 6; q.strokeRect(3, 10, 506, 140); }   // тёмные перегородки и рамка
+    const t = new T.CanvasTexture(c); t.encoding = mask ? T.LinearEncoding : T.sRGBEncoding; t.anisotropy = 4; return t; };
+  const tailM = new T.MeshStandardMaterial({ map: tailTex(false), emissive: 0xff1a12, emissiveMap: tailTex(true), emissiveIntensity: .55, roughness: .12, metalness: .1 });
+  tailM.userData.carShiny = true; tailM.userData.envI = .8;
   const plateM = mat(0xf2f2f2);
   // перед: наклонная панель фар и решётки (наклон ~30° от вертикали)
   const nose = Math.atan2(X(43) - X(150), H(810) - H(622));
@@ -3299,30 +3361,35 @@ function makeVaz2108() {
   // бамперы 255 мм высотой, с заходом на крылья
   const bumpY = (H(337) + H(592)) / 2, bumpH = H(592) - H(337);
   // бамперы — пластик: основной брус, выступающий верхний профиль с резиновой вставкой, загибы на крылья, катафоты сзади
-  const plast = mat(0x0b0c0e, { roughness: .62, side: T.DoubleSide }), rubber = black;   // резина — тем же чёрным: меньше материалов — меньше вызовов отрисовки
+  const plast = mat(0x26282b, { roughness: .82, side: T.DoubleSide }), rubber = black;   // резина — тем же чёрным: меньше материалов — меньше вызовов отрисовки
+  // в плане — «П» со скруглёнными углами (заходит на крылья), по высоте два яруса: нижний брус и выступающий верхний профиль
+  // с резиновой вставкой; рёбра скруглены фаской — по ним бежит блик
+  const ubar = (x0, dir, y0, hgt, W, wrap, thick, r, m, bev = .012) => {
+    const xb = x0, pts = [], arc = (cx, cz, rr, a0, a1, out) => { for (let i = 0; i <= 6; i++) { const a = a0 + (a1 - a0) * i / 6; out.push([cx + Math.cos(a) * rr * dir, cz + Math.sin(a) * rr]); } };
+    const contour = (w, xo, rr) => { const o = [[xo - dir * (wrap - (W - w)), -w]]; arc(xo - dir * rr, -w + rr, rr, -Math.PI / 2, 0, o); arc(xo - dir * rr, w - rr, rr, 0, Math.PI / 2, o); o.push([xo - dir * (wrap - (W - w)), w]); return o; };
+    const outer = contour(W, xb, r), inner = contour(W - thick, xb - dir * thick, Math.max(.02, r - thick)).reverse();
+    const sh = new T.Shape(outer.concat(inner).map(([x, z]) => new T.Vector2(x, -z)));
+    const geo = new T.ExtrudeGeometry(sh, { depth: hgt - 2 * bev, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: 2, curveSegments: 1 }).rotateX(-Math.PI / 2).translate(0, y0 + bev, 0);
+    const mesh = new T.Mesh(smoothNormals(geo.index ? geo.toNonIndexed() : geo, 50), m); g.add(mesh); return mesh;
+  };
   const bumper = (x0, dir, y0, y1) => {                // dir: +1 — передний (наружу +x), −1 — задний
-    const h = y1 - y0, yP = y0 + h * .74;
-    box(.12, h * .66, 1.6, plast, x0, y0 + h * .33, 0);                                  // нижний брус
-    box(.15, h * .3, 1.62, plast, x0 + dir * .015, yP, 0);                               // верхний профиль — выступает
-    box(.02, .036, 1.5, rubber, x0 + dir * .092, yP, 0);                                 // резиновая вставка по профилю
-    box(.11, .012, 1.56, rubber, x0 + dir * .005, y0 + h * .58, 0);                      // тень-канавка под профилем
-    [-1, 1].forEach(sd => {
-      box(.34, h * .66, .07, plast, x0 - dir * .16, y0 + h * .33, sd * .805, -sd * dir * .1);   // загиб на крыло
-      box(.36, h * .3, .08, plast, x0 - dir * .15, yP, sd * .81, -sd * dir * .1);
-      box(.3, .034, .02, rubber, x0 - dir * .15, yP, sd * .852, -sd * dir * .1);
-      if (dir < 0) box(.012, .045, .14, redM, x0 - .084, y0 + h * .36, sd * .58);           // катафоты
-    });
+    const h = y1 - y0, yP = y0 + h * .6;
+    ubar(x0 + dir * .06, dir, y0, h * .62, .8, .4, .11, .2, plast);                   // нижний брус
+    ubar(x0 + dir * .09, dir, yP, h * .4, .815, .42, .13, .22, plast, .018);          // верхний профиль — выступает, кромка круглая
+    ubar(x0 + dir * .112, dir, yP + h * .17, .036, .822, .4, .02, .22, rubber, 0);    // резиновая вставка по профилю
+    ubar(x0 + dir * .066, dir, y0 + h * .56, .02, .806, .38, .03, .2, rubber, 0);     // тень-канавка между ярусами
+    if (dir < 0) [-1, 1].forEach(sd => box(.012, .045, .14, redM, x0 - .074, y0 + h * .34, sd * .58));   // катафоты
   };
   bumper(X(0) - .045, 1, H(337), H(592));
   box(.02, .11, .52, plateM, X(0) + .022 + .02, bumpY, 0);
   bumper(X(4006) + .045, -1, H(300), H(585));
   [-1, 1].forEach(sd => {
-    // задние фонари по чертежу: красный блок снаружи, жёлтый поворотник ближе к центру, с заходом на бок; между ними — номер
-    box(.03, .16, .37, redM, X(3952) - .01, H(715), sd * .585, 0, .08);
-    box(.032, .16, .085, amberM, X(3952) - .011, H(715), sd * .355, 0, .08);
-    [-.035, .035].forEach(dy => box(.034, .008, .37, ribM, X(3952) - .006 - dy * .08, H(715) + dy, sd * .585, 0, .08));   // рёбра рассеивателя
-    box(.1, .16, .03, redM, X(3935), H(715), sd * .79, -sd * .5, .08);
-    box(.022, .012, .3, mat(0x9aa0a6), X(3952) - .004, H(815), sd * .52, 0, .08);                 // накладки-щели на двери багажника
+    // задние фонари по чертежу: стекло-рассеиватель одной текстурой (у номера — жёлтый поворотник, белый задний ход, снаружи —
+    // красный с рёбрами и хромовой рамкой), за стеклом — тёмный корпус; с заходом на бок
+    box(.03, .18, .5, black, X(3952) - .004, H(715), sd * .555, 0, .08);
+    { const q = new T.PlaneGeometry(.49, .17).rotateY(-Math.PI / 2), uv = q.attributes.uv; if (sd < 0) for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i));
+      const m = new T.Mesh(q, tailM); m.position.set(X(3952) - .021, H(715), sd * .555); m.rotation.z = .08; g.add(m); }
+    box(.1, .16, .03, amberM, X(3935), H(715), sd * .79, -sd * .5, .08);   // поворотник заходит на бок
     // двери, молдинг, ручка, зеркало
     [X(1180), X(2600)].forEach(x => box(.008, yBelt - .02 - yBot(X(2000)), .004, black, x, (yBelt - .02 + yBot(X(2000))) / 2, sd * .828));
     box(X(1130) - X(2915), .06, .012, black, (X(1130) + X(2915)) / 2, H(430), sd * .832);   // молдинг — только между арками, как на чертеже
@@ -3345,10 +3412,21 @@ function makeVaz2108() {
     const wh = new T.Mesh(new T.TorusGeometry(.19, .022, 6, 20), darkM); wh.position.set(X(1850), H(950), -.37); wh.rotation.set(0, Math.PI / 2, 0); wh.rotateX(.55); g.add(wh);   // руль
     box(.04, .26, .04, darkM, X(1950), H(560), 0, 0, -.3);                      // рычаг КПП
     box(.5, .02, 1.36, darkM, X(3680), H(905), 0, 0, .05);                     // полка багажника
+    box(X(1900) - X(3060), .015, 1.26, seatM, (X(1900) + X(3060)) / 2, H(1372), 0);   // обивка потолка — сквозь стёкла виден серый потолок, а не изнанка крыши
   }
   box(.03, .13, .54, black, X(3952) - .006, H(712), 0, 0, .08);                                              // ниша номера между фонарями
   box(.04, .045, 1.36, black, X(3884) - .03, H(948), 0);                                                     // уплотнитель под стеклом двери
-  box(.34, .014, .02, black, X(3690), H(1062), .04, .35, .5);                                                // задний дворник — лежит на стекле (уклон ~29°)
+  // стекло двери багажника: чёрная резиновая рамка по краям (как на настоящей — широкая), сверху — козырёк, на стекле — нити обогрева
+  { const pos = [], quad = (a, b, c, d) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+    const edge = x => { const [zw, yr] = gp(x, 1); return [zw, yr]; };
+    const xs = span(X(3884) + .01, X(3100), 18);
+    for (let i = 0; i < xs.length - 1; i++) { const [za, ya] = edge(xs[i]), [zb, yb] = edge(xs[i + 1]);
+      [-1, 1].forEach(sd => quad([xs[i], ya + .006, sd * (za - .065)], [xs[i + 1], yb + .006, sd * (zb - .065)], [xs[i + 1], yb - .004, sd * (zb + .016)], [xs[i], ya - .004, sd * (za + .016)])); }
+    { const x0 = X(3115), x1 = X(3045), [z0, y0] = edge(x0), y1 = yRoof(x1); quad([x0, y0 + .007, -z0 - .01], [x0, y0 + .007, z0 + .01], [x1, y1 + .014, z0 + .01], [x1, y1 + .014, -z0 - .01]); }   // верхняя кромка — к крыше
+    for (let k = 1; k <= 8; k++) { const x = X(3884) + .06 + (X(3150) - X(3884) - .1) * k / 9, [zw, yr] = edge(x), w = zw - .1;   // нити обогрева
+      quad([x - .004, yr + .004, -w], [x - .004, yr + .004, w], [x + .004, yr + .004 + (yRoof(x + .004) - yRoof(x - .004)), w], [x + .004, yr + .004 + (yRoof(x + .004) - yRoof(x - .004)), -w]); }
+    const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); geo.computeVertexNormals(); g.add(new T.Mesh(geo, black)); }
+  box(.34, .014, .02, black, X(3330), yRoof(X(3330)) + .014, .1, .5, .5);                                     // задний дворник — ось вверху по центру стекла, как на фото                                                // задний дворник — лежит на стекле (уклон ~29°)
   { const fc = new T.Mesh(new T.CylinderGeometry(.06, .06, .008, 14).rotateX(Math.PI / 2), paint); fc.position.set(X(3420), H(830), .829); g.add(fc);   // лючок бензобака справа
     const ex = new T.Mesh(new T.CylinderGeometry(.03, .032, .22, 10).rotateZ(Math.PI / 2), mat(0x3b3d42, { roughness: .5, metalness: .6 })); ex.position.set(X(4006) + .02, H(240), .42); g.add(ex); }   // выхлоп справа под бампером
   // номерные знаки: вымышленный номер, буквы — только те, что бывают на номерах
@@ -3437,7 +3515,7 @@ function makeVaz2108() {
   rg.addColorStop(0, "rgba(176,64,255,.85)"); rg.addColorStop(.6, "rgba(150,40,240,.45)"); rg.addColorStop(1, "rgba(150,40,240,0)"); gg.fillStyle = rg; gg.fillRect(0, 0, 64, 64);
   const glow = new T.Mesh(new T.PlaneGeometry(4.4, 2.4).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: new T.CanvasTexture(gc), transparent: true, depthWrite: false, toneMapped: false }));
   glow.position.y = -.62; pro.add(glow);
-  g.userData.opt = opt; g.userData.wheels = wheels; g.userData.redM = redM; g.userData.headM = headM; g.userData.amberM = amberM;
+  g.userData.opt = opt; g.userData.wheels = wheels; g.userData.redM = tailM; g.userData.headM = headM; g.userData.amberM = amberM;
   // сопла снизу — это всё-таки испытательная «восьмёрка»
   const glowM = new T.MeshBasicMaterial({ color: 0x9fe3ff });
   [[1.5, .42], [1.5, -.42], [-1.5, .42], [-1.5, -.42]].forEach(([x, z]) => { const n = new T.Mesh(new T.CylinderGeometry(.11, .11, .05, 10), glowM); n.position.set(x, H(150), z); g.add(n); });
@@ -3471,6 +3549,10 @@ function paintCarEnv() {
     if (!carEnv.pmrem) carEnv.pmrem = new T.PMREMGenerator(renderer);
     const sc = new T.Scene(), parent = skyDome.parent, pos = skyDome.position.clone(), sc0 = skyDome.scale.x;
     sc.add(skyDome); skyDome.position.set(0, 0, 0); skyDome.scale.setScalar(50);
+    // внизу — тёмная земля до горизонта: на боках кузова отражается чёткая линия горизонта (небо сверху, асфальт снизу) —
+    // форма читается, цвет не выцветает от светлой дымки
+    if (!carEnv.gnd) carEnv.gnd = new T.Mesh(new T.CircleGeometry(48, 48).rotateX(-Math.PI / 2).translate(0, -1.6, 0), new T.MeshBasicMaterial({ color: 0x2b2a28 }));
+    carEnv.gnd.material.color.setHex(TIME === "night" ? 0x050608 : TIME === "day" ? 0x3a3936 : 0x2e2b28); sc.add(carEnv.gnd);
     const rt = carEnv.pmrem.fromScene(sc, 0, .1, 200);
     if (parent) parent.add(skyDome); skyDome.position.copy(pos); skyDome.scale.setScalar(sc0);
     if (carEnv.rt) carEnv.rt.dispose(); carEnv.rt = rt;
@@ -3484,7 +3566,7 @@ function paintCarEnv() {
 function setPaint(i) {                         // i < 0 — баклажан режима PRO
   const p = i < 0 ? EGGPLANT : PAINTS[i % PAINTS.length];
   carObj.userData.paint.color.setHex(p.c).multiplyScalar(i < 0 ? 1 : .82);   // «глубина» лака — тон чуть темнее
-  carObj.userData.paint.roughness = i < 0 ? .85 : .52; carObj.userData.paint.metalness = i < 0 ? .05 : .08; carObj.userData.paint.clearcoat = i < 0 ? .15 : .55;   // тёмный баклажан без белого блика
+  const P = carObj.userData.paint; P.roughness = i < 0 ? .7 : .42; P.metalness = i < 0 ? .05 : .02; P.clearcoat = i < 0 ? .35 : 1; P.clearcoatRoughness = i < 0 ? .3 : .07;   // баклажан — матовый: блик мягкий и узкий
   const hex = "#" + p.c.toString(16).padStart(6, "0");
   document.querySelectorAll("#d-car .paint").forEach(el => el.setAttribute(el.tagName === "path" ? "stroke" : "fill", hex));
 }
@@ -3585,27 +3667,50 @@ function tickTraffic(dt) {
 }
 
 /* ---------- частицы ---------- */
-// пар и пыль — мягкие круглые облачка: одна система точек с радиальной текстурой, один вызов отрисовки на все
-const PUFFN = 260, pool = [], puffPos = new Float32Array(PUFFN * 3), puffSize = new Float32Array(PUFFN), puffAlpha = new Float32Array(PUFFN);
+// дым, пар и пыль — клубы: одна система точек, один вызов отрисовки на все. Текстура — атлас 2×2 из четырёх разных клубов
+// (каждый собран из десятков мягких шариков: края рваные, внутри — светлые и тёмные завитки); у каждой частицы свой клуб
+// и свой поворот, клуб медленно вращается и растёт — дым не выглядит «пятнами». Свет сверху: верх клуба светлее низа
+const SMOKE_TEX = (() => {
+  const S = 128, c = document.createElement("canvas"); c.width = c.height = S * 2; const g = c.getContext("2d");
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let t = 0; t < 4; t++) {
+    const ox = (t % 2) * S, oy = (t >> 1) * S;
+    for (let i = 0; i < 70; i++) {
+      const a = rnd() * Math.PI * 2, d = Math.pow(rnd(), .7) * S * .3, x = ox + S / 2 + Math.cos(a) * d, y = oy + S / 2 + Math.sin(a) * d * .9, r = S * (.07 + rnd() * .13);
+      const lum = Math.round(170 + 85 * Math.max(0, Math.min(1, .55 - (y - oy - S / 2) / S * 1.6 + (rnd() - .5) * .5)));   // верх светлее
+      const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(${lum},${lum},${lum},${.22 + rnd() * .2})`); gr.addColorStop(1, `rgba(${lum},${lum},${lum},0)`);
+      g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  }
+  const t = new T.CanvasTexture(c); t.generateMipmaps = true; return t;
+})();
+// общий кусок шейдера: поворот клуба, выбор клуба из атласа, свет сверху
+const SMOKE_FRAG = `uniform sampler2D smokeMap;
+  vec4 smoke(float rot, float tile) {
+    vec2 q = gl_PointCoord - .5; float cs = cos(rot), sn = sin(rot); q = vec2(cs * q.x - sn * q.y, sn * q.x + cs * q.y) + .5;
+    if (q.x < 0. || q.y < 0. || q.x > 1. || q.y > 1.) return vec4(0.);
+    vec4 t = texture2D(smokeMap, (q + vec2(mod(tile, 2.), floor(tile / 2.))) * .5);
+    return vec4(vec3(mix(.62, 1.08, t.r) * mix(1.06, .86, gl_PointCoord.y)), t.a);
+  }`;
+const PUFFN = 260, pool = [], puffPos = new Float32Array(PUFFN * 3), puffSize = new Float32Array(PUFFN), puffAlpha = new Float32Array(PUFFN), puffRot = new Float32Array(PUFFN), puffTile = new Float32Array(PUFFN);
 const puffGeo = new T.BufferGeometry();
 puffGeo.setAttribute("position", new T.BufferAttribute(puffPos, 3)); puffGeo.setAttribute("size", new T.BufferAttribute(puffSize, 1)); puffGeo.setAttribute("alpha", new T.BufferAttribute(puffAlpha, 1));
+puffGeo.setAttribute("rot", new T.BufferAttribute(puffRot, 1)); puffGeo.setAttribute("tile", new T.BufferAttribute(puffTile, 1));
 const puffMat = new T.ShaderMaterial({
-  uniforms: { map: { value: (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(.45, "rgba(255,255,255,.55)"); r.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new T.CanvasTexture(c); })() },
-    scale: { value: 500 }, color: { value: new T.Color(0xe9f3fb) } },
-  vertexShader: "attribute float size; attribute float alpha; varying float vA; uniform float scale;\n" +
-    "void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vA = alpha * clamp((-mv.z - 1.5) / 6.0, 0.0, 1.0); gl_PointSize = min(400.0, size * scale / max(.5, -mv.z)); gl_Position = projectionMatrix * mv; }",
-  fragmentShader: "uniform sampler2D map; uniform vec3 color; varying float vA;\n" +
-    "void main() { float a = texture2D(map, gl_PointCoord).a * vA; if (a < .01) discard; gl_FragColor = vec4(color, a); }",
+  uniforms: { smokeMap: { value: SMOKE_TEX }, scale: { value: 500 }, color: { value: new T.Color(0xe9f3fb) } },
+  vertexShader: "attribute float size, alpha, rot, tile; varying float vA, vR, vT; uniform float scale;\n" +
+    "void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vA = alpha * clamp((-mv.z - 1.5) / 6.0, 0.0, 1.0); vR = rot; vT = tile; gl_PointSize = min(400.0, size * scale / max(.5, -mv.z)); gl_Position = projectionMatrix * mv; }",
+  fragmentShader: "uniform vec3 color; varying float vA, vR, vT;\n" + SMOKE_FRAG +
+    "\nvoid main() { vec4 s = smoke(vR, vT); float a = s.a * vA * 1.5; if (a < .01) discard; gl_FragColor = vec4(color * s.rgb, min(a, 1.)); }",
   transparent: true, depthWrite: false,
 });
 const puffPts = new T.Points(puffGeo, puffMat); puffPts.frustumCulled = false; puffPts.renderOrder = 5; puffPts.userData.dyn = true; scene.add(puffPts);
-for (let i = 0; i < PUFFN; i++) pool.push({ p: new T.Vector3(), on: false, t: 0, life: 0, v: new T.Vector3(), s: 0 });
+for (let i = 0; i < PUFFN; i++) { pool.push({ p: new T.Vector3(), on: false, t: 0, life: 0, v: new T.Vector3(), s: 0, r: 0, w: 0 }); puffTile[i] = i % 4; }
 let pi = 0;
 function puff(p, v, life, s, g = 0, grow = 2) {       // g — тяжесть (брызги падают обратно), grow — во сколько раз облачко разрастается
   const q = pool[pi++ % pool.length];
   q.p.copy(p); q.v.copy(v).add(new T.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 2, (Math.random() - .5) * 2));
-  q.t = 0; q.life = life; q.s = s; q.g = g; q.grow = grow; q.on = true;
+  q.t = 0; q.life = life; q.s = s; q.g = g; q.grow = grow; q.on = true; q.r = Math.random() * 6.3; q.w = (Math.random() - .5) * 1.4;
 }
 // всплеск в Дону: капли вверх и в стороны + расходящееся пенное кольцо на воде
 const splashRing = new T.Mesh(new T.RingGeometry(.86, 1, 40).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0xf2f8fb, transparent: true, opacity: 0, depthWrite: false }));
@@ -3624,9 +3729,9 @@ function tickPuffs(dt) {
     q.p.addScaledVector(q.v, dt); q.v.multiplyScalar(Math.pow(.086, dt)); if (q.g) { q.v.y -= q.g * dt; if (q.g > 0 ? q.p.y < .1 : q.p.y > .05) q.t = q.life; }   // брызги падают в воду, пузыри лопаются у поверхности
     const k = q.t / q.life;
     puffPos[i * 3] = q.p.x; puffPos[i * 3 + 1] = q.p.y; puffPos[i * 3 + 2] = q.p.z;
-    puffSize[i] = 2.6 * q.s * (1 + k * q.grow); puffAlpha[i] = .6 * (1 - k) * Math.min(1, q.t * 12);
+    puffSize[i] = 2.6 * q.s * (1 + k * q.grow); puffAlpha[i] = .6 * Math.pow(1 - k, 1.4) * Math.min(1, q.t * 10); puffRot[i] = q.r + q.w * q.t;
   });
-  puffGeo.attributes.position.needsUpdate = puffGeo.attributes.size.needsUpdate = puffGeo.attributes.alpha.needsUpdate = true;
+  puffGeo.attributes.position.needsUpdate = puffGeo.attributes.size.needsUpdate = puffGeo.attributes.alpha.needsUpdate = puffGeo.attributes.rot.needsUpdate = true;
   if (splashRing.visible) {
     const t = splashRing.userData.t += dt, k = t / 1.6;
     if (k >= 1) splashRing.visible = false;
@@ -3656,21 +3761,22 @@ const PARTY = (() => {
   // дымовые струи (как пушки на концертах): узкие цветные струи в такт — то вправо, то влево, из передних и задних сопел;
   // каждая струя летит полосой, расширяется и тает. Свои частицы: цвет и размер у каждой
   const JN = 900, jpos = new Float32Array(JN * 3), jcol = new Float32Array(JN * 3), jsz = new Float32Array(JN), jal = new Float32Array(JN), jv = new Float32Array(JN * 3), jt = new Float32Array(JN).fill(9), jl = new Float32Array(JN).fill(1);
+  const jrot = new Float32Array(JN).map(() => Math.random() * 6.3), jtile = new Float32Array(JN).map((_, i) => i % 4), jw = new Float32Array(JN).map(() => (Math.random() - .5) * 2.4);
   const jgeo = new T.BufferGeometry(); jgeo.setAttribute("position", new T.BufferAttribute(jpos, 3)); jgeo.setAttribute("color", new T.BufferAttribute(jcol, 3));
-  jgeo.setAttribute("aSize", new T.BufferAttribute(jsz, 1)); jgeo.setAttribute("aAlpha", new T.BufferAttribute(jal, 1));
-  const jetM = new T.ShaderMaterial({ uniforms: { uScale: { value: 400 } }, transparent: true, depthWrite: false, vertexColors: true,
-    vertexShader: "attribute float aSize, aAlpha; uniform float uScale; varying vec3 vC; varying float vA; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.); gl_PointSize = aSize * uScale / -mv.z; gl_Position = projectionMatrix * mv; vC = color; vA = aAlpha * smoothstep(2.5, 6., -mv.z); }   // у самой камеры струя тает — облёт не «влетает» в дым",
-    fragmentShader: "varying vec3 vC; varying float vA; void main() { float r = length(gl_PointCoord - .5); float a = smoothstep(.5, .12, r) * vA; if (a < .01) discard; gl_FragColor = vec4(vC * (1.1 - .25 * r), a); }" });
+  jgeo.setAttribute("aSize", new T.BufferAttribute(jsz, 1)); jgeo.setAttribute("aAlpha", new T.BufferAttribute(jal, 1)); jgeo.setAttribute("aRot", new T.BufferAttribute(jrot, 1)); jgeo.setAttribute("aTile", new T.BufferAttribute(jtile, 1));
+  const jetM = new T.ShaderMaterial({ uniforms: { uScale: { value: 400 }, smokeMap: { value: SMOKE_TEX } }, transparent: true, depthWrite: false, vertexColors: true,
+    vertexShader: "attribute float aSize, aAlpha, aRot, aTile; uniform float uScale; varying vec3 vC; varying float vA, vR, vT; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.); gl_PointSize = min(500., aSize * uScale / -mv.z); gl_Position = projectionMatrix * mv; vC = color; vR = aRot; vT = aTile; vA = aAlpha * smoothstep(2.5, 6., -mv.z); }   // у самой камеры струя тает — облёт не «влетает» в дым",
+    fragmentShader: "varying vec3 vC; varying float vA, vR, vT;\n" + SMOKE_FRAG + "\nvoid main() { vec4 s = smoke(vR, vT); float a = s.a * vA * 1.6; if (a < .01) discard; gl_FragColor = vec4(vC * s.rgb * 1.15, min(a, 1.)); }" });
   const jets = new T.Points(jgeo, jetM); jets.frustumCulled = false; jets.userData.dyn = true; jets.visible = false; scene.add(jets);
   let ji = 0;
   function jet(fx, sx, col, dtE) {                     // fx: перед/зад (+1/−1), sx: вправо/влево (+1/−1); dtE — сколько времени выпускаем
     v3.set(fx * 1.3, -.1, sx * .85).applyMatrix4(carObj.matrixWorld);
     const n = Math.min(40, Math.ceil(dtE * 260));       // частиц — по времени, а не по кадрам: струя сплошная при любой частоте кадров
     for (let k = 0; k < n; k++) {
-      const i = ji++ % JN, sp = 21 + Math.random() * 4, spr = .03, age = Math.random() * dtE;   // каждая — как будто вылетела в свой момент внутри кадра
+      const i = ji++ % JN, sp = 20 + Math.random() * 5, spr = .06, age = Math.random() * dtE;   // каждая — как будто вылетела в свой момент внутри кадра
       const dx = side.x * sx + up.x * .32 + (Math.random() - .5) * spr, dy = side.y * sx + up.y * .32 + (Math.random() - .5) * spr, dz = side.z * sx + up.z * .32 + (Math.random() - .5) * spr;
       jpos.set([v3.x + dx * sp * age, v3.y + dy * sp * age, v3.z + dz * sp * age], i * 3); jv.set([dx * sp + vel.x, dy * sp, dz * sp + vel.z], i * 3);
-      jcol.set([col.r, col.g, col.b], i * 3); jt[i] = age; jl[i] = 1 + Math.random() * .35;
+      jcol.set([col.r * .7 + .3, col.g * .7 + .3, col.b * .7 + .3], i * 3); jt[i] = age; jl[i] = 1.4 + Math.random() * .5;   // дым подсвечен цветом, но остаётся дымом — не краской
     }
     jets.visible = true;
   }
@@ -3680,10 +3786,10 @@ const PARTY = (() => {
       if (jt[i] >= jl[i]) { jal[i] = 0; continue; }
       alive++; jt[i] += dt; const k = jt[i] / jl[i], dr = Math.exp(-dt * 2.2);
       for (let c = 0; c < 3; c++) { jv[i * 3 + c] *= dr; jpos[i * 3 + c] += jv[i * 3 + c] * dt; } jv[i * 3 + 1] += .6 * dt;   // тормозится воздухом, чуть всплывает
-      jsz[i] = .3 + 1.5 * Math.sqrt(k); jal[i] = .6 * Math.pow(1 - k, 1.3) * Math.min(1, jt[i] * 12);   // узкая струя: частицы растут немного
+      jsz[i] = .5 + 3.4 * Math.pow(k, .6); jal[i] = .34 * Math.pow(1 - k, 1.6) * Math.min(1, jt[i] * 10); jrot[i] += jw[i] * dt;   // узкая у сопла, к концу клубится и расходится
     }
     jetM.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(camera.fov * DEG / 2));
-    jgeo.attributes.position.needsUpdate = jgeo.attributes.aSize.needsUpdate = jgeo.attributes.aAlpha.needsUpdate = jgeo.attributes.color.needsUpdate = true;
+    jgeo.attributes.position.needsUpdate = jgeo.attributes.aSize.needsUpdate = jgeo.attributes.aAlpha.needsUpdate = jgeo.attributes.color.needsUpdate = jgeo.attributes.aRot.needsUpdate = true;
     if (!alive) jets.visible = false;
   }
   // ударная волна по земле: два кольца, радуга по кругу
@@ -3987,7 +4093,8 @@ const MISSIONS = [
   { id: "rbLift", t: "Ж/д мост: подняться на «лифте» и вылететь в колесо", pts: 800, rb: 1 },
   { id: "rbTrain", t: "Ж/д мост: 10 секунд на крыше поезда", pts: 700, rb: 1 },
   { id: "rbBarge", t: "Ж/д мост: с моста — на палубу судна", pts: 900, rb: 1 },
-  { id: "rbWheels", t: "Ж/д мост: все 9 колёс паровоза", pts: 1000, rb: 1 }
+  { id: "rbWheels", t: "Ж/д мост: все 7 колёс паровоза", pts: 1000, rb: 1 },
+  { id: "rbOver", t: "Ж/д мост: поверху через весь мост — пояс северной арки, пролёт, пояс южной", pts: 900, rb: 1 }
 ];
 const rbDone = () => MISSIONS.filter(m => m.rb && save.missions && save.missions[m.id]).length, rbAll = () => MISSIONS.filter(m => m.rb).length;
 const toastQ = [];
@@ -4589,6 +4696,14 @@ function stepFree(dt) {
       free.trainT = g0.train ? (free.trainT || 0) + dt : 0; if (free.trainT > 10) completeMission("rbTrain");
       // на узкой балке — «на двух колёсах»: кузов кренится на 30° наружу, очки за время на балке
       free.onBeam = g0.pull ? (Math.sign(nfx * g0.rx + nfz * g0.rz) || 1) * g0.pull.k : 0;
+      if (g0.pull) {                                    // на узкой балке нос мягко доворачивает вдоль неё — не соскальзываешь от лёгкого руля
+        const al = nfx * g0.rx + nfz * g0.rz, sg = Math.sign(al) || 1, ty = Math.atan2(-g0.rz * sg, g0.rx * sg); let d = ty - car.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+        if (Math.abs(al) > .8 && Math.abs(turn()) < .5) car.yaw += d * Math.min(1, dt * 3);
+        const [ps, pl] = RAILB ? RAILB.loc(car.x, car.z) : [0, 0];
+        if (RAILB && Math.abs(Math.abs(pl) - RAILB.HW) < .8 && car.y > RAILB.Y0 + 6) {   // поверху через весь мост: пояс северной арки → край пролёта → пояс южной (или обратно)
+          if (ps < RAILB.A1 - 20) { free.overN = time; if (time - (free.overS || -99) < 14) completeMission("rbOver"); }
+          else if (ps > RAILB.A2 + 20) { free.overS = time; if (time - (free.overN || -99) < 14) completeMission("rbOver"); } }
+      }
       if (free.onBeam && car.v > 3) { free.beamT = (free.beamT || 0) + dt; if (free.beamT > 3) completeMission("rbTwo"); }
       else if (free.beamT > 1.2) { const pts = Math.round(free.beamT * 90); free.score += pts; save.freeBest = Math.max(save.freeBest, free.score); persist(); showToast(`На двух колёсах ${free.beamT.toFixed(1)} с  +${pts}`, "good", 1800); free.beamT = 0; }
       else free.beamT = 0;
@@ -5668,7 +5783,7 @@ function render(dt) {
       const k = Math.min(1, orb.t / PARTY_ORBIT), e = k * k * (3 - 2 * k), up = Math.sin(Math.PI * k);   // мягкий старт и остановка, вверх и вниз по дуге
       const a = orb.a0 + e * Math.PI * 1.25;
       let r = 7.2 + 2.6 * up, h = 1.5 + 3.4 * up; const ly = .7 + .3 * up, fov = 54 - 6 * up;
-      while (r > 2 && hitSolid(car.x + Math.cos(a) * r, car.z + Math.sin(a) * r, car.y + h)) r -= .8;   // не залетать в дома
+      while (r > 3 && !KINO.clear([car.x + Math.cos(a) * r, car.y + h, car.z + Math.sin(a) * r])) r -= .6;   // не залетать в дома и не прятать машину за фермой
       camPos.set(car.x + Math.cos(a) * r, car.y + h, car.z + Math.sin(a) * r); camera.position.copy(camPos);
       look.set(car.x, car.y + ly, car.z); camera.lookAt(look); camera.fov = fov;
     }
@@ -5779,7 +5894,7 @@ layerGround();
 setTime(save.time || "sunset");
 startFree();
 if (save.tilt) setTilt(true);
-if (location.hash === "#test") window.__t = {   // крючок для автотестов
+if (location.hash === "#test") window.__t = { carObj,   // крючок для автотестов
   info: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, fps: perf.fps, pr: renderer.getPixelRatio(), chunks: `${chunkStat.shown}/${chunkStat.total}` }),
   car: () => ({ x: car.x, z: car.z, y: car.y, yaw: car.yaw, v: car.v, vy: car.vy, pitch: car.pitch, roll: car.roll, air: free.air, phase, fromRoof: !!free.fromRoof, fromMega: !!free.fromMega }),
   heading: () => car.yaw,
