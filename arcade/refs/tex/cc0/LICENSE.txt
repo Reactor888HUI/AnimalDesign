@@ -1,0 +1,4 @@
+CC0 1.0 — ambientCG.com (https://ambientcg.com/), цветовые карты 1K:
+- MetalPlates013 — сталь ж/д моста
+- Wood035 — шпалы
+- Gravel040 — щебень пути
