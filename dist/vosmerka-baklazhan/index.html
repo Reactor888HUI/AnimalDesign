@@ -674,21 +674,30 @@ const sun = new T.DirectionalLight(0xffcf8f, 2.3); sun.position.copy(SUN_DIR).mu
 const DON_WATER = new T.MeshStandardMaterial({ color: new T.Color("#2f86b4").convertSRGBToLinear(), roughness: .14, metalness: .05, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
 DON_WATER.name = "don-water";                    // копии материала (сцены) узнаём по имени — для режима «Фото»
 DON_WATER.userData.u = { uTime: { value: 0 }, uFlow: { value: 1 }, uSky: { value: new T.Color(0x9fc4e0) } };
+// волны-кольца от ударов (брызги, посадка на судно, низкий пролёт над водой, нос судна): до 6 сразу, бегут ~6,5 м/с, гаснут за ~5 с
+const WAKE = { u: { uImp: { value: [...Array(6)].map(() => new T.Vector4(0, 0, -99, 0)) } }, i: 0,
+  add(x, z, s) { const q = this.u.uImp.value[this.i++ % 6]; q.set(x, z, DON_WATER.userData.u.uTime.value, s); },
+  glsl: `uniform vec4 uImp[6];
+  vec3 impacts(vec2 p, float tn) { vec3 r = vec3(0.); for (int i = 0; i < 6; i++) { vec4 q = uImp[i]; float dt = tn - q.z; if (dt < 0. || dt > 6.) continue;
+    vec2 d = p - q.xy; float rr = length(d) + .001, fr = rr - 6.5 * dt, env = q.w * exp(-dt * .8) * exp(-fr * fr * .05) * smoothstep(0., 1.5, rr), ph = rr * 1.5 - dt * 9.;
+    r.z += env * sin(ph); r.xy += env * 1.5 * cos(ph) * d / rr; } return r; }` };
 DON_WATER.onBeforeCompile = sh => {
-  Object.assign(sh.uniforms, DON_WATER.userData.u);
+  Object.assign(sh.uniforms, DON_WATER.userData.u, WAKE.u);
   sh.vertexShader = "varying vec3 vWP;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWP = position;");
-  sh.fragmentShader = "varying vec3 vWP; uniform float uTime, uFlow; uniform vec3 uSky;\n" + sh.fragmentShader
+  sh.fragmentShader = "varying vec3 vWP; uniform float uTime, uFlow; uniform vec3 uSky;\n" + WAKE.glsl + "\n" + sh.fragmentShader
     .replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>
     vec2 p = vWP.xz; float t = uTime * uFlow; vec2 g = vec2(0.); float hh = 0.;
     // четыре системы волн, главная — вдоль течения (на запад); градиент считаем точно
-    vec4 K = vec4(.21, .37, .62, 1.13), A = vec4(.10, .06, .035, .02);
+    vec4 K = vec4(.21, .37, .62, 1.13), A = vec4(.15, .09, .05, .03);   // волны крупнее — видно, как ходит вода
     vec2 D0 = normalize(vec2(1., .25)), D1 = normalize(vec2(.8, -.6)), D2 = normalize(vec2(.3, 1.)), D3 = normalize(vec2(-.5, .9));
     float ph0 = dot(D0, p) * K.x - t * 1.3, ph1 = dot(D1, p) * K.y - t * 1.9, ph2 = dot(D2, p) * K.z - t * 2.6, ph3 = dot(D3, p) * K.w - t * 3.4;
     hh = A.x * sin(ph0) + A.y * sin(ph1) + A.z * sin(ph2) + A.w * sin(ph3);
     g = A.x * K.x * cos(ph0) * D0 + A.y * K.y * cos(ph1) * D1 + A.z * K.z * cos(ph2) * D2 + A.w * K.w * cos(ph3) * D3;
+    vec3 im = impacts(p, uTime); g += im.xy; hh += im.z;   // кольца от ударов
     vec3 nW = normalize(vec3(-g.x * 3.5, 1., -g.y * 3.5));
     normal = normalize((viewMatrix * vec4(nW, 0.)).xyz);
-    diffuseColor.rgb *= .9 + .9 * hh;                      // гребни светлее, впадины темнее — видна рябь`)
+    diffuseColor.rgb *= .9 + .9 * hh;                      // гребни светлее, впадины темнее — видна рябь
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.92, .96, 1.), smoothstep(.17, .3, hh) * .7);   // барашки на гребнях`)
     .replace("#include <output_fragment>", `float fr = pow(1. - max(dot(normal, normalize(vViewPosition)), 0.), 4.);
     outgoingLight = mix(outgoingLight, uSky, clamp(fr * .75, 0., .75));
     #include <output_fragment>`);
@@ -2340,6 +2349,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
   const at = (s, l, y = 0) => new T.Vector3(N[0] + dx * s + nx * l, y, N[1] + dz * s + nz * l);
   const loc = (x, z) => { const ox = x - N[0], oz = z - N[1]; return [ox * dx + oz * dz, ox * nx + oz * nz]; };   // → (s, l)
   const yaw = Math.atan2(-dz, dx), C = at((A1 + A2) / 2, 0);
+  const KIND_NAME = sh => SHIPS.name(sh);
   const RING_ON = 0xd8322c;                              // невзятое колесо — красное, взятое — зелёное
   const st = { y: 0, v: 0, t: 0, up: false, loaded: false, train: { s: -9999, on: false }, rings: [], ringT: 0, lights: null };
   const archH = (s, sa, sb) => { const u = (s - sa) / (sb - sa); return Y0 + ARCH * 4 * u * (1 - u); };
@@ -2639,6 +2649,9 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     st.edgeM.color.setHex(free_ ? 0x3ddc84 : blink ? 0xff3b30 : 0x5a0f0c); st.liftLamps.position.y = st.y;   // зелёный — путь свободен, мигает красный — пролёт идёт/поднят
     st.trainMesh.visible = tr.on; if (tr.on) { const p = at(tr.s, TRAIN.l); st.trainMesh.position.set(p.x, 0, p.z); st.trainMesh.rotation.y = yaw; }
     st.ringT = Math.max(0, st.ringT - dt);
+    const shU = typeof SHIPS !== "undefined" && SHIPS.list.find(sh => sh.under);
+    if (shU && !shU.hinted && mode === "free" && Math.hypot(car.x - C.x, car.z - C.z) < 200) { shU.hinted = true; queueToast(`Под мостом идёт ${KIND_NAME(shU)} — прыгай на палубу!`, "good", 2600); }
+    if (!shU) SHIPS.list.forEach(sh => sh.hinted = false);
     if (!st.hello && mode === "free" && Math.hypot(car.x - C.x, car.z - C.z) < 260) {   // первый подъезд за игру — сколько испытаний пройдено
       st.hello = true; queueToast(`Ж/д мост: испытания ${rbDone()} из ${rbAll()} — список в «⋯»`, "good", 2600);
     }
@@ -2690,17 +2703,33 @@ const SHIPS = (() => {
   // модели: коробки «x0 x1 z0 z1 y0 y1 цвет»; верх коробки, на которую можно встать, — площадка; бока выше палубы — препятствие
   const colorize = (g, hex) => { g = g.toNonIndexed(); const c = new T.Color(hex), a = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) { a[i] = c.r; a[i + 1] = c.g; a[i + 2] = c.b; } g.setAttribute("color", new T.BufferAttribute(a, 3)); g.deleteAttribute("uv"); return g; };
   const KINDS = {
-    barge: { name: "сухогруз", v: 6, boxes: [
-      [-42, 40, -6, 6, -3, 1.5, 0x2f4d5b, 1], [40, 46, -4, 4, -3, 1.5, 0x2f4d5b, 1], [-42, 46, -6.1, 6.1, -.6, -.2, 0xb5462f, 0],   // корпус, нос, ватерлиния
-      [-14, 38, -4.7, 4.7, 1.5, 4, 0x9b2d2a, 1],                                                                                  // крышки трюма
-      [-40, -31, -5, 5, 1.5, 7.5, 0xe8ecee, 1], [-39.5, -32.5, -5.6, 5.6, 7.5, 10, 0xf2f4f5, 1], [-33.4, -32.4, -4.5, 4.5, 8, 9.4, 0x2b3a4a, 0],   // рубка и окна
+    // сухогруз «ВАДИМ»: ярко-жёлтый корпус, красная ватерлиния, белая полоса под палубой, синие крышки трюма, белая рубка, красная труба
+    barge: { name: "сухогруз «Вадим»", v: 6, title: "ВАДИМ", boxes: [
+      [-42, 40, -6, 6, -3, 1.5, 0xffc21a, 1], [40, 46, -4, 4, -3, 1.5, 0xffc21a, 1], [46, 48, -2, 2, -2, 1.5, 0xffc21a, 1],                // корпус, нос
+      [-42.1, 46.1, -6.12, 6.12, -.05, .55, 0xd8322c, 0], [-42.05, 46.05, -6.08, 6.08, 1.05, 1.5, 0xf6f6f2, 0],                          // ватерлиния, белая полоса
+      [40, 46.5, -4.25, -3.95, 1.5, 2.5, 0xf6f6f2, 0], [40, 46.5, 3.95, 4.25, 1.5, 2.5, 0xf6f6f2, 0],                                     // фальшборт на носу
+      [-14, 38, -4.7, 4.7, 1.5, 4, 0x1e7ad8, 1], ...[-8, 4, 16, 28].map(x => [x, x + .5, -4.75, 4.75, 1.5, 4.08, 0x0f4f9a, 0]),         // крышки трюма с рёбрами
+      [-40, -31, -5, 5, 1.5, 7.5, 0xf6f6f2, 1], [-39.5, -32.5, -5.6, 5.6, 7.5, 10, 0xffffff, 1], [-39.6, -32.4, -5.7, 5.7, 10, 10.35, 0xff7a1a, 0],   // рубка, крыша
+      [-33.4, -32.4, -4.5, 4.5, 8, 9.4, 0x1f4f7a, 0], [-40, -31, -5.05, 5.05, 4, 5, 0x1f4f7a, 0],                                        // окна
+      [-38.2, -35.4, -1.3, 1.3, 10.35, 14, 0xd8322c, 0], [-38.25, -35.35, -1.35, 1.35, 12.6, 13.2, 0xffc21a, 0],                         // труба с жёлтой полосой
       [-36.5, -36, -.25, .25, 10, 16, 0x6c7074, 0]] },
     liner: { name: "теплоход", v: 5, boxes: [
       [-36, 34, -6.5, 6.5, -2.5, 1.5, 0xf2f4f5, 1], [34, 39, -4.5, 4.5, -2.5, 1.5, 0xf2f4f5, 1], [-36, 39, -6.6, 6.6, -.2, .3, 0x1f4f7a, 0],
       [-30, 28, -5.6, 5.6, 1.5, 4.5, 0xeef0f2, 1], [-30.2, 28.2, -5.7, 5.7, 2.6, 3.6, 0x2b3a4a, 0],
       [-20, 18, -5, 5, 4.5, 7.3, 0xf6f7f8, 1], [-20.2, 18.2, -5.1, 5.1, 5.4, 6.5, 0x2b3a4a, 0], [12, 18.6, -4, 4, 7.3, 8.5, 0x6c7f94, 0]] },
   };
-  const mk = k => { const g = mergeGeos(KINDS[k].boxes.map(([x0, x1, z0, z1, y0, y1, c]) => colorize(new T.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), c))); const m = new T.Mesh(g, new T.MeshLambertMaterial({ vertexColors: true })); m.userData.dyn = true; scene.add(m); return m; };
+  // название на бортах (и на корме): крупные буквы с обводкой на прозрачном фоне
+  const nameTex = t => { const c = document.createElement("canvas"); c.width = 1024; c.height = 256; const g = c.getContext("2d");
+    g.font = "900 190px Golos Text, Arial Black, Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.lineWidth = 22; g.strokeStyle = "#ffffff"; g.strokeText(t, 512, 136); g.fillStyle = "#0f2a5a"; g.fillText(t, 512, 136);
+    const tx = new T.CanvasTexture(c); tx.encoding = T.sRGBEncoding; return tx; };
+  const addName = (m, k) => {
+    const t = KINDS[k].title; if (!t) return;
+    const mat = new T.MeshLambertMaterial({ map: nameTex(t), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    [[30, -.7, 6.13, 0], [30, -.7, -6.13, Math.PI], [-42.13, -.2, 0, -Math.PI / 2]].forEach(([x, y, z, ry], i) => {
+      const n = new T.Mesh(new T.PlaneGeometry(i < 2 ? 15 : 9, i < 2 ? 3.75 : 2.25), mat); n.position.set(x, y, z); n.rotation.y = ry; m.add(n); });
+  };
+  const mk = k => { const g = mergeGeos(KINDS[k].boxes.map(([x0, x1, z0, z1, y0, y1, c]) => colorize(new T.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), c))); const m = new T.Mesh(g, new T.MeshLambertMaterial({ vertexColors: true })); m.userData.dyn = true; scene.add(m); addName(m, k); return m; };
   const list = [{ kind: "barge", d: 60, dir: 1 }, { kind: "liner", d: LEN * .55, dir: -1 }].map(sh => Object.assign(sh, { m: mk(sh.kind), x: 0, z: 0, yaw: 0, cs: 1, sn: 0, v: 0, vx: 0, vz: 0, vn: 0, spray: 0, turn: 0 }));
   function place(sh) {
     const [x, z] = pos(sh.d), [x2, z2] = pos(sh.d + sh.dir * 6);
@@ -2714,12 +2743,15 @@ const SHIPS = (() => {
       if (RAILB) {                                     // у ж/д моста ждём, пока пролёт поднимется
         const C = RAILB.C, n = RAILB.nrm, dn = (sh.x - C.x) * n.x + (sh.z - C.z) * n.z, vdir = sh.cs * n.x + sh.sn * n.z;
         sh.vn = vdir * v; if (dn * vdir < 0 && Math.abs(dn) < 130 && Math.abs(dn) > 45 && RAILB.st.y < RAILB.LIFT - 2) v = 0;
+        if (Math.abs(dn) < 32) v = 2;                                  // под пролётом — малым ходом: можно успеть спрыгнуть с моста на палубу
+        sh.under = Math.abs(dn) < 32;
       }
       sh.v += (v - sh.v) * Math.min(1, dt * .5);
       sh.d += sh.dir * sh.v * dt;
       if (sh.d > LEN - 1 || sh.d < 1) { sh.dir = -sh.dir; sh.d = Math.max(1, Math.min(LEN - 1, sh.d)); }
       const px = sh.x, pz = sh.z; place(sh); sh.vx = (sh.x - px) / dt; sh.vz = (sh.z - pz) / dt;
       if (Math.hypot(sh.x - camera.position.x, sh.z - camera.position.z) < 450 && sh.v > 1) {   // пена у носа и за кормой
+        sh.wake = (sh.wake || 0) - dt; if (sh.wake <= 0) { sh.wake = 1.1; const bx = KINDS[sh.kind].boxes[0][1] + 5; WAKE.add(sh.x + sh.cs * bx, sh.z + sh.sn * bx, .12); }   // волна от носа
         sh.spray -= dt; if (sh.spray <= 0) { sh.spray = .12; const bx = KINDS[sh.kind].boxes[0][1] + 4; [-1, 1].forEach(k => puff(new T.Vector3(sh.x + sh.cs * bx - sh.sn * k * 4, .4, sh.z + sh.sn * bx + sh.cs * k * 4), new T.Vector3(-sh.sn * k * 3 + sh.vx * .5, 1.2, sh.cs * k * 3 + sh.vz * .5), 1.2, .45, 4)); }
       }
     }
@@ -2747,7 +2779,7 @@ const SHIPS = (() => {
     return null;
   }
   list.forEach(place);
-  return { list, tick, ground, hit, LEN, pts };
+  return { list, tick, ground, hit, LEN, pts, name: sh => KINDS[sh.kind].name };
 })();
 /* ---------- режим качества «Фото»: тени, вода с отражением, крашеная сталь моста, ночная подсветка ---------- */
 // Включается в «⋯» → «Качество: фото» (тяжелее для телефона: сцена рисуется ещё раз для отражения и для теней).
@@ -2873,9 +2905,9 @@ const PHOTO = (() => {
     night: { deep: 0x050b10, shallow: 0x0b1820, light: .25, spec: 0x9fb4ff },
   };
   const waterM = new T.ShaderMaterial({
-    uniforms: { tRefl: { value: RT.texture }, tDet: { value: det }, texM: { value: texM }, uTime: { value: 0 }, uDeep: { value: new T.Color() }, uShallow: { value: new T.Color() }, uSpec: { value: new T.Color() }, uLight: { value: 1 }, uCam: { value: new T.Vector3() }, sunDir: { value: SUN_DIR } },
+    uniforms: { ...WAKE.u, uTimeI: DON_WATER.userData.u.uTime, tRefl: { value: RT.texture }, tDet: { value: det }, texM: { value: texM }, uTime: { value: 0 }, uDeep: { value: new T.Color() }, uShallow: { value: new T.Color() }, uSpec: { value: new T.Color() }, uLight: { value: 1 }, uCam: { value: new T.Vector3() }, sunDir: { value: SUN_DIR } },
     vertexShader: "uniform mat4 texM; varying vec4 vR; varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vR = texM * w; gl_Position = projectionMatrix * viewMatrix * w; }",
-    fragmentShader: `uniform sampler2D tRefl, tDet; uniform float uTime, uLight; uniform vec3 uDeep, uShallow, uSpec, uCam, sunDir; varying vec4 vR; varying vec3 vW;
+    fragmentShader: `uniform sampler2D tRefl, tDet; uniform float uTime, uLight, uTimeI; ${WAKE.glsl} uniform vec3 uDeep, uShallow, uSpec, uCam, sunDir; varying vec4 vR; varying vec3 vW;
       ${NOISE}
       vec3 detH(vec2 uv) { const float e = 1.0 / 256.0; float h = texture2D(tDet, uv).r; return vec3(texture2D(tDet, uv + vec2(e, 0.0)).r - h, texture2D(tDet, uv + vec2(0.0, e)).r - h, h); }
       void main() {
@@ -2885,6 +2917,7 @@ const PHOTO = (() => {
         // мелкая рябь — текстура в двух масштабах, плывут в разные стороны (повтор не виден)
         vec3 d1 = detH(vW.xz * .045 + vec2(uTime * .013, uTime * .006)), d2 = detH(vec2(vW.z, -vW.x) * .071 - vec2(uTime * .008, -uTime * .011));
         rip += near * 2.2 * (d1.xy + d2.xy);
+        vec3 im = impacts(vW.xz, uTimeI); rip += im.xy * 2.5;                         // кольца от ударов
         vec3 V = normalize(uCam - vW), N = normalize(vec3(rip.x * .35, 1.0, rip.y * .35));
         float fres = .04 + .96 * pow(1.0 - max(dot(V, N), 0.0), 5.0);
         vec4 r = texture2DProj(tRefl, vR + vec4(rip * .014 * vR.w, 0.0, 0.0));
@@ -3595,6 +3628,7 @@ splashRing.visible = false; splashRing.renderOrder = 4; splashRing.userData.dyn 
 function splash(x, z) {
   for (let i = 0; i < 44; i++) { const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * 5; puff(new T.Vector3(x + Math.cos(a), .3, z + Math.sin(a)), new T.Vector3(Math.cos(a) * r, 6 + Math.random() * 7, Math.sin(a) * r), 1.3, .3 + Math.random() * .25, 14); }
   splashRing.position.set(x, .12, z); splashRing.userData.t = 0; splashRing.visible = true;
+  WAKE.add(x, z, .35);
 }
 function dust(x, y, z, n) { for (let i = 0; i < n; i++) puff(new T.Vector3(x, y + .3, z), new T.Vector3((Math.random() - .5) * 6, 2, (Math.random() - .5) * 6), .8, .3); }
 function tickPuffs(dt) {
@@ -3634,10 +3668,39 @@ const PARTY = (() => {
   const neonM = addMat({ map: spot, opacity: 1 });
   const neon = new T.Mesh(new T.PlaneGeometry(7.5, 4.4).rotateX(-Math.PI / 2), neonM); neon.position.y = -.6; neon.visible = false; neon.userData.dyn = true; carObj.add(neon);
   const grp = new T.Group(); grp.visible = false; grp.userData.dyn = true; scene.add(grp);
-  // лучи из машины во все стороны: 24 тонких луча почти по горизонту (чуть вверх), вращаются
-  const rayM = addMat({ vertexColors: true });
-  const rays = new T.Mesh(mergeGeos([...Array(24)].map((_, i) => colored(new T.BoxGeometry(30, .07, .07).translate(17.4, 0, 0), COLS[i % COLS.length]).rotateZ(.06 + (i % 3) * .07).rotateY(i / 24 * Math.PI * 2))), rayM);
-  rays.frustumCulled = false; grp.add(rays);
+  // дымовые струи (как пушки на концертах): узкие цветные струи в такт — то вправо, то влево, из передних и задних сопел;
+  // каждая струя летит полосой, расширяется и тает. Свои частицы: цвет и размер у каждой
+  const JN = 900, jpos = new Float32Array(JN * 3), jcol = new Float32Array(JN * 3), jsz = new Float32Array(JN), jal = new Float32Array(JN), jv = new Float32Array(JN * 3), jt = new Float32Array(JN).fill(9), jl = new Float32Array(JN).fill(1);
+  const jgeo = new T.BufferGeometry(); jgeo.setAttribute("position", new T.BufferAttribute(jpos, 3)); jgeo.setAttribute("color", new T.BufferAttribute(jcol, 3));
+  jgeo.setAttribute("aSize", new T.BufferAttribute(jsz, 1)); jgeo.setAttribute("aAlpha", new T.BufferAttribute(jal, 1));
+  const jetM = new T.ShaderMaterial({ uniforms: { uScale: { value: 400 } }, transparent: true, depthWrite: false, vertexColors: true,
+    vertexShader: "attribute float aSize, aAlpha; uniform float uScale; varying vec3 vC; varying float vA; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.); gl_PointSize = aSize * uScale / -mv.z; gl_Position = projectionMatrix * mv; vC = color; vA = aAlpha * smoothstep(2.5, 6., -mv.z); }   // у самой камеры струя тает — облёт не «влетает» в дым",
+    fragmentShader: "varying vec3 vC; varying float vA; void main() { float r = length(gl_PointCoord - .5); float a = smoothstep(.5, .12, r) * vA; if (a < .01) discard; gl_FragColor = vec4(vC * (1.1 - .25 * r), a); }" });
+  const jets = new T.Points(jgeo, jetM); jets.frustumCulled = false; jets.userData.dyn = true; jets.visible = false; scene.add(jets);
+  let ji = 0;
+  function jet(fx, sx, col, dtE) {                     // fx: перед/зад (+1/−1), sx: вправо/влево (+1/−1); dtE — сколько времени выпускаем
+    v3.set(fx * 1.3, -.1, sx * .85).applyMatrix4(carObj.matrixWorld);
+    const n = Math.min(40, Math.ceil(dtE * 260));       // частиц — по времени, а не по кадрам: струя сплошная при любой частоте кадров
+    for (let k = 0; k < n; k++) {
+      const i = ji++ % JN, sp = 21 + Math.random() * 4, spr = .03, age = Math.random() * dtE;   // каждая — как будто вылетела в свой момент внутри кадра
+      const dx = side.x * sx + up.x * .32 + (Math.random() - .5) * spr, dy = side.y * sx + up.y * .32 + (Math.random() - .5) * spr, dz = side.z * sx + up.z * .32 + (Math.random() - .5) * spr;
+      jpos.set([v3.x + dx * sp * age, v3.y + dy * sp * age, v3.z + dz * sp * age], i * 3); jv.set([dx * sp + vel.x, dy * sp, dz * sp + vel.z], i * 3);
+      jcol.set([col.r, col.g, col.b], i * 3); jt[i] = age; jl[i] = 1 + Math.random() * .35;
+    }
+    jets.visible = true;
+  }
+  function jetTick(dt) {
+    let alive = 0;
+    for (let i = 0; i < JN; i++) {
+      if (jt[i] >= jl[i]) { jal[i] = 0; continue; }
+      alive++; jt[i] += dt; const k = jt[i] / jl[i], dr = Math.exp(-dt * 2.2);
+      for (let c = 0; c < 3; c++) { jv[i * 3 + c] *= dr; jpos[i * 3 + c] += jv[i * 3 + c] * dt; } jv[i * 3 + 1] += .6 * dt;   // тормозится воздухом, чуть всплывает
+      jsz[i] = .3 + 1.5 * Math.sqrt(k); jal[i] = .6 * Math.pow(1 - k, 1.3) * Math.min(1, jt[i] * 12);   // узкая струя: частицы растут немного
+    }
+    jetM.uniforms.uScale.value = renderer.domElement.height / (2 * Math.tan(camera.fov * DEG / 2));
+    jgeo.attributes.position.needsUpdate = jgeo.attributes.aSize.needsUpdate = jgeo.attributes.aAlpha.needsUpdate = jgeo.attributes.color.needsUpdate = true;
+    if (!alive) jets.visible = false;
+  }
   // ударная волна по земле: два кольца, радуга по кругу
   const ringTex = glowTex(256, 16, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); FEST_COLS.concat(FEST_COLS[0]).forEach((c, i, a) => gr.addColorStop(i / (a.length - 1), c)); g.fillStyle = gr; g.fillRect(0, 0, w, h);
     const v = g.createLinearGradient(0, 0, 0, h); v.addColorStop(0, "rgba(0,0,0,1)"); v.addColorStop(.5, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,1)"); g.globalCompositeOperation = "destination-out"; g.fillStyle = v; g.fillRect(0, 0, w, h); });
@@ -3687,6 +3750,7 @@ const PARTY = (() => {
       const f = Math.max(0, Math.min(1, clife[i] / .6)); for (let k = 0; k < 3; k++) ccol[i * 3 + k] = cbase[i * 3 + k] * f;
     }
     if (alive) { cgeo.attributes.position.needsUpdate = cgeo.attributes.color.needsUpdate = true; } else cpts.visible = false;
+    if (jets.visible) jetTick(dt);
     if (!st.on) return;
     const pos = sfx.songPos(); st.t = pos != null ? Math.max(st.t, pos) : st.t + dt;   // время — по музыке: эффект кончается вместе с ней
     if (st.t >= st.len) return stop();
@@ -3710,19 +3774,15 @@ const PARTY = (() => {
     const tw = t < 2.4 ? t : t < 4.8 ? t - 2.4 : t - 4.8;          // волна — на каждом круге облёта
     if (t >= 2.4 && !st.w2) { st.w2 = true; SHOW.salute(car.x, car.y + 12, car.z, 3); } if (t >= 4.8 && !st.w3) { st.w3 = true; SHOW.salute(car.x, car.y + 16, car.z, 4); }
     waves.forEach((w, i) => { const k = Math.max(0, (tw - i * .45) / 1.4); w.visible = k > 0 && k < 1; w.scale.setScalar(2 + 46 * Math.sqrt(k)); w.position.y = gy - car.y - WHEEL + .15; w.material.opacity = .9 * (1 - k); });
-    rays.position.y = .2; rays.rotation.y = t * 1.3; rays.scale.set(.25 + .75 * Math.min(1, t * 3), 1, .25 + .75 * Math.min(1, t * 3));
-    rayM.opacity = (.22 + .3 * (1 - ph) * (beat % 2 ? .4 : 1)) * fade;
     const hk = Math.min(1, t / 3), hf = Math.min(1, t * 4) * Math.max(0, 1 - Math.max(0, t - 6.2) / 1.3);
     holo.position.set(0, 2 + 6 * smooth(hk), 0); holo.quaternion.copy(camera.quaternion); holo.scale.setScalar((.6 + .4 * smooth(hk)) * (1 + .08 * (1 - ph)));
     holoM.opacity = hf * (.75 + .25 * Math.sin(t * 40) * Math.sin(t * 7));      // мерцает, как голограмма
     if (beat !== st.beat) { st.beat = beat; if (beat % 4 === 2 && st.len - t > 1.2) { const j = beat / 2; cannon(j % 2 ? 1 : -1, 1, COLS[j % COLS.length], 24); cannon(j % 2 ? -1 : 1, -1, COLS[(j + 2) % COLS.length], 24); cpts.visible = true; } }
-    // дым: две мощные струи из вращающихся сопел — улетают далеко (~12 м) и расходятся облаком
-    st.smoke -= dt;
-    if (st.smoke <= 0 && st.len - t > .8) {
-      st.smoke = .03; const a = t * 2.2;
-      [0, Math.PI].forEach(o => { const dx = Math.cos(a + o), dz = Math.sin(a + o), sp = 26 + Math.random() * 8; v3.set(car.x + dx * .9, car.y + .2, car.z + dz * .9); puff(v3, new T.Vector3(dx * sp + vel.x * .7, 1 + Math.random() * 1.5, dz * sp + vel.z * .7), 2.2, 1.1, 0, 4.5); });
+    // дымовые струи в такт: первая половина доли — струя, чётная доля — вправо, нечётная — влево; цвет — по кругу
+    if (ph < .55 && st.len - t > .9) {
+      const sx = beat % 2 ? -1 : 1, c1 = COLS[beat % COLS.length], c2 = COLS[(beat + 3) % COLS.length];
+      jet(1, sx, c1, dt); jet(-1, sx, c2, dt);
     }
-    puffMat.uniforms.color.value.setRGB(.91, .95, .98).lerp(tmp, .4 * fade);
   }
   return {
     start, stop, tick, get on() { return st.on; }, get red() { return st.red; },
@@ -4618,6 +4678,10 @@ function landFree(g) {
   const q = err <= CLEAN_ROLL && vImp <= CLEAN_V ? "clean" : err <= HARD_ROLL && vImp <= HARD_V ? "hard" : null;
   if (!q) return freeCrash(err > HARD_ROLL ? `Приземлились на ${err > 110 ? "крышу" : "бок"}. Возвращаем на дорогу` : `Слишком жёстко: ${vImp.toFixed(0)} м/с. Держите ГАЗ у земли`);
   dust(car.x, g.h, car.z, 8); sfx.thump(Math.min(1, vImp / 14));
+  if (g.ship) {                                                   // плюхнулись на палубу — судно качнулось: брызги из-под бортов и волна
+    const sh = g.ship; WAKE.add(sh.x, sh.z, .3);
+    for (let i = 0; i < 30; i++) { const k = i % 2 ? 1 : -1, u = (Math.random() - .5) * 70; puff(new T.Vector3(sh.x + sh.cs * u - sh.sn * k * 6.4, .4, sh.z + sh.sn * u + sh.cs * k * 6.4), new T.Vector3(-sh.sn * k * 4, 4 + Math.random() * 4, sh.cs * k * 4), 1.2, .5, 7); }
+  }
   car.vy = 0; car.roll = 0; car.om = 0;
   if (g.roof && g.roof.pad && Math.hypot(car.x - g.roof.pad.x, car.z - g.roof.pad.z) < 6) {   // точно на площадку «H»
     free.score += 300; save.freeBest = Math.max(save.freeBest, free.score); persist();
@@ -5615,17 +5679,19 @@ function render(dt) {
     else look.set(car.x + (air ? 6 : 5), car.y + .6 - (air ? Math.min(3, car.y * .25) : 0), 0);
     camera.lookAt(look); camera.fov = 60 + (mode === "free" ? Math.min(14, Math.abs(car.v) * .25) : 0);
     const orb = mode === "free" && !replay && PARTY.orbit();
-    if (orb) {                                             // вечеринка: облёт камеры — три круга по-разному за 7,2 с
-      const t = orb.t, pass = Math.min(2, Math.floor(t / 2.4)), k = (t - pass * 2.4) / 2.4, bump = Math.sin(Math.PI * k);
-      const a = orb.a0 + Math.PI * 6 * (t < .6 ? t * t / 1.2 / 7.2 : (t - .3) / 6.9);   // плавный разгон, дальше — ровно
-      let r, h, ly = 1, fov;
-      if (pass === 0) { r = 4.4; h = .45 + .2 * bump; ly = 1.1; fov = 72; }                       // низко у самой земли: машина над камерой
-      else if (pass === 1) { r = 4.4 * (1 - .62 * bump); h = .65 + 9 * bump; ly = .5; fov = 58; }   // по спирали вверх — сверху над крышей — и вниз
-      else { r = Math.max(1.4, lerp(4.4, 8.5, k) * (1 - .82 * Math.pow(bump, 3))); h = lerp(.65, 2.6, k) + 4.5 * bump * bump; ly = .8; fov = lerp(62, 60 + Math.min(14, Math.abs(car.v) * .25), k); }   // сбоку, с пролётом над крышей
+    if (orb) {                                             // вечеринка: облёт камеры — один плавный пролёт, как дроном: 225° вокруг машины,
+      const k = Math.min(1, orb.t / PARTY_ORBIT), e = k * k * (3 - 2 * k), up = Math.sin(Math.PI * k);   // мягкий старт и остановка, вверх и вниз по дуге
+      const a = orb.a0 + e * Math.PI * 1.25;
+      let r = 7.2 + 2.6 * up, h = 1.5 + 3.4 * up; const ly = .7 + .3 * up, fov = 54 - 6 * up;
       while (r > 2 && hitSolid(car.x + Math.cos(a) * r, car.z + Math.sin(a) * r, car.y + h)) r -= .8;   // не залетать в дома
       camPos.set(car.x + Math.cos(a) * r, car.y + h, car.z + Math.sin(a) * r); camera.position.copy(camPos);
       look.set(car.x, car.y + ly, car.z); camera.lookAt(look); camera.fov = fov;
     }
+  }
+  if (mode === "free" && free.air && !replay && car.y < 7 && car.y > -.2 && waterAt(car.x, car.z)) {   // низко над водой: воздух из сопел рвёт воду — брызги и волны
+    const k = 1 - car.y / 7;
+    if (Math.random() < dt * 30 * k) puff(new T.Vector3(car.x + (Math.random() - .5) * 2, .3, car.z + (Math.random() - .5) * 2), new T.Vector3((Math.random() - .5) * 5, 3 + 4 * k, (Math.random() - .5) * 5), 1, .4, 8);
+    free.wakeT = (free.wakeT || 0) - dt; if (free.wakeT <= 0) { free.wakeT = .35; WAKE.add(car.x, car.z, .14 * k); }
   }
   if (mode === "free" && phase === "free" && sfx.broken() > 0 && Math.random() < dt * 7) {   // поломка: дымок из-под капота
     const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw); puff(new T.Vector3(car.x + fx * 1.6, car.y + 1.1, car.z + fz * 1.6), new T.Vector3(fx * .3, 1.4, fz * .3), 1.8, .35, -.2, 3);
@@ -5836,7 +5902,7 @@ if (location.hash === "#test") window.__t = {   // крючок для авто�
   party: on => on === false ? PARTY.stop() : on ? PARTY.start(false, true) : PARTY.state(),
   ARENA, INNER, EIGHT, salute: (x, y, z, n) => SHOW.salute(x, y, z, n), puff: (x, y, z, vx, vy, vz, life, s) => puff(new T.Vector3(x, y, z), new T.Vector3(vx, vy, vz), life, s),
   setTime: k => setTime(k), paint: i => setPaint(i),
-  RAILB, SHIPS, UNDER, KINO, snd: () => ({ src: ENGINE_SND, ready: sfx.engReady(), broken: sfx.broken() }), photo: on => (PHOTO.force(on !== false), true), PHOTO,
+  RAILB, SHIPS, UNDER, KINO, WAKE, snd: () => ({ src: ENGINE_SND, ready: sfx.engReady(), broken: sfx.broken() }), photo: on => (PHOTO.force(on !== false), true), PHOTO,
   scenes: () => SCENES.map(sc => ({ name: sc.name, state: sc.state, d: Math.round(sc.d), ms: sc.ms, work: Math.round(sc.work || 0), chunks: sc.chunks.length, solids: sc.solids.length })),
   cine(on, cap) {                // съёмка: игра стоит, кадр рисуется по cineStep; интерфейс спрятан, поле — на весь экран
     CINE.on = !!on; document.body.classList.toggle("cine", CINE.on);
