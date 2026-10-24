@@ -744,7 +744,7 @@ const skyDome = (() => {
         [-W, 0, W].forEach(o => {
           const rg = g.createRadialGradient(x + o, y, 0, x + o, y, rr);
           const top = night ? "rgba(70,80,110,.55)" : near > .2 ? `rgba(255,${Math.round(236 - near * 20)},${Math.round(205 - near * 60)},.95)` : "rgba(255,255,255,.95)";
-          rg.addColorStop(0, top); rg.addColorStop(.6, night ? "rgba(40,48,70,.4)" : "rgba(236,240,244,.75)"); rg.addColorStop(1, "rgba(200,208,218,0)");
+          rg.addColorStop(0, top); rg.addColorStop(.6, night ? "rgba(40,48,70,.4)" : "rgba(236,240,244,.75)"); rg.addColorStop(1, night ? "rgba(40,48,70,0)" : "rgba(200,208,218,0)");   // ночью край — тот же тёмный цвет: без светлых колец
           g.fillStyle = rg; g.beginPath(); g.ellipse(x + o, y, rr, rr * (.55 + (y / H) * .5), 0, 0, Math.PI * 2); g.fill();
         });
       }
@@ -2596,8 +2596,8 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     const sign = (lines, bg, fg, s, l, y, w) => { const m = new T.MeshBasicMaterial({ map: textTex(lines, 512, 128, bg, fg) }); [0, Math.PI].forEach(r => { const sgn = new T.Mesh(new T.PlaneGeometry(w, w / 4), m); sgn.position.copy(at(s, l, y)); sgn.rotation.y = yaw + Math.PI / 2 + r; sc.group.add(sgn); }); };
     sign(["НА АРКУ ↗"], "#d8322c", "#ffffff", -10, -HW - 2.5, Y0 + 4, 7); sign(["НА АРКУ ↗"], "#d8322c", "#ffffff", -10, HW + 2.5, Y0 + 4, 7);
     sign(["ПЕРИЛА"], "#2c0a44", "#ffc93c", L + 10, 0, Y0 + 5.5, 8);
-    sign(["С ВЕРШИНЫ ВПРАВО: 3 КОЛЕСА → ДОН"], "#1f4f7a", "#ffffff", A1 / 2 - 16, HW + 2.8, chordTop(A1 / 2 - 16, 0, A1) + 3, 10);
-    sign(["ПОЯС → ПРОЛЁТ → ЮЖНАЯ АРКА · ЖДИ ЗЕЛЁНЫЙ"], "#1d6b3a", "#ffffff", A1 / 2 + 16, -HW - 2.8, chordTop(A1 / 2 + 16, 0, A1) + 3, 11);
+    sign(["С ВЕРШИНЫ ВПРАВО ИЛИ ВЛЕВО:", "3 КОЛЕСА → ДОН"], "#1f4f7a", "#ffffff", A1 / 2 - 16, HW + 2.8, chordTop(A1 / 2 - 16, 0, A1) + 3, 10);
+    sign(["ЗЕЛЁНЫЙ: ПОЯС → ПРОЛЁТ → ЮЖНАЯ АРКА", "ПОДНЯТ: КОЛЕСО НА ВЕРШИНЕ БРОСИТ НА ПРОЛЁТ"], "#1d6b3a", "#ffffff", A1 / 2 - 16, -HW - 2.8, chordTop(A1 / 2 - 16, 0, A1) + 3, 12);
     [[A1 - 4, 1], [A2 + 4, -1]].forEach(([s0, k]) => sign(["С ЛИФТА — В КОЛЕСО ↑"], "#d8322c", "#ffffff", s0, k * (HW + 2.4), Y0 + LIFT - 6, 8));
     sign(["ЖЕЛЕЗНОДОРОЖНЫЙ МОСТ"], "#1f4f7a", "#ffffff", -RAMP - 12, HW + 6, 6, 14);
     // кольца: на вершине северной арки (обе стороны) и три — прыжок в Дон
@@ -2611,9 +2611,26 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     };
     [-1, 1].forEach(k => addRing(at(A1 / 2, k * HW, Y0 + ARCH + 3), yaw + Math.PI / 2, 40));
     // «прыжок в Дон»: с вершины северной арки (правый пояс) уводишь машину вправо — три колеса по дуге полёта, дальше — в реку
-    [[34, 11.6, 31.5], [55, 14.8, 24], [75, 17.8, 13.5]].forEach(([ds, l0, y]) => addRing(at(A1 / 2 + ds, l0, y), yaw + Math.PI / 2 - .15, 0));
+    [-1, 1].forEach(k => [[34, 11.6, 31.5], [55, 14.8, 24], [75, 17.8, 13.5]].forEach(([ds, l0, y]) => addRing(at(A1 / 2 + ds, k * l0, y), yaw + Math.PI / 2 - k * .15, 0)));   // и вправо, и влево
     [[A1 - 10, 3.5], [A2 + 10, -3.5]].forEach(([s0, l0]) => { addRing(at(s0, l0, Y0 + LIFT + 3.6), yaw + Math.PI / 2, 0); st.rings[st.rings.length - 1].lift = true; });   // вылет с трамплина поднятого пролёта
     sc.group.add(new T.Mesh(mergeGeos(tyres), tyreM));
+    // табло на башнях — над путём, лицом к подъездам (обе таблички — одна сетка, одна текстура)
+    { const c = document.createElement("canvas"); c.width = 512; c.height = 128; const tex = new T.CanvasTexture(c); tex.encoding = T.sRGBEncoding; tex.anisotropy = 4;
+      const gs = [[A1 - 3.9, -Math.PI / 2], [A2 + 3.9, Math.PI / 2]].map(([s0, r]) => new T.PlaneGeometry(12, 3).rotateY(yaw + r).translate(...at(s0, 0, Y0 + TOW - 13).toArray()));
+      st.board = { c, tex, key: "" }; sc.group.add(new T.Mesh(mergeGeos(gs.map(q => q.toNonIndexed())), new T.MeshBasicMaterial({ map: tex, toneMapped: false }))); drawBoard(); }
+    // подсветка вечером и ночью: светодиодные ленты по поясам арок (голубой → фиолетовый к вершине), по ногам башен (тёплый белый),
+    // по верхней ферме; на пролёте — своя лента, едет с ним: зелёная — путь свободен, красная — пролёт поднят или идёт
+    { const lg = [], ll = [], C1 = new T.Color(0x39d6ff), C2 = new T.Color(0xb46bff), cc = new T.Color();
+      [[0, A1], [A2, L]].forEach(([sa, sb]) => [-1, 1].forEach(k => { const n = 28; for (let i = 0; i < n; i++) { const s0 = sa + (sb - sa) * i / n, s1 = sa + (sb - sa) * (i + 1) / n;
+        cc.copy(C1).lerp(C2, 1 - Math.abs(1 - 2 * (i + .5) / n)); lg.push(beam(at(s0, k * (HW + .74), chordTop(s0, sa, sb) - .55), at(s1, k * (HW + .74), chordTop(s1, sa, sb) - .55), .3, .4, cc.getHex())); } }));
+      [A1, A2].forEach(a => [[-3, -1], [3, -1], [-3, 1], [3, 1]].forEach(([o, k]) => lg.push(beam(at(a + o, k * (HW + 2.45), Y0), at(a + o, k * (HW + 2.45), Y0 + TOW), .35, .35, 0xffd27a))));
+      [-1, 1].forEach(k => lg.push(beam(at(A1 + 3, k * (HW + 2.2), Y0 + TOW - 7.5), at(A2 - 3, k * (HW + 2.2), Y0 + TOW - 7.5), .35, .35, 0x39d6ff)));
+      [-1, 1].forEach(k => [Y0 - 1.25, Y0 + 6.55].forEach(y => ll.push(beam(at(A1 + .6, k * (HW + 1.05), y), at(A2 - .6, k * (HW + 1.05), y), .25, .3, 0xffffff))));
+      const night = () => TIME !== "day";
+      st.ledM = new T.MeshBasicMaterial({ vertexColors: true, toneMapped: false }); st.liftLedM = new T.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
+      [st.ledM, st.liftLedM].forEach(m => { nightReg(m, "visible", { sunset: true, day: false, night: true }); m.visible = night(); });
+      st.led = new T.Mesh(mergeGeos(lg), st.ledM); st.liftLed = new T.Mesh(mergeGeos(ll), st.liftLedM);
+      sc.group.add(st.led, st.liftLed); }
     // поезд: локомотив и три вагона — одна сетка
     const tp = [], T0 = Y0 + .2;
     for (let i = 0; i < 4; i++) { const s0 = -i * 15.5, c = i ? 0x5d6b52 : 0xb5462f;
@@ -2625,6 +2642,33 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
   }
   function drop() { st.loaded = false; st.rings = []; liftMesh = null; st.trainMesh = null; }
   // ---------- работа моста: пролёт, поезд, кольца, разгоны ----------
+  // колесо на вершине северной арки при поднятом пролёте — реактивный бросок: сопла подбирают дугу так, чтобы машина прошла
+  // под верхними связями башни и села на середину поднятого пролёта (как мега-трамплин у арены)
+  function jetToLift() {
+    const [cs, cl] = loc(car.x, car.z), T2 = 2.4, yT = Y0 + Math.min(LIFT, st.y + 4.4 * T2), apex = yT + 3;
+    const vy = Math.sqrt(2 * G * Math.max(1, apex - car.y)), T = vy / G + Math.sqrt(2 * (apex - yT) / G);
+    const dS = A1 + 22 - cs, dL = Math.sign(cl || 1) * 3.2 - cl, wx = dx * dS + nx * dL, wz = dz * dS + nz * dL;
+    car.yaw = Math.atan2(-wz, wx); takeoff(false); car.vy = vy; car.v = Math.hypot(dS, dL) / T; free.jetRB = time; sfx.jet();
+  }
+  // табло на башнях: когда пролёт поднимется / опустится (по расписанию, поезду и судам)
+  function liftInfo() {
+    const cyc = st.t % 60, tr = st.train;
+    if (shipNear()) return ["СУДНО НА РЕКЕ", st.y > LIFT - 1 ? "ПРОЛЁТ ПОДНЯТ" : "ПОДНИМАЕТСЯ", 1];
+    if (tr.on && tr.s - TRAIN.len < L + 10) return ["ИДЁТ ПОЕЗД", "ПРОЛЁТ ВНИЗУ", 2];
+    if (st.up) return ["ПРОЛЁТ ПОДНЯТ", `ВНИЗ ЧЕРЕЗ ${Math.max(1, Math.ceil(54 - cyc))} с`, 1];
+    if (st.y > .05) return ["ПРОЛЁТ", "ОПУСКАЕТСЯ", 1];
+    return ["ПРОЛЁТ ВНИЗУ", `ВВЕРХ ЧЕРЕЗ ${Math.ceil(cyc < 34 ? 34 - cyc : 94 - cyc)} с`, 0];
+  }
+  function drawBoard() {
+    const B = st.board, [a, b, c] = liftInfo(), key = a + b; if (B.key === key) return; B.key = key;
+    const g = B.c.getContext("2d"), col = ["#3ddc84", "#ff3b30", "#ffc93c"][c];
+    g.fillStyle = "#0b0d10"; g.fillRect(0, 0, 512, 128); g.strokeStyle = "#3a3f46"; g.lineWidth = 8; g.strokeRect(4, 4, 504, 120);
+    g.fillStyle = col; g.textAlign = "center"; g.textBaseline = "middle";
+    g.font = "bold 34px Golos Text, Arial, sans-serif"; g.fillText(a, 256, 36, 480);
+    g.font = "900 54px Golos Text, Arial, sans-serif"; g.fillText(b, 256, 88, 490);
+    g.fillStyle = "rgba(0,0,0,.35)"; for (let x = 0; x < 512; x += 4) g.fillRect(x, 0, 1, 128); for (let y = 0; y < 128; y += 4) g.fillRect(0, y, 512, 1);   // точки светодиодов
+    B.tex.needsUpdate = true;
+  }
   const shipNear = () => typeof SHIPS !== "undefined" && SHIPS.list.some(sh => { const ox = sh.x - C.x, oz = sh.z - C.z, dn = ox * nx + oz * nz, ds = ox * dx + oz * dz; return Math.abs(ds) < 120 && Math.abs(dn) < 300 && (Math.abs(dn) < 70 || dn * sh.vn < 0); });
   function tick(dt) {
     st.t += dt;
@@ -2648,7 +2692,10 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     liftMesh.position.y = st.y;
     const free_ = st.y < .05 && !st.up, blink = (st.t * 2 | 0) % 2;
     lightM.color.setHex(free_ ? 0x3ddc84 : 0x0b2a16); st.redM.color.setHex(free_ ? 0x3a0c0a : blink ? 0xff3b30 : 0x7a1410);
-    st.edgeM.color.setHex(free_ ? 0x3ddc84 : blink ? 0xff3b30 : 0x5a0f0c); st.liftLamps.position.y = st.y;   // зелёный — путь свободен, мигает красный — пролёт идёт/поднят
+    st.edgeM.color.setHex(free_ ? 0x3ddc84 : blink ? 0xff3b30 : 0x5a0f0c); st.liftLamps.position.y = st.y;
+    st.boardT = (st.boardT || 0) - dt; if (st.boardT <= 0 && Math.hypot(car.x - C.x, car.z - C.z) < 900) { st.boardT = .25; drawBoard(); }
+    st.liftLed.position.y = st.y;
+    if (st.ledM.visible) { st.liftLedM.color.setHex(free_ ? 0x3ddc84 : blink ? 0xff3b30 : 0x8a1810); st.ledM.color.setScalar(.75 + .25 * Math.sin(st.t * 1.6)); }   // ленты медленно «дышат»   // зелёный — путь свободен, мигает красный — пролёт идёт/поднят
     st.trainMesh.visible = tr.on; if (tr.on) { const p = at(tr.s, TRAIN.l); st.trainMesh.position.set(p.x, 0, p.z); st.trainMesh.rotation.y = yaw; }
     st.ringT = Math.max(0, st.ringT - dt);
     const shU = typeof SHIPS !== "undefined" && SHIPS.list.find(sh => sh.under);
@@ -2664,16 +2711,19 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
       const dist = cs < A1 && vs > 3 ? A1 - cs : cs > A2 && vs < -3 ? cs - A2 : -1;
       const onChord = Math.abs(Math.abs(cl) - HW) < .8 && car.y > Y0 + 3 && (cs < A1 ? vs > 3 && cs > A1 / 2 : cs > A2 && vs < -3 && cs < (A2 + L) / 2);   // на поясе арки, едем вниз к пролёту
       if (onDeck && st.y > 1 && dist > 5 && dist < 70) { queueToast("Пролёт поднят — впереди разрыв! Тормози или прыгай", "bad", 1600); st.warnT = 6; }
-      else if (onChord && st.y > 1) { queueToast(cs < A1 ? "Пролёт поднят — пояс уходит в обрыв! Уводи вправо: 3 колеса и в Дон" : "Пролёт поднят — пояс уходит в обрыв! Тормози", "bad", 2200); st.warnT = 7; }
+      else if (onChord && st.y > 1) { queueToast(cs < A1 ? "Пролёт поднят — пояс уходит в обрыв! Уводи вправо или влево: 3 колеса и в Дон" : "Пролёт поднят — пояс уходит в обрыв! Тормози", "bad", 2200); st.warnT = 7; }
+      else if (Math.abs(Math.abs(cl) - HW) < .8 && car.y > Y0 + 3 && cs < A1 / 2 - 8 && vs > 3 && st.up && st.y > 20) { queueToast("Пролёт поднят — колесо на вершине бросит тебя прямо на пролёт!", "good", 2200); st.warnT = 9; }
       else if (onChord && st.y < .05 && !st.up) { queueToast("Огни зелёные — по поясу прямо на пролёт и дальше на другую арку!", "good", 2000); st.warnT = 12; }
       else if (cs > A1 && cs < A2 && Math.abs(cl) < HW + .5 && st.v > .5 && Math.abs(car.y - Y0 - st.y) < 1.5 && st.y > 1 && st.y < 6) { queueToast("Лифт! Пролёт поднимает машину на 40 м — с трамплина наверху вылет в кольцо", "good", 2200); st.warnT = 20; }
     }
     for (const r of st.rings) if (!r.got && Math.hypot(car.x - r.p.x, car.y + .6 - r.p.y, car.z - r.p.z) < 3.2) {
       r.got = true; r.m.material.color.setHex(0x6fdc8c); free.score += 300; save.freeBest = Math.max(save.freeBest, free.score); persist();
-      if (r.boost) { car.v = Math.max(car.v, r.boost); sfx.jet(); completeMission("rbArch"); }
+      const vsR = car.v * (Math.cos(car.yaw) * dx - Math.sin(car.yaw) * dz);
+      if (r.boost && st.up && st.y > 28 && !free.air && vsR > 5) { jetToLift(); completeMission("rbArch"); }
+      else if (r.boost) { car.v = Math.max(car.v, r.boost); sfx.jet(); completeMission("rbArch"); }
       if (r.lift) completeMission("rbLift");
       if (st.rings.every(q => q.got)) completeMission("rbWheels");
-      queueToast(r.boost ? "Вершина арки! Колесо паровоза и разгон  +300" : "Колесо паровоза  +300", "good", 1400); sfx.ring();
+      queueToast(free.jetRB === time ? "Реактивный бросок — на поднятый пролёт!  +300" : r.boost ? "Вершина арки! Колесо паровоза и разгон  +300" : "Колесо паровоза  +300", "good", 1600); sfx.ring();
     }
     if (st.rings.length && st.rings.every(r => r.got) && Math.hypot(car.x - C.x, car.z - C.z) > 500) st.rings.forEach(r => { r.got = false; r.m.material.color.setHex(RING_ON); });   // уехали — кольца снова горят
   }
@@ -4108,7 +4158,8 @@ const MISSIONS = [
   { id: "rbLift", t: "Ж/д мост: подняться на «лифте» и вылететь в колесо", pts: 800, rb: 1 },
   { id: "rbTrain", t: "Ж/д мост: 10 секунд на крыше поезда", pts: 700, rb: 1 },
   { id: "rbBarge", t: "Ж/д мост: с моста — на палубу судна", pts: 900, rb: 1 },
-  { id: "rbWheels", t: "Ж/д мост: все 7 колёс паровоза", pts: 1000, rb: 1 },
+  { id: "rbWheels", t: "Ж/д мост: все 10 колёс паровоза", pts: 1000, rb: 1 },
+  { id: "rbJet", t: "Ж/д мост: с колеса на вершине арки — реактивный бросок на поднятый пролёт", pts: 900, rb: 1 },
   { id: "rbOver", t: "Ж/д мост: поверху через весь мост — пояс северной арки, пролёт, пояс южной", pts: 900, rb: 1 }
 ];
 const rbDone = () => MISSIONS.filter(m => m.rb && save.missions && save.missions[m.id]).length, rbAll = () => MISSIONS.filter(m => m.rb).length;
@@ -4810,6 +4861,7 @@ function landFree(g) {
   if (free.fromRB && free.airT > .3 && RAILB) {                                   // испытания ж/д моста
     if (g.ship) completeMission("rbBarge");
     if (g.lift && time - (free.railBoostT || -99) < 4) completeMission("rbRails");
+    if (g.lift && time - (free.jetRB || -99) < 6) completeMission("rbJet");
     if (g.pull && free.airT > .5) { const [ls] = RAILB.loc(car.x, car.z); if (ls > RAILB.A2 + 9 && ls < RAILB.GAP0 + 1) completeMission("rbRailGap"); }
   }
   if (free.fromOverpass && car.z < ZA - 19) completeMission("overpass");

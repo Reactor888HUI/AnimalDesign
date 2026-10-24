@@ -34,6 +34,7 @@ const path = require("path");
     return { t: +t.toFixed(1), points: n, seenShow, maxMult };
   };
   await ev(() => __t.teleport(1010, 150, -Math.PI / 2)); await run(300);
+  for (let i = 0; i < 20 && !(await ev(() => __t.driftKit().on)); i++) await run(150);   // на медленном рендере кадр с переключением может ещё не пройти
   out.kit = await ev(() => __t.driftKit());
   // дрифтовый руль на экране показывает поворот: «вправо» — около +120°, отпустили — в центр (управление — обычное)
   {
