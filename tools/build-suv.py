@@ -4,7 +4,8 @@
 Что делает:
   • мировые матрицы узлов; поворот на 180° (у модели перёд к −X, в игре — к +X), масштаб 0,92 (длина ≈4,1 м, как у
     игровой формы столкновений), низ шин — на уровень земли машины (y = −0,65);
-  • группы: кузов, 4 колеса (свои оси), руль (своя ось), салон водителя (виден только из кабины);
+  • группы: кузов, 4 колеса (свои оси), «dash» — старая панель кузова (видна только снаружи: из кабины её заменяет
+    салон, нарисованный в игре кодом); салон водителя и руль исходника не берём — от руля нужна только его ось (глаз водителя);
   • убирает надписи-логотипы марки (буквы на двери багажника и на капоте, эмблемы, надпись на руле) — в игре марки
     не пишем;
   • склеивает всё по материалам внутри группы, упрощает тяжёлые сетки (квадрики, fast_simplification) и пересчитывает
@@ -63,11 +64,13 @@ def is_logo(c, ext, mat):                         # координаты мод�
     if x < -2.24 and .74 < y < .92 and abs(z) < .32 and ext.max() > .05: return True   # эмблема в решётке
     return False
 
+DASH_MATS = ('cabin_charcoal', 'interior', 'leather_ivory', 'trim_black', 'trim_metal')
 parts = {}                                        # (группа, материал) → [позиции, нормали-исходные, индексы]
 removed = 0
 for p in prims:
     if p['mesh'] == 'Text.001': removed += len(p['idx']); continue   # надпись марки на руле
     g = group_of(p); mat = MATS[p['mat']]
+    if g in ('driver', 'steer'): continue                              # салон и руль — кодом в игре
     P = tf(p['pos'], p['M']); idx = p['idx']
     if g == 'body' and mat in ('trim_metal', 'trim_black'):
         lab = comps(P, idx); keep = np.ones(len(idx), bool)
@@ -79,6 +82,10 @@ for p in prims:
     if g.startswith('wheel_') or g == 'steer':                         # в свои оси
         piv = to_game(world(node_idx[g if g != 'steer' else 'driver_steering.001'])[:3, 3][None])[0]; piv[1] -= Y0 * S + .65
         Pg = Pg - piv
+    if g == 'body' and mat in DASH_MATS:                               # панель приборов кузова → своя группа
+        c = Pg[idx].mean(1); m = (c[:, 0] > .3) & (c[:, 0] < .92) & (np.abs(c[:, 2]) < .77) & (c[:, 1] > -.15) & (c[:, 1] < .6)
+        if m.any(): parts.setdefault(('dash', mat), []).append((Pg, idx[m]))
+        idx = idx[~m]
     parts.setdefault((g, mat), []).append((Pg, idx))
 
 pivots = {}
@@ -111,6 +118,8 @@ blob, header, total = bytearray(), {'mats': [], 'groups': {}, 'pivots': pivots},
 mat_used = sorted({m for (_, m) in parts})
 header['mats'] = mat_used
 for (g, mat), lst in sorted(parts.items()):
+    lst = [q for q in lst if len(q[1])]
+    if not lst: continue
     P = np.concatenate([q[0] for q in lst]); off = np.cumsum([0] + [len(q[0]) for q in lst])[:-1]
     F = np.concatenate([q[1] + o for q, o in zip(lst, off)])
     P, F = weld(P, F); F = F[(F[:, 0] != F[:, 1]) & (F[:, 1] != F[:, 2]) & (F[:, 0] != F[:, 2])]
