@@ -3920,8 +3920,7 @@ const PARTY = (() => {
     if (st.on || (!force && performance.now() / 1000 - (st.end || -1e9) < PARTY_COOL)) { SHOW.salute(car.x, car.y + 10, car.z, 2); return; }   // идёт или была недавно — только салют
     if (!partyFx() && !partyMus()) return;
     st.on = true; st.t = 0; st.beat = -1; st.smoke = 0; st.head0 = carObj.userData.headM.emissiveIntensity; st.hit = st.w2 = st.w3 = false; st.calm = calm;
-    const pos = sfx.songPos();                                             // песня уже идёт (началась под кино-повтор) — праздник до её конца
-    st.len = pos != null ? Math.max(4, PARTY_LEN - pos) : Math.min(PARTY_LEN, sfx.partyLen()); sfx.song(true);
+    st.pos0 = sfx.songPos() || 0; st.len = Math.min(PARTY_LEN, sfx.partyLen()); sfx.song(true);   // если песня уже играет под кино-повтор — продолжается, отсчёт праздника — с этого момента
     st.a0 = Math.atan2(camera.position.z - car.z, camera.position.x - car.x);  // облёт начинается оттуда, где стоит камера
   }
   const orbT = () => Math.min(PARTY_ORBIT, st.len - .6);                 // облёт кончается до конца праздника (короче, если песня уже шла под повтор)
@@ -3939,7 +3938,7 @@ const PARTY = (() => {
     if (alive) { cgeo.attributes.position.needsUpdate = cgeo.attributes.color.needsUpdate = true; } else cpts.visible = false;
     if (jets.visible) jetTick(dt);
     if (!st.on) return;
-    const pos = sfx.songPos(); st.t = pos != null ? Math.max(st.t, pos) : st.t + dt;   // время — по музыке: эффект кончается вместе с ней
+    const pos = sfx.songPos(); st.t = pos != null ? Math.max(st.t, pos - st.pos0) : st.t + dt;   // время — по музыке: эффект кончается вместе с ней
     if (st.t >= st.len) return stop();
     const fx = partyFx(), U = carObj.userData, t = st.t;
     neon.visible = grp.visible = fx;
@@ -5591,6 +5590,7 @@ const sfx = (() => {
         const g = ac.createGain(), t0 = ac.currentTime + .03; g.gain.value = .85; g.connect(master);
         if (!music) { g.disconnect(); return; }                                         // песня ещё не готова — вечеринка без музыки
         const src = ac.createBufferSource(); src.buffer = music; src.connect(g); src.start(t0); song = { g, src, t0 };
+        src.loop = true; src.loopEnd = Math.min(music.duration, 5 * 4 * PARTY_BEAT);   // по кругу ровно по 5 тактов: песня тянется через весь кино-повтор и праздник
       } else if (!play && song) { const { g, src } = song; g.gain.setTargetAtTime(0, ac.currentTime, .25); setTimeout(() => { try { src && src.stop(); } catch (e) {} g.disconnect(); }, 1500); song = null; }
     },
     under(on) { if (ac) lp.frequency.setTargetAtTime(on ? 650 : 22000, ac.currentTime, .08); },
