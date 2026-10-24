@@ -59,8 +59,9 @@ def is_logo(c, ext, mat):                         # координаты мод�
     if ext.max() > .14: return False
     x, y, z = c
     if mat not in ('trim_metal', 'trim_black', 'driver_chrome'): return False
-    if x > 2.12 and .88 < y < 1.2 and abs(z) < .5: return True          # буквы и эмблема на двери багажника
+    if x > 2.12 and .88 < y < 1.2 and abs(z) < .65: return True         # буквы, эмблема и значок модели на двери багажника
     if x < -2.15 and .86 < y < 1.08 and abs(z) < .5: return True        # буквы на кромке капота
+    if x > 2.2 and .7 < y < .8 and abs(z) < .5 and ext.max() < .1: return True          # надпись марки над задним номером
     if x < -2.24 and .74 < y < .92 and abs(z) < .32 and ext.max() > .05: return True   # эмблема в решётке
     return False
 
@@ -110,10 +111,50 @@ def crease_normals(P, F, ang=38):
             n = acc / (np.linalg.norm(acc) + 1e-12); kq = (v, *np.round(n * 60).astype(int))
             if kq not in key: key[kq] = len(outP); outP.append(P[v]); outN.append(n)
             newF[fi, k] = key[kq]
-    return np.array(outP), np.array(outN), newF
+    src = np.zeros(len(outP), np.int64)
+    for (v, *_), i in key.items(): src[i] = v
+    return np.array(outP), np.array(outN), newF, src
+
+def refine(P, F, L=.1):                          # стекло: делим длинные рёбра (общие середины — без щелей), чтобы кайма
+    P = [tuple(v) for v in P]; F = [tuple(t) for t in F]   # с точками по расстоянию до края ложилась ровно, а не треугольниками
+    while True:
+        mid, out, hit = {}, [], False
+        def m(a, b):
+            k = (min(a, b), max(a, b))
+            if k not in mid: mid[k] = len(P); P.append(tuple((np.array(P[a]) + np.array(P[b])) / 2))
+            return mid[k]
+        long = lambda a, b: np.linalg.norm(np.array(P[a]) - np.array(P[b])) > L
+        marks = {}
+        for t in F:
+            for a, b in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0])):
+                if long(a, b): marks[(min(a, b), max(a, b))] = True
+        if not marks: return np.array(P), np.array(F)
+        for a, b, c in F:
+            e = [(min(x, y), max(x, y)) in marks for x, y in ((a, b), (b, c), (c, a))]
+            n = sum(e)
+            if n == 0: out.append((a, b, c))
+            elif n == 3: ab, bc, ca = m(a, b), m(b, c), m(c, a); out += [(a, ab, ca), (ab, b, bc), (ca, bc, c), (ab, bc, ca)]
+            else:
+                while not e[0]: a, b, c = b, c, a; e = e[1:] + e[:1]            # первое отмеченное ребро — a-b
+                ab = m(a, b)
+                if n == 1: out += [(a, ab, c), (ab, b, c)]
+                elif e[1]: bc = m(b, c); out += [(a, ab, c), (ab, b, bc), (ab, bc, c)]
+                else: ca = m(c, a); out += [(a, ab, ca), (ab, b, c), (ab, c, ca)]
+        F = out
+
+def edge_dist(P, F):                              # стекло: расстояние каждой вершины до края панели (для чёрной каймы с точками)
+    from collections import Counter
+    E = Counter(tuple(sorted(e)) for t in F for e in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0])))
+    B = np.array([e for e, n in E.items() if n == 1])
+    if not len(B): return np.full(len(P), 9.0)
+    A, Bv = P[B[:, 0]], P[B[:, 1]]; d = Bv - A; L2 = np.maximum((d * d).sum(1), 1e-12)
+    out = np.empty(len(P))
+    for i, v in enumerate(P):
+        t = np.clip(((v - A) * d).sum(1) / L2, 0, 1); out[i] = np.sqrt((((A + d * t[:, None]) - v) ** 2).sum(1)).min()
+    return out
 
 # сколько треугольников оставить: крупные «оболочки» кузова и колёс — проще, мелочь — как есть
-TARGET = {'trim_metal': .7, 'paint_obsidian_black': .75, 'rubber': .4, 'interior': .5, 'leather_ivory': .8, 'light_lens': .6}
+TARGET = {'trim_metal': .7, 'paint_obsidian_black': .7, 'rubber': .4, 'interior': .5, 'leather_ivory': .8, 'light_lens': .6}
 blob, header, total = bytearray(), {'mats': [], 'groups': {}, 'pivots': pivots}, 0
 mat_used = sorted({m for (_, m) in parts})
 header['mats'] = mat_used
@@ -128,13 +169,17 @@ for (g, mat), lst in sorted(parts.items()):
     if keep < 1 and len(F) > 600:
         P2, F2 = fast_simplification.simplify(P.astype(np.float32), F.astype(np.int64), target_reduction=1 - keep)
         if len(F2) > 50: P, F = P2.astype(np.float64), F2.astype(np.int64)
-    P, N, F = crease_normals(P, F)
+    if mat == 'glass_tinted': P, F = refine(P, F)
+    ed = edge_dist(P, F) if mat == 'glass_tinted' else None
+    P, N, F, src = crease_normals(P, F)
     mn, mx = P.min(0), P.max(0); sc = np.maximum(mx - mn, 1e-6)
     qp = np.round((P - mn) / sc * 65535 - 32768).astype(np.int16)
     qn = np.round(N * 127).astype(np.int8)
     big = len(P) > 65535; qi = F.astype(np.uint32 if big else np.uint16).reshape(-1)
     rec = {'m': mat_used.index(mat), 'n': len(P), 'i': len(qi), 'big': big, 'mn': [round(float(v), 5) for v in mn], 'sc': [round(float(v), 6) for v in sc]}
-    for arr in (qp, qn, qi):
+    arrs = [qp, qn, qi]
+    if ed is not None: rec['ed'] = 1; arrs.append(np.minimum(255, np.round(ed[src] * 500)).astype(np.uint8))   # шаг 2 мм, до 51 см
+    for arr in arrs:
         while len(blob) % 4: blob.append(0)
         rec.setdefault('o', []).append(len(blob)); blob += arr.tobytes()
     header['groups'].setdefault(g, []).append(rec); total += len(F)
