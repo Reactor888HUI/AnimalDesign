@@ -3749,7 +3749,7 @@ const SUV = SUV_DATA ? (() => {
     return { steer: st, spin, front: n.includes("front") };
   });
   M.metal.vertexColors = true; M.metal.roughness = .4;   // колёса: резина, диск, тормоз — цвет по вершинам
-  [[2.235, Math.PI / 2], [-2.19, -Math.PI / 2]].forEach(([x, ry]) => {   // номера — те же, что у «восьмёрки» (вымышленные)
+  [[2.262, Math.PI / 2], [-2.19, -Math.PI / 2]].forEach(([x, ry]) => {   // номера — те же, что у «восьмёрки» (вымышленные)
     const m = new T.Mesh(new T.PlaneGeometry(.5, .11), carObj.userData.plateFace); m.position.set(x, -.15, 0); m.rotation.y = ry; root.add(m); });
   carObj.add(root);
   // вид из кабины: глаз водителя — позади руля и выше; изнутри — без наружных стёкол (двойная тонировка), с салоном и рулём
