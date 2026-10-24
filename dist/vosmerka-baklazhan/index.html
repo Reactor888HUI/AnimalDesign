@@ -3992,43 +3992,49 @@ const SUV = SUV_DATA ? (() => {
   box(.02, .185, .32, CM.piano, .011, 0, 0, scr);
   const hC = document.createElement("canvas"); hC.width = 160; hC.height = 112; const hX = hC.getContext("2d"), hT = new T.CanvasTexture(hC); hT.encoding = T.sRGBEncoding;
   { const h = add(new T.PlaneGeometry(.2, .14).rotateY(-Math.PI / 2), new T.MeshBasicMaterial({ map: hT, transparent: true, depthWrite: false, toneMapped: false }), .62, .585, sp[2] + .03); h.rotation.z = .25; h.renderOrder = 3; h.userData.dyn = true; }   // проекция на стекло — над капотом
-  // сенсорные панели руля: глянцевый чёрный, значки светятся (слева — звук и телефон, справа — круиз-контроль)
-  const padT = cvs(256, 128, (g, w, h) => { g.fillStyle = "#020304"; g.fillRect(0, 0, w, h); g.strokeStyle = g.fillStyle = "rgba(235,240,245,.85)"; g.lineWidth = 4; g.lineCap = "round"; g.lineJoin = "round";
-    const tri = (x, y, d) => { g.beginPath(); g.moveTo(x, y - 9 * d); g.lineTo(x - 8, y + 5 * d); g.lineTo(x + 8, y + 5 * d); g.closePath(); g.fill(); };
-    // левая: ▲ громкость ▼, «трубка», «микрофон»
-    tri(26, 40, 1); tri(26, 92, -1); g.font = "bold 22px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("+", 52, 40); g.fillText("−", 52, 92);
-    g.beginPath(); g.arc(92, 42, 13, Math.PI * .2, Math.PI * 1.05); g.stroke(); g.fillRect(77, 40, 8, 6); g.fillRect(99, 30, 6, 8);
-    g.beginPath(); g.roundRect ? g.roundRect(86, 74, 12, 22, 6) : g.rect(86, 74, 12, 22); g.stroke(); g.beginPath(); g.arc(92, 90, 11, 0, Math.PI); g.stroke();
-    // правая: спидометр со стрелкой, «+ / −», машина с волнами (адаптивный круиз)
-    g.beginPath(); g.arc(160, 50, 18, Math.PI * .9, Math.PI * 2.1); g.stroke(); g.beginPath(); g.moveTo(160, 50); g.lineTo(171, 39); g.stroke();
-    g.fillText("+", 204, 40); g.fillText("−", 204, 92);
-    g.strokeRect(148, 80, 24, 12); [0, 1, 2].forEach(i => { g.beginPath(); g.moveTo(178 + i * 6, 76); g.lineTo(178 + i * 6, 96); g.stroke(); });
-    g.fillStyle = "rgba(235,240,245,.25)"; g.fillRect(128, 0, 2, h); });
-  const PADM = new T.MeshStandardMaterial({ map: padT, emissiveMap: padT, emissive: 0xffffff, emissiveIntensity: .35, roughness: .12, metalness: .2 }); PADM.userData.carShiny = true; PADM.userData.envI = .5;
-  // руль — по образцу современного руля этой марки (без её надписей): толстый обод светлой кожи; ступица — скруглённый
-  // прямоугольник тёмной кожи с гладким хромированным овалом; две горизонтальные спицы с глянцевыми сенсорными панелями
-  // (значки подсвечены) в хромированной рамке и рифлёными колёсиками; внизу — две тонкие сатинированные спицы «подковой»;
-  // за спицами — металлические лепестки. Колонка наклонена к панели
-  const steer = new T.Group(); steer.position.set(...sp); steer.rotation.z = -.36; cab.add(steer);
+  // руль — по фото руля этой марки (поколение со светлой кожей): большая подушка светлой кожи, шире кверху, с хромированной
+  // планкой (без надписи); по бокам — вытянутые глянцевые сенсорные блоки со значками и круглым переключателем наверху;
+  // спицы светлой кожи; внизу — спица с хромированной рамкой-прорезью; обод светлый перфорированный. Руль меньше прежнего
+  const podT = cvs(256, 256, (g, w, h) => { g.fillStyle = "#030405"; g.fillRect(0, 0, w, h); g.strokeStyle = g.fillStyle = "rgba(235,240,245,.85)"; g.lineWidth = 5; g.lineCap = "round"; g.lineJoin = "round";
+    g.font = "bold 22px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    // левый блок: колесо «меню» (рисует кольцо — само колесо в хроме), стрелки, «ромб», трубка, голос
+    g.font = "bold 15px sans-serif"; g.fillText("МЕНЮ", 64, 64); g.font = "bold 22px sans-serif"; [[24, 64], [104, 64]].forEach(([x, y], i) => { g.beginPath(); g.moveTo(x + (i ? -6 : 6), y - 9); g.lineTo(x + (i ? 4 : -4), y); g.lineTo(x + (i ? -6 : 6), y + 9); g.stroke(); });
+    g.beginPath(); g.moveTo(64, 120); g.lineTo(76, 134); g.lineTo(64, 148); g.lineTo(52, 134); g.closePath(); g.stroke();
+    g.beginPath(); g.arc(44, 196, 13, Math.PI * .25, Math.PI * 1.1); g.stroke(); g.fillRect(28, 192, 8, 6);
+    g.beginPath(); g.roundRect ? g.roundRect(80, 180, 12, 22, 6) : g.rect(80, 180, 12, 22); g.stroke(); g.beginPath(); g.arc(86, 196, 11, 0, Math.PI); g.stroke();
+    // правый блок: SET / RES, «−» «+», отмена, ограничитель
+    g.font = "bold 15px sans-serif"; g.fillText("SET+", 192, 56); g.fillText("RES", 192, 74); g.font = "bold 30px sans-serif"; g.fillText("−", 160, 130); g.fillText("+", 224, 130); g.font = "bold 20px sans-serif";
+    g.fillText("CANCEL", 192, 176); g.beginPath(); g.arc(192, 214, 14, Math.PI * .8, Math.PI * 2.2); g.stroke(); g.fillText("LIM", 192, 242);
+    g.fillStyle = "rgba(235,240,245,.2)"; g.fillRect(127, 0, 2, h); });
+  const PADM = new T.MeshStandardMaterial({ map: podT, emissiveMap: podT, emissive: 0xffffff, emissiveIntensity: .32, roughness: .1, metalness: .2 }); PADM.userData.carShiny = true; PADM.userData.envI = .55;
+  const steer = new T.Group(); steer.position.set(sp[0] + .01, sp[1] - .025, sp[2]); steer.rotation.z = -.36; cab.add(steer);
   const wheelS = new T.Group(); wheelS.userData.dyn = true; steer.add(wheelS);
-  const RIM = .182;
-  add(new T.TorusGeometry(RIM, .0175, 14, 72).rotateY(Math.PI / 2), CM.ivory, 0, 0, 0, wheelS);
-  const faceX = (sh, depth, bev, mat, x) => { const g = new T.ExtrudeGeometry(sh, { depth, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: 3, curveSegments: 8 }); g.rotateY(-Math.PI / 2); return add(g, mat, x, 0, 0, wheelS); };   // форма в плоскости (z, y), толщина — к панели
-  const rrect = (w, h, r, cx = 0, cy = 0) => { const sh = new T.Shape(), x0 = cx - w / 2, y0 = cy - h / 2; sh.moveTo(x0 + r, y0); sh.lineTo(x0 + w - r, y0); sh.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r); sh.lineTo(x0 + w, y0 + h - r);
-    sh.quadraticCurveTo(x0 + w, y0 + h, x0 + w - r, y0 + h); sh.lineTo(x0 + r, y0 + h); sh.quadraticCurveTo(x0, y0 + h, x0, y0 + h - r); sh.lineTo(x0, y0 + r); sh.quadraticCurveTo(x0, y0, x0 + r, y0); return sh; };
-  faceX(rrect(.15, .112, .032, 0, -.004), .03, .012, CM.black, .034);                     // ступица (подушка)
-  { const o = new T.TorusGeometry(.026, .0026, 6, 40); o.scale(1, .62, 1); o.rotateY(Math.PI / 2); add(o, CM.chrome, -.0105, -.004, 0, wheelS); }   // овал без надписи
+  const RIM = .163;
+  add(new T.TorusGeometry(RIM, .0175, 14, 72).rotateY(Math.PI / 2), CM.ivory, 0, 0, 0, wheelS);          // обод: светлая кожа
+  const faceX = (sh, depth, bev, mat, x) => { const g = new T.ExtrudeGeometry(sh, { depth, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: 4, curveSegments: 10 }); g.rotateY(-Math.PI / 2); return add(g, mat, x, 0, 0, wheelS); };   // форма в плоскости (z, y), толщина — к панели
+  const poly = (pts, r) => { const sh = new T.Shape(), n = pts.length;                       // многоугольник со скруглёнными углами
+    for (let i = 0; i < n; i++) { const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], d0 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), d2 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+      const a = [p1[0] + (p0[0] - p1[0]) * r / d0, p1[1] + (p0[1] - p1[1]) * r / d0], c = [p1[0] + (p2[0] - p1[0]) * r / d2, p1[1] + (p2[1] - p1[1]) * r / d2];
+      if (i) sh.lineTo(...a); else sh.moveTo(...a); sh.quadraticCurveTo(p1[0], p1[1], ...c); } sh.closePath(); return sh; };
+  // спицы светлой кожи: горизонтальные к ободу и нижняя
+  [-1, 1].forEach(k => faceX(poly([[k * .05, .028], [k * .158, .016], [k * .16, -.024], [k * .05, -.04]].map(p => k > 0 ? p : p), .008), .022, .004, CM.ivory, .03));
+  faceX(poly([[-.04, -.05], [.04, -.05], [.03, -.158], [-.03, -.158]], .008), .022, .004, CM.ivory, .03);
+  // подушка: шире кверху, мягкие углы, толстая — с фаской
+  faceX(poly([[-.074, .058], [.074, .058], [.06, -.062], [-.06, -.062]], .03), .026, .014, CM.ivory, .036);
+  box(.003, .006, .066, CM.chrome, -.0125, .016, 0, wheelS);                                   // хромированная планка (без надписи)
+  // нижняя хромированная рамка-прорезь: чёрная вставка в хромированной окантовке
+  box(.006, .026, .056, CM.piano, -.0055, -.088, 0, wheelS);
+  [[-.0745, .062, .005], [-.1015, .062, .005]].forEach(([y, w, h]) => box(.007, h, w, CM.chrome, -.007, y, 0, wheelS)); [-1, 1].forEach(k => box(.007, .032, .005, CM.chrome, -.007, -.088, k * .0305, wheelS));
+  // сенсорные блоки: вытянутые «капсулы», наклонены наружу; наверху — круглый переключатель в хромированном кольце
   [-1, 1].forEach(k => {
-    // спица: от ступицы к ободу, сужается; лицевая панель — глянец со значками, рамка — хром
-    const sh = new T.Shape(); sh.moveTo(k * .07, .03); sh.lineTo(k * .168, .019); sh.lineTo(k * .17, -.021); sh.lineTo(k * .07, -.034); sh.closePath();
-    faceX(sh, .026, .004, CM.black, .03);
-    const pad = new T.PlaneGeometry(.082, .036).rotateY(-Math.PI / 2), uv = pad.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, (uv.getX(i) + (k > 0 ? 1 : 0)) / 2);
-    add(pad, PADM, -.0065, -.002, k * .118, wheelS);
-    [.0175, -.0215].forEach(y => box(.003, .003, .086, CM.chrome, -.0068, y, k * .118, wheelS));   // рамка панели сверху и снизу
-    add(new T.CylinderGeometry(.0085, .0085, .011, 16).rotateX(Math.PI / 2), CM.chrome, -.006, -.002, k * .0735, wheelS);   // колёсико у ступицы
-    box(.004, .05, .04, CM.chrome, .05, -.004, k * .142, wheelS);                          // лепесток за спицей
+    const g = new T.Group(); g.position.set(-.012, -.004, k * .092); g.rotation.x = -k * .2; wheelS.add(g);
+    const sh = poly([[-.022, .048], [.022, .048], [.022, -.048], [-.022, -.048]], .02), eg = new T.ExtrudeGeometry(sh, { depth: .012, bevelEnabled: true, bevelThickness: .004, bevelSize: .003, bevelSegments: 3, curveSegments: 8 }); eg.rotateY(-Math.PI / 2);
+    add(eg, CM.piano, .006, 0, 0, g);
+    const pad = new T.PlaneGeometry(.044, .096).rotateY(-Math.PI / 2), uv = pad.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, (uv.getX(i) + (k > 0 ? 1 : 0)) / 2);
+    add(pad, PADM, -.0108, 0, 0, g);
+    add(new T.TorusGeometry(.0105, .0022, 6, 24).rotateY(Math.PI / 2), CM.chrome, -.011, .024, 0, g);
+    box(.004, .07, .045, CM.chrome, .062, 0, k * .05, g);                                       // лепесток за спицей
   });
-  [-1, 1].forEach(k => bar([.004, -.052, k * .026], [.002, -RIM * Math.sin(1.25) + .002, k * RIM * Math.cos(1.25)], .0038, .006, CM.chrome, wheelS));   // нижние спицы «подковой»
   add(new T.CylinderGeometry(.042, .052, .2, 16).rotateZ(Math.PI / 2), CM.black, .12, 0, 0, steer);
   // стойки (кожа), потолок (ворс), козырьки, плафон и зеркало
   [-1, 1].forEach(k => bar([.95, .43, k * .73], [.31, .885, k * .65], .066, .042, CM.cloth));
@@ -4166,7 +4172,7 @@ const SUV = SUV_DATA ? (() => {
   }
   function tick(dt) {
     if (!on) return; const U = carObj.userData;
-    wheelS.rotation.x += ((U.st || 0) * 2.3 - wheelS.rotation.x) * Math.min(1, dt * 12);   // руль крутится за передними колёсами
+    wheelS.rotation.x += (-(U.st || 0) * 2.3 - wheelS.rotation.x) * Math.min(1, dt * 12);   // руль крутится за передними колёсами
     const r = (car.bodyRoll || 0) * LEAN.roll * DEG, p = (car.bodyPitch || 0) * LEAN.pitch * DEG;
     wheels.forEach(w => { const q = w.steer.position; q.y = w.y0 - Math.max(-.09, Math.min(.09, q.x * Math.sin(p) - q.z * Math.sin(r))); });
     if (!inCab) return;
@@ -6108,7 +6114,8 @@ const sfx = (() => {
     loadMusic();
   }
   const unlock = () => { init(); if (ac && ac.state === "suspended") ac.resume(); };
-  addEventListener("pointerdown", unlock, true); addEventListener("keydown", unlock, true);
+  // звук разрешается только «жестом»: на сенсорном экране это отпускание пальца (pointerup/touchend/click), а не касание
+  ["pointerdown", "pointerup", "touchend", "click", "keydown"].forEach(e => addEventListener(e, unlock, true));
   document.addEventListener("visibilitychange", () => { if (ac) document.hidden ? ac.suspend() : on() && ac.resume(); });
   let jet = 0; const BR = {}, SUB = { rpm: 800 };
   const set = (p, v, t = .06) => p.setTargetAtTime(v, ac.currentTime, t);
@@ -6545,11 +6552,12 @@ function render(dt) {
     camera.fov = Math.max(14, Math.min(55, 2 * Math.atan(12 / eye.distanceTo(look)) / DEG));
   } else if (camMode === "cockpit" && phase !== "drill" && phase !== "brief") {
     const suv = SUV && SUV.on; carObj.visible = suv; if (suv) SUV.cockpit(true);   // внедорожник: виден салон, руль, приборы, капот
-    const eye = (suv ? SUV.eye.clone().add(SUV.head(dt)) : new T.Vector3(.1, .55, -.3)).applyEuler(carObj.rotation).add(carObj.position);
-    const fwd = new T.Vector3(10, .4, 0).applyEuler(carObj.rotation).add(carObj.position);
+    const tall = suv && camera.aspect < 1;                         // телефон вертикально: взгляд чуть правее и шире — виден экран-навигатор
+    const eye = (suv ? SUV.eye.clone().add(SUV.head(dt)).add(new T.Vector3(0, 0, tall ? .08 : 0)) : new T.Vector3(.1, .55, -.3)).applyEuler(carObj.rotation).add(carObj.position);
+    const fwd = new T.Vector3(10, .4, tall ? 1.35 : 0).applyEuler(carObj.rotation).add(carObj.position);
     const up = new T.Vector3(0, 1, 0).applyEuler(carObj.rotation); if (suv) up.lerp(new T.Vector3(0, 1, 0), .35).normalize();   // голова держит горизонт чуть ровнее кузова
     camera.position.copy(eye); camera.up.copy(up); camera.lookAt(fwd);
-    camera.fov = suv ? 68 : 75; camPos.copy(eye); camera.near = suv ? .08 : .5;   // из кабины зеркало и стойки ближе полуметра
+    camera.fov = suv ? (tall ? 80 : 68) : 75; camPos.copy(eye); camera.near = suv ? .08 : .5;   // из кабины зеркало и стойки ближе полуметра
   } else {
     carObj.visible = true; if (SUV && SUV.on) SUV.cockpit(false);
     const air = phase === "air" || phase === "crash" || phase === "fcrash" || phase === "drill" || (phase === "brief" && briefPhase === "drill") || (phase === "lesson-done" && car.y > .5) || (mode === "free" && (free.air || free.aero));
