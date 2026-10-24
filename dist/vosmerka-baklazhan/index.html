@@ -2031,7 +2031,7 @@ const INNER = ARENA && (() => {
     const deck = new T.Mesh(mergeGeos(parts), new T.MeshLambertMaterial({ vertexColors: true, side: DS })); scene.add(deck);
     // табло на балке (с двух сторон)
     const ban = new T.Mesh(new T.PlaneGeometry(Wd * 2 - 1, .8), new T.MeshBasicMaterial({ map: textTex(["ГРАН-ПРИ АРЕНЫ · 3 КРУГА"], 1024, 96, "#111214", "#ffd23a"), side: DS, toneMapped: false }));
-    ban.position.set(g0.x - g0.tx * .37, 6.75, g0.z - g0.tz * .37); ban.rotation.y = yaw0 + Math.PI / 2; scene.add(ban);
+    ban.position.set(g0.x - g0.tx * .37, 7.08, g0.z - g0.tz * .37); ban.rotation.y = yaw0 + Math.PI / 2; scene.add(ban);
     // стартовые огни: 5 пар под балкой, лицом к стартовому полю — цвет по вершинам меняем на ходу
     const lp = []; for (let j = 0; j < 5; j++) for (const dy of [0, -.42]) { const c = new T.CircleGeometry(.17, 12).toNonIndexed(); c.rotateY(yaw0 - Math.PI / 2); c.translate(g0.x - g0.tx * .37 + nx * (j - 2) * .62, 5.6 + dy, g0.z - g0.tz * .37 + nz * (j - 2) * .62); lp.push(c); }
     const lg = mergeGeos(lp), lc = new Float32Array(lg.attributes.position.count * 3); lg.setAttribute("color", new T.BufferAttribute(lc, 3));
