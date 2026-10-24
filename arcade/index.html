@@ -2605,7 +2605,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
   }
   function hit0(x, z, y) {                              // препятствия: всё стальное твёрдое — фермы, башни, связи, перила, поезд, опоры
     if (!st.loaded) return null;
-    const [s, l] = loc(x, z); if (s < -5 || s > L + 5 || Math.abs(l) > HW + 4) return null;
+    const [s, l] = loc(x, z); if (s < -7 || s > L + 7 || Math.abs(l) > HW + 4) return null;
     const al = Math.abs(l), TW = HW + 1.8, bridge = n => ({ name: n, h: Y0 + TOW });
     for (const a of [A1, A2]) {
       if (Math.abs(s - a) < 4.2 && Math.abs(al - TW) < 1.1 && y < Y0 + TOW) return bridge("башню моста");               // ноги и боковые решётки башни
@@ -2628,7 +2628,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     if (s > 0 && s < L && al < HW + .1 && y > Y0 - 2.2 && y < Y0 - .4 && !gapOpen) return bridge("настил моста");          // в торец настила снизу и сбоку
     for (const [p, big] of [[0, 0], [A1, 1], [A2, 1], [L, 0]]) {        // опоры — по модели: шапка (ригель) и столб; падающую сверху машину шапка принимает (SURF)
       if (Math.abs(s - p) < (big ? 6 : 3) && al < HW + (big ? 3 : 1) && y > Y0 - 2.9 && y < Y0 - 1.0) return bridge("опору моста");
-      if (Math.abs(s - p) < (big ? 5.5 : 4) && al < (big ? 4.5 : 2.5) && y < Y0 - 2.9) return bridge("опору моста");
+      if (Math.abs(s - p) < (big ? 5.5 : 6.5) && al < (big ? 4.5 : 2.5) && y < Y0 - 2.9) return bridge("опору моста");   // концевые устои шире (как на модели)
     }
     for (const k of [-1, 1]) if (Math.abs(l - k * RL) < RW + .25 && y > Y0 - .5 && y < Y0 + 1.2 && ((s > GAP1 - 2.6 && s < L - 16) || (s > A2 + 9 && s < GAP0))) return { name: "перила моста", h: Y0 + 1.4 };   // и щель между пандусом и трамплином: снизу в неё не заехать
     if (Math.abs(al - RAILW) < .2 && y > Y0 - .5 && y < Y0 + 1.05 && archOf(s) && s > 1 && s < L - 1 && !(s > A1 - 1 && s < A2 + 1)) return { name: "перила прохода", h: Y0 + 1.1 };
@@ -2691,7 +2691,8 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
       [-HW, HW].forEach(l => {
         for (let i = 0; i < n * 2; i++) { const s0 = sa + (sb - sa) * i / n / 2, s1 = sa + (sb - sa) * (i + 1) / n / 2; push(beam(at(s0, l, chordTop(s0, sa, sb) - .5), at(s1, l, chordTop(s1, sa, sb) - .5), 1.4, 1, STEEL)); }
         for (let i = 1; i < n; i++) { const s0 = sa + (sb - sa) * i / n; push(beam(at(s0, l, Y0), at(s0, l, archH(s0, sa, sb)), .35, .35, STEEL2));
-          const s1 = sa + (sb - sa) * (i + (i < n / 2 ? 1 : -1)) / n; if (i % 2) push(beam(at(s0, l, archH(s0, sa, sb)), at(s1, l, Y0), .3, .3, STEEL2)); }
+          const s1 = sa + (sb - sa) * (i + (i < n / 2 ? 1 : -1)) / n; push(beam(at(s0, l, archH(s0, sa, sb)), at(s1, l, Y0), .3, .3, STEEL2));   // раскос в каждой панели: ферма твёрдая сплошь — и выглядит так
+          if (archH(s0, sa, sb) - Y0 > 13) push(beam(at(s0, l, Y0), at(s1, l, archH(s1, sa, sb)), .26, .26, STEEL2)); }   // высокие панели — крестом
       });
       for (let i = 3; i < n - 2; i += 2) { const s0 = sa + (sb - sa) * i / n, h = archH(s0, sa, sb) + .3; if (h - Y0 > 6) push(beam(at(s0, -HW, h), at(s0, HW, h), .5, .5, STEEL2)); }
       if (si === 1) {                                     // южная: перила-балки (жёлтые) на стойках и пандусы на них
@@ -2713,8 +2714,11 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
       legs.forEach(([o, l]) => push(beam(at(a + o, l, Y0 - 1), at(a + o, l, Y0 + TOW), 1.2, 1.2, TOWC)));
       for (let y = Y0 + 4; y < Y0 + TOW - 2; y += 8) {
         [[-HW - 1.8, -1], [HW + 1.8, 1]].forEach(([l]) => { push(beam(at(a - 3, l, y), at(a + 3, l, y + 8), .25, .25, STEEL2)); push(beam(at(a + 3, l, y), at(a - 3, l, y + 8), .25, .25, STEEL2)); push(beam(at(a - 3, l, y), at(a + 3, l, y), .35, .35, TOWC)); });
-        [a - 3, a + 3].forEach(s => { push(beam(at(s, -HW - 1.8, y), at(s, HW + 1.8, y + 8), .25, .25, STEEL2)); push(beam(at(s, HW + 1.8, y), at(s, -HW - 1.8, y + 8), .25, .25, STEEL2)); });
       }
+      // поперёк пути решётки — только выше поднятого пролёта (там они твёрдые); ниже — проём: пролёт ходит, машина пролетает
+      [a - 3, a + 3].forEach(s => { const y0 = Y0 + LIFT + 7, y1 = Y0 + TOW - .4;
+        push(beam(at(s, -HW - 1.8, y0), at(s, HW + 1.8, y1), .25, .25, STEEL2)); push(beam(at(s, HW + 1.8, y0), at(s, -HW - 1.8, y1), .25, .25, STEEL2));
+        push(beam(at(s, -HW - 1.8, y0), at(s, HW + 1.8, y0), .35, .35, TOWC)); });
       push(beam(at(a - 3.8, 0, Y0 + TOW + .3), at(a + 3.8, 0, Y0 + TOW + .3), 2 * HW + 5, .6, 0x8e959c));   // площадка
       push(beam(at(a - 3.2, 0, Y0 + TOW + .6), at(a + 3.2, 0, Y0 + TOW + .6), 2 * HW + 3, 5.2, 0xb9bfc4).translate(0, 2.6, 0));   // домик
       push(beam(at(a - 3.6, 0, Y0 + TOW + 5.4), at(a + 3.6, 0, Y0 + TOW + 5.4), 2 * HW + 3.6, .5, 0x6c7074));   // крыша
@@ -2745,7 +2749,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
   let liftMesh = null, lightM = null;
   function* build(sc) {
     const parts = []; staticParts(g => g && parts.push(g)); yield;
-    const m = new T.Mesh(mergeGeos(parts), steelM); sc.group.add(m); yield;
+    const m = new T.Mesh(mergeGeos(parts), steelM); sc.group.add(m); st.statMesh = m; yield;
     const lp = []; liftParts(g => g && lp.push(g)); liftMesh = new T.Mesh(mergeGeos(lp), steelM); sc.group.add(liftMesh);
     // светофоры: внутри ферм арок, за 14 м до башни, у края настила над проездом (машина проходит под ними), кронштейн — к ферме;
     // головка с козырьком, верхний огонь — красный, нижний — зелёный
@@ -2881,7 +2885,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
     const sched = cyc > 34 && cyc < 54, trainOn = tr.on && tr.s > -RAMP - 20 && tr.s - TRAIN.len < L + 10;
     st.up = !trainOn && (ship || sched);
     const target = st.up ? LIFT : 0, sp = st.up ? 4.4 : 5.5;
-    st.v = Math.sign(target - st.y) * Math.min(sp, Math.abs(target - st.y) / dt); st.y += st.v * dt;
+    st.v = Math.sign(target - st.y) * Math.min(sp, Math.abs(target - st.y) / Math.max(dt, 1e-4)); st.y += st.v * dt;   // dt = 0 (пауза) не даёт NaN
     if (!st.loaded) { if (st.snd !== 0) { sfx.bridge(0, 0, 0); st.snd = 0; } return; } st.snd = 1;
     liftMesh.position.y = st.y;
     const free_ = st.y < .05 && !st.up, blink = (st.t * 2 | 0) % 2;
@@ -2933,7 +2937,7 @@ const RAILB = WEST.lb && WEST.lb.length ? (() => {
   const onLift = (x, z) => { const [s, l] = loc(x, z); return s > A1 - .45 && s < A2 + .45 && Math.abs(l) < HW; };
   function setLift(up) { const base = Math.ceil(st.t / 120) * 120; st.t = base + (up ? 36 : 2); st.y = up ? LIFT : 0; st.v = 0; st.train.on = false; }
   function startTrain(s0) { const tr = st.train; tr.on = true; tr.s = s0; tr.v = 22; }
-  return { build, drop, tick, ground, hit, st, C, at, loc, L, A1, A2, Y0, HW, top, setLift, startTrain, onLift, RL, TRAIN, KS, KB, KH, N: { x: N[0], z: N[1] }, S: { x: S[0], z: S[1] }, dir: { x: dx, z: dz }, nrm: { x: nx, z: nz }, yaw, RAMP, LIFT, ARCH, TOW, GAP0, GAP1 };
+  return { build, drop, tick, ground, hit, hit0, meshes: () => [st.statMesh, liftMesh].filter(Boolean), LIFT, TOW, SPANL, st, C, at, loc, L, A1, A2, Y0, HW, top, setLift, startTrain, onLift, RL, TRAIN, KS, KB, KH, N: { x: N[0], z: N[1] }, S: { x: S[0], z: S[1] }, dir: { x: dx, z: dz }, nrm: { x: nx, z: nz }, yaw, RAMP, LIFT, ARCH, TOW, GAP0, GAP1 };
 })() : null;
 /* ---------- суда на Дону: сухогруз и теплоход — по ним можно ездить и на них можно приземляться ---------- */
 // Фарватер — середина реки по всей карте (от железнодорожного моста до восточного края), через подъёмный пролёт.
