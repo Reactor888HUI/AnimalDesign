@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#9fb6c8}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script></head><body>
+<script type="module">
+import * as THREE from "three"; import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"; import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0x9fb6c8); sc.fog = new THREE.Fog(0x9fb6c8, 1500, 4000);
+const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 1, 6000);
+sc.add(new THREE.HemisphereLight(0xffffff, 0x8a8070, 1.6)); const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-600, 900, 400); sc.add(sun);
+const dl = new DRACOLoader(); dl.setDecoderPath("https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/");
+const gl = new GLTFLoader(); gl.setDRACOLoader(dl);
+gl.load(new URLSearchParams(location.search).get("glb") || "../assets/maps/rostov-center.glb", g => {
+  let tris = 0, meshes = 0, maxV = 0, hasN = false;
+  g.scene.traverse(o => { if (o.isMesh) { meshes++; const ge = o.geometry; tris += (ge.index ? ge.index.count : ge.attributes.position.count) / 3; maxV = Math.max(maxV, ge.attributes.position.count); hasN ||= !!ge.attributes.normal;
+    o.material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }); } });
+  sc.add(g.scene); window.STATS = { tris, meshes, maxV, hasN };
+  window.shot = (p, t) => { cam.position.set(...p); cam.lookAt(...t); cam.near = Math.max(.5, cam.position.length() / 150); cam.updateProjectionMatrix(); r.render(sc, cam); window.STATS.calls = r.info.render.calls; window.STATS.rtris = r.info.render.triangles; };
+  window.ready = true;
+}, undefined, e => { window.ERR = String(e); });
+</script></body></html>
