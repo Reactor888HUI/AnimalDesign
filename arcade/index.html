@@ -3903,6 +3903,10 @@ const SUV = SUV_DATA ? (() => {
     const by = {}; (parts[g] || []).forEach(p => (by[single ? "matte" : BUCKET[p.mat] || "matte"] ||= []).push(p));
     return Object.entries(by).map(([b, l]) => { const m = new T.Mesh(mesh(l), b === "matte" && single ? M.metal : M[b]); m.renderOrder = b === "glass" || b === "lens" || b === "rlens" ? 2 : 0; return m; });
   }
+  {   // дворники на стоянке у основания лобового стекла (видны и снаружи, и из салона)
+    [[.18, .56, .03], [-.4, .52, -.03]].forEach(([z, L, a]) => { const b = new T.BoxGeometry(.016, .012, L); b.rotateY(a); b.translate(.958, .452, z);
+      parts.body.push({ mat: "rubber", pos: b.attributes.position.array, nor: b.attributes.normal.array, ed: null, idx: Uint32Array.from(b.index.array) }); });
+  }
   {   // моторный отсек пустой — сквозь решётку виднелась панель салона: закрываем тёмной коробкой (в общее «ведро» — без лишних вызовов)
     const b = new T.BoxGeometry(.7, .74, 1.1); b.translate(1.58, -.1, 0);
     parts.body.push({ mat: "rubber", pos: b.attributes.position.array, nor: b.attributes.normal.array, ed: null, idx: Uint32Array.from(b.index.array) });
@@ -3962,10 +3966,10 @@ const SUV = SUV_DATA ? (() => {
   // приборы: козырёк над экраном и сам экран (две стрелки: скорость и обороты, посередине — цифры и передача)
   const clus = new T.Group(); clus.position.set(.553, .462, sp[2]); clus.rotation.z = -.2; cab.add(clus);
   // приборы и центральный экран — одна текстура на двоих (один вызов отрисовки): приборы сверху, экран снизу
-  const aC = document.createElement("canvas"); aC.width = 512; aC.height = 400; const aX = aC.getContext("2d"), aT = new T.CanvasTexture(aC); aT.encoding = T.sRGBEncoding;
+  const aC = document.createElement("canvas"); aC.width = 512; aC.height = 512; const aX = aC.getContext("2d"), aT = new T.CanvasTexture(aC); aT.encoding = T.sRGBEncoding;
   const scrM = new T.MeshBasicMaterial({ map: aT, toneMapped: false, transparent: true, blending: T.AdditiveBlending, depthWrite: false });
   const atlasPlane = (w, h, x0, y0, cw, ch) => { const g = new T.PlaneGeometry(w, h).rotateY(-Math.PI / 2), uv = g.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, (x0 + uv.getX(i) * cw) / 512, 1 - (y0 + (1 - uv.getY(i)) * ch) / 400); return g; };
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (x0 + uv.getX(i) * cw) / 512, 1 - (y0 + (1 - uv.getY(i)) * ch) / 512); return g; };
   const gC = document.createElement("canvas"); gC.width = 512; gC.height = 176; const gX = gC.getContext("2d");
   add(atlasPlane(.34, .117, 0, 0, 512, 176), scrM, 0, 0, 0, clus);
   box(.03, .13, .37, CM.piano, .016, -.004, 0, clus);
@@ -3975,6 +3979,20 @@ const SUV = SUV_DATA ? (() => {
   const scr = new T.Group(); scr.position.set(.512, .315, .02); scr.rotation.z = -.3; cab.add(scr);
   add(atlasPlane(.3, .169, 0, 184, 384, 216), scrM, 0, 0, 0, scr);
   box(.02, .185, .32, CM.piano, .011, 0, 0, scr);
+  // нижний сенсорный экран климата и два хромированных регулятора по бокам (двухэкранная консоль)
+  const clim = new T.Group(); clim.position.set(.558, .166, .02); clim.rotation.z = -.5; cab.add(clim);
+  add(atlasPlane(.27, .076, 0, 404, 384, 108), scrM, 0, 0, 0, clim); box(.018, .1, .38, CM.piano, .01, 0, 0, clim);
+  [-1, 1].forEach(k => { add(new T.CylinderGeometry(.024, .026, .03, 28).rotateZ(Math.PI / 2), CM.chrome, -.012, 0, k * .165, clim); add(new T.CylinderGeometry(.017, .017, .032, 20).rotateZ(Math.PI / 2), CM.piano, -.014, 0, k * .165, clim); });
+  // дефлекторы: центральные — над экраном, боковые — у дверей; хромированные рамки, тёмные ламели
+  const vent = (x, y, z, w, h, rz, vert) => { const v = new T.Group(); v.position.set(x, y, z); v.rotation.z = rz; cab.add(v);
+    box(.01, h, w, CM.chrome, 0, 0, 0, v); box(.012, h - .008, w - .008, CM.piano, -.002, 0, 0, v);
+    if (vert) for (let i = -2; i <= 2; i++) box(.004, h - .012, .003, CM.chrome, -.008, 0, i * w / 6, v); else for (let i = -1; i <= 1; i++) box(.004, .0025, w - .014, CM.chrome, -.008, i * h / 4, 0, v); };
+  vent(.534, .417, -.075, .13, .03, -.1, true); vent(.534, .417, .115, .13, .03, -.1, true);
+  vent(.565, .372, -.665, .1, .055, -.08, false); vent(.565, .372, .665, .1, .055, -.08, false);
+  // верх панели: щель обдува стекла и решётка центрального динамика
+  box(.03, .004, 1.25, CM.piano, .935, .439, 0); box(.1, .004, .17, CM.piano, .8, .447, 0);
+  // за зеркалом — блок датчиков на стекле
+  box(.022, .045, .075, CM.black, .282, .862, 0);
   const hC = document.createElement("canvas"); hC.width = 160; hC.height = 112; const hX = hC.getContext("2d"), hT = new T.CanvasTexture(hC); hT.encoding = T.sRGBEncoding;
   { const h = add(new T.PlaneGeometry(.2, .14).rotateY(-Math.PI / 2), new T.MeshBasicMaterial({ map: hT, transparent: true, depthWrite: false, toneMapped: false }), .62, .585, sp[2] + .03); h.rotation.z = .25; h.renderOrder = 3; h.userData.dyn = true; }   // проекция на стекло — над капотом
   // руль — по фото руля этой марки (поколение со светлой кожей): большая подушка светлой кожи, шире кверху, с хромированной
@@ -3995,30 +4013,39 @@ const SUV = SUV_DATA ? (() => {
   const steer = new T.Group(); steer.position.set(sp[0] + .01, sp[1] - .025, sp[2]); steer.rotation.z = -.36; cab.add(steer);
   const wheelS = new T.Group(); wheelS.userData.dyn = true; steer.add(wheelS);
   const RIM = .163;
-  add(new T.TorusGeometry(RIM, .0175, 14, 72).rotateY(Math.PI / 2), CM.ivory, 0, 0, 0, wheelS);          // обод: светлая кожа
+  add(new T.TorusGeometry(RIM, .018, 14, 72).rotateY(Math.PI / 2), CM.ivory, 0, 0, 0, wheelS);           // обод: светлая кожа (перфорация — поверх, по бокам)
   const faceX = (sh, depth, bev, mat, x) => { const g = new T.ExtrudeGeometry(sh, { depth, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: 4, curveSegments: 10 }); g.rotateY(-Math.PI / 2); return add(g, mat, x, 0, 0, wheelS); };   // форма в плоскости (z, y), толщина — к панели
   const poly = (pts, r) => { const sh = new T.Shape(), n = pts.length;                       // многоугольник со скруглёнными углами
     for (let i = 0; i < n; i++) { const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], d0 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), d2 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
       const a = [p1[0] + (p0[0] - p1[0]) * r / d0, p1[1] + (p0[1] - p1[1]) * r / d0], c = [p1[0] + (p2[0] - p1[0]) * r / d2, p1[1] + (p2[1] - p1[1]) * r / d2];
       if (i) sh.lineTo(...a); else sh.moveTo(...a); sh.quadraticCurveTo(p1[0], p1[1], ...c); } sh.closePath(); return sh; };
-  // спицы светлой кожи: горизонтальные к ободу и нижняя
-  [-1, 1].forEach(k => faceX(poly([[k * .05, .028], [k * .158, .016], [k * .16, -.024], [k * .05, -.04]].map(p => k > 0 ? p : p), .008), .022, .004, CM.ivory, .03));
-  faceX(poly([[-.04, -.05], [.04, -.05], [.03, -.158], [-.03, -.158]], .008), .022, .004, CM.ivory, .03);
-  // подушка: шире кверху, мягкие углы, толстая — с фаской
-  faceX(poly([[-.074, .058], [.074, .058], [.06, -.062], [-.06, -.062]], .03), .026, .014, CM.ivory, .036);
-  box(.003, .006, .066, CM.chrome, -.0125, .016, 0, wheelS);                                   // хромированная планка (без надписи)
-  // нижняя хромированная рамка-прорезь: чёрная вставка в хромированной окантовке
-  box(.006, .026, .056, CM.piano, -.0055, -.088, 0, wheelS);
-  [[-.0745, .062, .005], [-.1015, .062, .005]].forEach(([y, w, h]) => box(.007, h, w, CM.chrome, -.007, y, 0, wheelS)); [-1, 1].forEach(k => box(.007, .032, .005, CM.chrome, -.007, -.088, k * .0305, wheelS));
-  // сенсорные блоки: вытянутые «капсулы», наклонены наружу; наверху — круглый переключатель в хромированном кольце
+  // обод: гладкая кожа сверху и снизу, перфорированные зоны хвата по бокам (от 10 до 2 и от 4 до 8 часов), тонкий шов
+  const perfM = new T.MeshStandardMaterial({ color: 0xf6ead6, map: leather.t, bumpMap: leather.tb, bumpScale: .003, roughness: .7 });
+  [-1, 1].forEach(k => add(new T.TorusGeometry(RIM, .0182, 14, 30, Math.PI * .62).rotateZ(k > 0 ? -Math.PI * .31 : Math.PI * .69).rotateY(Math.PI / 2), perfM, 0, 0, 0, wheelS));
+  add(new T.TorusGeometry(RIM + .0165, .0012, 4, 96).rotateY(Math.PI / 2), CM.piano, -.0045, 0, 0, wheelS);   // шов по внешней кромке
+  // спицы светлой кожи: горизонтальные — широкие, за блоками; нижняя — сужается к ободу
+  [-1, 1].forEach(k => faceX(poly([[k * .05, .03], [k * .156, .018], [k * .158, -.03], [k * .05, -.046]], .01), .02, .004, CM.ivory, .028));
+  faceX(poly([[-.042, -.05], [.042, -.05], [.024, -.156], [-.024, -.156]], .01), .02, .004, CM.ivory, .028);
+  // подушка: почти квадратная, верх ровный, бока чуть выпуклые, низ немного уже; строчка по контуру
+  const bagP = [[-.066, .062], [0, .064], [.066, .062], [.07, 0], [.06, -.058], [0, -.062], [-.06, -.058], [-.07, 0]];
+  faceX(poly(bagP, .028), .026, .014, CM.ivory, .036);
+  { const ins = poly(bagP.map(([z, y]) => [z * .86, y * .86 - .001]), .022).getSpacedPoints(80).map(v => new T.Vector3(-.0262, v.y, v.x));
+    add(new T.TubeGeometry(new T.CatmullRomCurve3(ins, true), 80, .0008, 3, true), CM.piano, 0, 0, 0, wheelS); }   // строчка
+  // шильдик: длинная пластина в хромированной окантовке (без надписи)
+  box(.003, .011, .08, CM.chrome, -.0255, .018, 0, wheelS); box(.003, .0065, .074, CM.piano, -.0262, .018, 0, wheelS);
+  // нижняя хромированная рамка-прорезь (шире), чёрная вставка внутри
+  box(.006, .024, .064, CM.piano, -.0055, -.086, 0, wheelS);
+  [[-.0735, .07, .005], [-.0985, .07, .005]].forEach(([y, w, h]) => box(.007, h, w, CM.chrome, -.007, y, 0, wheelS)); [-1, 1].forEach(k => box(.007, .03, .005, CM.chrome, -.007, -.086, k * .0345, wheelS));
+  // сенсорные блоки: прямоугольные со скруглёнными углами, хромированный кант по краю, вплотную к подушке, слегка наклонены
   [-1, 1].forEach(k => {
-    const g = new T.Group(); g.position.set(-.012, -.004, k * .092); g.rotation.x = -k * .2; wheelS.add(g);
-    const sh = poly([[-.022, .048], [.022, .048], [.022, -.048], [-.022, -.048]], .02), eg = new T.ExtrudeGeometry(sh, { depth: .012, bevelEnabled: true, bevelThickness: .004, bevelSize: .003, bevelSegments: 3, curveSegments: 8 }); eg.rotateY(-Math.PI / 2);
-    add(eg, CM.piano, .006, 0, 0, g);
-    const pad = new T.PlaneGeometry(.044, .096).rotateY(-Math.PI / 2), uv = pad.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, (uv.getX(i) + (k > 0 ? 1 : 0)) / 2);
-    add(pad, PADM, -.0108, 0, 0, g);
-    add(new T.TorusGeometry(.0105, .0022, 6, 24).rotateY(Math.PI / 2), CM.chrome, -.011, .024, 0, g);
-    box(.004, .07, .045, CM.chrome, .062, 0, k * .05, g);                                       // лепесток за спицей
+    const g = new T.Group(); g.position.set(-.012, -.006, k * .097); g.rotation.x = -k * .14; wheelS.add(g);
+    const shape = (w, h, r) => poly([[-w / 2, h / 2], [w / 2, h / 2], [w / 2, -h / 2], [-w / 2, -h / 2]], r);
+    const eg = new T.ExtrudeGeometry(shape(.042, .1, .016), { depth: .012, bevelEnabled: true, bevelThickness: .003, bevelSize: .002, bevelSegments: 3, curveSegments: 8 }); eg.rotateY(-Math.PI / 2); add(eg, CM.piano, .006, 0, 0, g);
+    const rim = new T.ExtrudeGeometry(shape(.047, .105, .018), { depth: .008, bevelEnabled: false, curveSegments: 8 }); rim.rotateY(-Math.PI / 2); add(rim, CM.chrome, .009, 0, 0, g);   // кант
+    const pad = new T.PlaneGeometry(.041, .094).rotateY(-Math.PI / 2), uv = pad.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, (uv.getX(i) + (k > 0 ? 1 : 0)) / 2);
+    add(pad, PADM, -.0098, 0, 0, g);
+    add(new T.TorusGeometry(.0105, .0022, 6, 24).rotateY(Math.PI / 2), CM.chrome, -.0102, .026, 0, g);
+    box(.004, .07, .045, CM.chrome, .062, 0, k * .05, g);                                       // лепесток за блоком
   });
   add(new T.CylinderGeometry(.042, .052, .2, 16).rotateZ(Math.PI / 2), CM.black, .12, 0, 0, steer);
   // стойки (кожа), потолок (ворс), козырьки, плафон и зеркало
@@ -4035,8 +4062,8 @@ const SUV = SUV_DATA ? (() => {
     box(1.42, .026, .032, CM.wood, .1, .292, z + k * .006); box(1.4, .004, .006, CM.led, .1, .277, z - k * .012);
     box(1.42, .22, .03, CM.black, .1, .16, z + k * .012); box(.52, .04, .1, CM.ivory, -.12, .245, z - k * .04); box(.09, .018, .02, CM.chrome, .36, .33, z - k * .008); });
   // консоль между сиденьями: глянец, хром, светлый подлокотник, селектор
-  box(1.02, .2, .24, CM.black, .06, .14, 0); box(.5, .006, .2, CM.piano, .28, .243, 0); box(1.02, .005, .245, CM.chrome, .06, .242, 0); box(.42, .05, .23, CM.ivory, -.27, .27, 0);
-  add(new T.CylinderGeometry(.03, .034, .045, 20), CM.chrome, .26, .265, 0); [-1, 1].forEach(k => box(.9, .004, .004, CM.led, .08, .236, k * .124));
+  box(.76, .2, .24, CM.black, -.08, .14, 0); box(.36, .006, .2, CM.piano, .08, .243, 0); box(.76, .005, .245, CM.chrome, -.08, .242, 0); box(.2, .1, .24, CM.black, .4, .06, 0);   // консоль; спереди ниже — виден экран климата box(.42, .05, .23, CM.ivory, -.27, .27, 0);
+  add(new T.CylinderGeometry(.03, .034, .045, 20), CM.chrome, .14, .265, 0); [-1, 1].forEach(k => box(.9, .004, .004, CM.led, .08, .236, k * .124));
   freeze(cab, true); freeze(wheelS, true);                               // салон — по сетке на материал: ~12 вызовов отрисовки
   // контурная подсветка: цвет — в меню; днём тусклее
   const AMB = [{ n: "слоновая кость", c: 0xffd9a0 }, { n: "лёд", c: 0x7fd8ff }, { n: "аметист", c: 0xb07cff }, { n: "изумруд", c: 0x4dffb0 }, { n: "выкл", c: 0 }];
@@ -4090,6 +4117,16 @@ const SUV = SUV_DATA ? (() => {
       g.fillStyle = "#11161b"; g.fillRect(-13, -17, 26, 8); [-17, 17].forEach(x => g.fillRect(x - 5, 5, 10, 9)); }
     g.restore();
   }
+  const cC = document.createElement("canvas"); cC.width = 384; cC.height = 108; const cX = cC.getContext("2d");
+  function drawClimate() {                                   // климат: температуры по зонам, вентилятор, подогрев сидений, AUTO
+    const g = cX; g.fillStyle = "#000"; g.fillRect(0, 0, 384, 108); g.textBaseline = "middle"; const ac = accent();
+    g.fillStyle = "#f3efe6"; g.font = F(600, 30); g.textAlign = "left"; g.fillText("21.5°", 50, 54); g.textAlign = "right"; g.fillText("22.0°", 334, 54);
+    g.textAlign = "center"; g.fillStyle = ac; g.font = F(700, 14); g.fillText("AUTO", 192, 28);
+    g.strokeStyle = "#c9d0d6"; g.lineWidth = 2; for (let i = 0; i < 3; i++) { g.beginPath(); g.ellipse(192, 64, 4, 13, i * Math.PI / 3, 0, 7); g.stroke(); }
+    for (let i = 0; i < 5; i++) { g.fillStyle = i < 3 ? ac : "rgba(255,255,255,.15)"; g.fillRect(160 + i * 14, 88, 10, 4); }
+    [[120, 1], [264, 1]].forEach(([x]) => { g.strokeStyle = "#ff8a3d"; g.lineWidth = 2; for (let j = 0; j < 3; j++) { g.beginPath(); g.moveTo(x - 8 + j * 8, 80); g.quadraticCurveTo(x - 4 + j * 8, 72, x - 8 + j * 8, 64); g.stroke(); } });
+    aX.drawImage(cC, 0, 404);
+  }
   function drawScreen() {
     const g = sX; g.fillStyle = "#000"; g.fillRect(0, 0, 384, 216);
     const air = mode === "free" && free.air, roll = carObj.rotation.x, pitch = carObj.rotation.z;
@@ -4118,7 +4155,7 @@ const SUV = SUV_DATA ? (() => {
     }
     g.fillStyle = "rgba(255,255,255,.08)"; g.fillRect(216, 178, 160, 1);
     g.fillStyle = accent(); g.beginPath(); g.arc(224, 196, 4, 0, 7); g.fill(); g.fillStyle = "#c9d0d6"; g.font = F(500, 12); g.fillText($("zone") ? $("zone").textContent : "", 234, 200);
-    aX.drawImage(sC, 0, 184); aT.needsUpdate = true;
+    aX.drawImage(sC, 0, 184); drawClimate(); aT.needsUpdate = true;
   }
   // проекция на лобовое стекло: скорость и стрелка курса — цветом подсветки
   // проекция на лобовое стекло: цифры цветом подсветки (ивори — бирюзой, как у настоящих проекторов) с тёмным ореолом —
