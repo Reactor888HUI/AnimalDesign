@@ -21,8 +21,8 @@ const path = require("path");
   out.attached = !!w;
   await p.keyboard.down("ArrowLeft"); await run(800); await p.keyboard.up("ArrowLeft");
   const w1 = (await ev(() => __t.arena())).wall; out.climbed = w1 && w1.y > (w ? w.y : 0) + 3;
-  await run(6000);
-  const w2 = (await ev(() => __t.arena())).wall; out.rodeMeters = w2 ? Math.round(w2.dist) : 0;
+  let w2 = null; for (let i = 0; i < 18; i++) { await run(500); w2 = (await ev(() => __t.arena())).wall; if (i >= 11 && w2 && w2.dist >= 310) break; }   // ~6 с, но на медленной отрисовке — до 9 с
+  out.rodeMeters = w2 ? Math.round(w2.dist) : 0;
   await ev(() => __t.hop()); await run(200);
   out.jumpedOff = !(await ev(() => __t.arena())).wall && (await ev(() => __t.car())).air;
   await p.keyboard.up("ArrowUp"); await run(4000);
