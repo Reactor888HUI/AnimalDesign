@@ -203,13 +203,16 @@ function makeVaz2108() {
   // фары по чертежу: голубоватое стекло днём, ночью горят
   // стекло фары — рифлёное (призмы-полоски), за ним светлый отражатель: маленькая текстура вместо плоского белого
   const lensT = (() => { const c = document.createElement("canvas"); c.width = 64; c.height = 32; const q = c.getContext("2d");
-    q.fillStyle = "#cfd8df"; q.fillRect(0, 0, 64, 32);
-    for (let x = 0; x < 64; x += 4) { q.fillStyle = "rgba(255,255,255,.55)"; q.fillRect(x, 0, 1, 32); q.fillStyle = "rgba(60,70,80,.25)"; q.fillRect(x + 2, 0, 1, 32); }
-    for (let y = 0; y < 32; y += 8) { q.fillStyle = "rgba(60,70,80,.18)"; q.fillRect(0, y, 64, 1); }
-    q.strokeStyle = "rgba(255,255,255,.5)"; q.lineWidth = 2; q.strokeRect(1, 1, 62, 30);
+    q.fillStyle = "#d9e0e6"; q.fillRect(0, 0, 64, 32);
+    // за стеклом — широкий хромированный отражатель почти во всё стекло (как на фото), светлый в центре
+    const gr = q.createRadialGradient(30, 13, 2, 32, 16, 30); gr.addColorStop(0, "#ffffff"); gr.addColorStop(.35, "#e6ebef"); gr.addColorStop(.75, "#a9b3bc"); gr.addColorStop(1, "#c3ccd3");
+    q.fillStyle = gr; q.beginPath(); q.roundRect ? q.roundRect(3, 3, 58, 26, 6) : q.rect(3, 3, 58, 26); q.fill();
+    for (let x = 0; x < 64; x += 3) { q.fillStyle = "rgba(255,255,255,.28)"; q.fillRect(x, 0, 1, 32); q.fillStyle = "rgba(70,80,90,.12)"; q.fillRect(x + 1, 0, 1, 32); }   // мелкое рифление
+    for (let y = 2; y < 32; y += 6) { q.fillStyle = "rgba(70,80,90,.1)"; q.fillRect(0, y, 64, 1); }
+    q.strokeStyle = "rgba(90,100,110,.6)"; q.lineWidth = 2; q.strokeRect(1, 1, 62, 30);
     const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; })();
   const headM = nightReg(new T.MeshStandardMaterial({ color: 0xffffff, map: lensT, emissive: 0xfff1c8, emissiveIntensity: .25, roughness: .1, metalness: .2 }), "emissiveIntensity", { sunset: .35, day: .2, night: 1.3 });
-  const amberM = new T.MeshStandardMaterial({ color: 0xff9a2a, emissive: 0xff8a1a, emissiveIntensity: .5 });
+  const amberM = new T.MeshStandardMaterial({ color: 0xd42800, emissive: 0xff3000, emissiveIntensity: .3, roughness: .25 });   // ярко-оранжевый, как на фото (цвета без перевода в линейные: «оранжевый» на экране — красноватый код)
   const redM = new T.MeshStandardMaterial({ color: 0x6a0206, emissive: 0x9a0008, emissiveIntensity: .55, roughness: .3 });   // насыщенный красный, не розовый
   // стекло задних фонарей: цвет и (для стоп-сигнала) свечение только красных секций
   const tailTex = (mask) => { const c = document.createElement("canvas"); c.width = 512; c.height = 160; const q = c.getContext("2d");
@@ -237,13 +240,17 @@ function makeVaz2108() {
     box(.03, .17, .07, amberM, nx - .002, ny, sd * .665, 0, nose);              // оранжевая секция у внешнего края фары
     box(.03, .17, .14, amberM, nx - .1, ny, sd * .745, -sd * .7, nose);        // поворотник на скосе угла
   });
-  box(.03, .17, .4, black, nx + .004, ny, 0, 0, nose);
-  [-.04, .03].forEach(dy => box(.034, .022, .4, paint, nx + .006 - dy * Math.tan(nose), ny + dy, 0, 0, nose));
-  box(.02, .05, .05, mat(0x8fb0ff, { metalness: .8, roughness: .2 }), nx + .02, ny, 0, 0, nose);
+  // решётка по фото: панель в цвет кузова, два ряда чёрных прорезей по 4, посередине выступающая перемычка в цвет кузова
+  // с маленьким хромированным значком (нейтральным, без марки)
+  const along = (dy, dx = 0) => [nx + dx - dy * Math.tan(nose), ny + dy];
+  box(.03, .17, .4, paint, nx + .002, ny, 0, 0, nose);
+  [-.045, .045].forEach(dy => [-.15, -.05, .05, .15].forEach(z => { const [x, y] = along(dy, .008); box(.02, .034, .088, black, x, y, z, 0, nose); }));
+  { const [x, y] = along(0, .014); box(.026, .042, .4, paint, x, y, 0, 0, nose); }
+  { const [x, y] = along(0, .03); box(.012, .03, .05, mat(0xc9ced6, { metalness: .9, roughness: .2 }), x, y, 0, 0, nose); }
   // бамперы 255 мм высотой, с заходом на крылья
   const bumpY = (H(337) + H(592)) / 2, bumpH = H(592) - H(337);
   // бамперы — пластик: основной брус, выступающий верхний профиль с резиновой вставкой, загибы на крылья, катафоты сзади
-  const plast = mat(0x26282b, { roughness: .82, side: T.DoubleSide }), rubber = black;   // резина — тем же чёрным: меньше материалов — меньше вызовов отрисовки
+  const plast = mat(0x161719, { roughness: .78, side: T.DoubleSide }), rubber = black;   // тёмно-серый, почти чёрный матовый — как на фото   // резина — тем же чёрным: меньше материалов — меньше вызовов отрисовки
   // в плане — «П» со скруглёнными углами (заходит на крылья), по высоте два яруса: нижний брус и выступающий верхний профиль
   // с резиновой вставкой; рёбра скруглены фаской — по ним бежит блик
   const ubar = (x0, dir, y0, hgt, W, wrap, thick, r, m, bev = .012) => {
@@ -409,6 +416,12 @@ function makeVaz2108() {
   // тёмные фартуки под бамперами: на чертеже спереди и сзади под бампером не кузов, а тень днища
   box(.03, H(345) - H(185), 1.3, black, X(470), (H(345) + H(185)) / 2, 0);
   box(.03, H(310) - H(185), 1.3, black, X(3600), (H(310) + H(185)) / 2, 0);
+  // подкрылки: в арках просвечивал светлый фон — тёмная полукруглая стенка над колесом и щиток изнутри (чёрный — склеится с прочим чёрным)
+  [[XF, .7, RF], [XF, -.7, RF], [XR, .685, RR], [XR, -.685, RR]].forEach(([x, z, r]) => {
+    const s = Math.sign(z), z0 = s * .56, z1 = s * .8, rr = r * .96;
+    const a = new T.Mesh(new T.CylinderGeometry(rr, rr, Math.abs(z1 - z0), 14, 1, true, Math.PI / 2, Math.PI).rotateX(Math.PI / 2), black); a.position.set(x, YW, (z0 + z1) / 2); g.add(a);
+    const w = new T.Mesh(new T.CircleGeometry(rr, 14, 0, Math.PI), black); w.position.set(x, YW, z0); g.add(w);
+  });
   // запечённая тень кузова — в цвете вершин; остальным деталям в цвет кузова — белый цвет, чтобы склеились в одну сетку
   if (VAZ_BODY_DATA) {
     paint.vertexColors = true;

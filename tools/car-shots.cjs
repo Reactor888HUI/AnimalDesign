@@ -4,7 +4,7 @@ const path = require('path'), fs = require('fs');
 const { chromium } = require(process.env.PW || 'playwright');
 const [veh, out] = process.argv.slice(2);
 // вид: [камера x, y, z, куда смотреть x, y, z, верт. угол обзора°] в координатах машины (x — вперёд, y — вверх, z — вправо)
-const VIEWS = JSON.parse(fs.readFileSync(path.join(__dirname, 'car-views.json'), 'utf8'));
+const VIEWS = JSON.parse(fs.readFileSync(process.env.CAR_VIEWS || path.join(__dirname, 'car-views.json'), 'utf8'));
 (async () => {
   fs.mkdirSync(out, { recursive: true });
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });

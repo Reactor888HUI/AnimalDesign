@@ -52,7 +52,11 @@ def section(x):
     wt = min(w - .04, taper(x) * .762 + .01)
     pts = [(0, yb), (w - .07, yb), (w - .028, yb + .01), (w - .007, yb + .038), (w, yb + .075),
            (w + bulge(x), (yb + .075 + ySh) / 2), (w + .001, ySh - .012), (w + .004, ySh),
-           (wt + (w - wt) * .45, ySh + (yt - ySh) * .55), (wt, yt), (wt * .55, yt + crown(x) * .8), (0, yt + crown(x))]
+           (wt + (w - wt) * .45, ySh + (yt - ySh) * .55), (wt, yt)]
+    # зазор капота вдоль крыла (по фото капот почти во всю ширину): три точки у края; над капотом средняя проседает на 3 мм
+    hood = X(1120) > x > X(150); top = lambda z: yt + crown(x) * .8 * min(1, (wt - z) / (wt * .45))
+    pts += [(wt - .03, top(wt - .03)), (wt - .04, top(wt - .04) - (.003 if hood else 0)), (wt - .05, top(wt - .05)),
+            (wt * .55, yt + crown(x) * .8), (0, yt + crown(x))]
     for i in range(1, len(pts)):                   # высоты не убывают (у арок нижняя часть сжимается)
         if pts[i][1] < pts[i - 1][1] + .002 and i <= 8: pts[i] = (pts[i][0], pts[i - 1][1] + .002)
     return pts
@@ -62,11 +66,17 @@ while x < X(0):
     xs.append(x); near = min(abs(x - XF), abs(x - XR)) < .5
     x += .012 if near else .03
 xs.append(X(0))
+FRONT_EDGE, COWL = X(155), X(1112)                # передний край капота и его задний край у лобового — затемнённые «щели»
+xs = sorted(set(xs + [FRONT_EDGE, COWL]))
+SEAM_K, TOP_K = 11, 9                              # индексы точек сечения: середина канавки, начало верха (wt, yt)
 G = lambda x, y, z: (x, -z, y)                     # игра → Blender
-bm = bmesh.new(); rings = []
+bm = bmesh.new(); rings = []; seam_v = []
 for x in xs:
     half = section(x); ring = [bm.verts.new(G(x, y, z)) for z, y in half] + [bm.verts.new(G(x, y, -z)) for z, y in reversed(half[1:-1])]
     rings.append(ring)
+    h = len(half)
+    if X(1120) > x > X(150): seam_v += [ring[SEAM_K], ring[h + (h - 2 - SEAM_K)]]
+    if x in (FRONT_EDGE, COWL): seam_v += [ring[k] for k in range(TOP_K, h)] + [ring[h + (h - 2 - k)] for k in range(TOP_K, h - 1)]
 n = len(rings[0])
 for k in range(len(rings) - 1):
     A, B = rings[k], rings[k + 1]
@@ -89,6 +99,7 @@ for R, x in zip(rings, xs):
         d = min(ds) if ds else 9
         if d < .06 and gy >= (a if a is not None else -9) - .001: v.co.y += -math.copysign(.012 * (1 - d / .06) ** 1.5, gz)
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+bm.verts.index_update(); seam_ids = {v.index for v in seam_v}
 me = bpy.data.meshes.new("body"); bm.to_mesh(me); bm.free()
 body = bpy.data.objects.new("body", me); bpy.context.scene.collection.objects.link(body)
 for p in me.polygons: p.use_smooth = True
@@ -112,6 +123,8 @@ me.calc_loop_triangles()
 try: me.calc_normals_split()
 except Exception: pass
 ao = me.color_attributes["ao"].data; rows = []
+for l in me.loops:                                 # щели капота — тёмные
+    if l.vertex_index in seam_ids: c = ao[l.index].color; ao[l.index].color = (min(c[0], .1), min(c[1], .1), min(c[2], .1), 1)
 for tri in me.loop_triangles:
     for li in tri.loops:
         l = me.loops[li]; v = me.vertices[l.vertex_index].co; nn = l.normal
