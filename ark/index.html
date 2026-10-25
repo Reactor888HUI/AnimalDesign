@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ковчег · библиотека знаний</title>
+<meta name="description" content="3D-библиотека «Ковчег»: читальный зал с мгновенным поиском, артефакты и Знаниевый Реактор, который превращает принесённое в план действий.">
+<link rel="stylesheet" href="css/ark.css">
+</head>
+<body>
+<header class="site">
+  <a class="brand" href="./" aria-label="Ковчег"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 20l13-6 13 6-3 7H6z"/><path d="M16 14V4l8 5-8 3"/></svg><b>Ковчег</b></a>
+  <span class="tag">библиотека знаний · реактор идей</span>
+</header>
+
+<main class="wrap">
+  <section class="win" id="win" aria-label="Окно игры «Ковчег»">
+    <div class="bar">
+      <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="title">Ковчег · <b id="where">Главная комната</b></span>
+      <span class="land" id="landName" title="Пейзаж за окном (клавиша L — сменить)"></span>
+      <button class="bt" id="bagBtn" type="button" aria-label="Сумка">Сумка <b id="bagN">0</b></button>
+      <button class="bt" id="menuBtn" type="button" aria-haspopup="dialog">☰ Меню</button>
+      <button class="bt ic" id="fsBtn" type="button" aria-label="На весь экран">⛶</button>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="c" tabindex="0" aria-label="3D-комната: ходи клавишами W A S D, осматривайся мышью, E — действие"></canvas>
+      <div class="cross" id="cross" aria-hidden="true"></div>
+      <div class="prompt" id="prompt" hidden role="button" tabindex="0"><kbd>E</kbd><span><b id="pTitle"></b><i id="pSub"></i></span><em id="pAct"></em></div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      <div class="hint" id="hint"><b>W A S D</b> ходить · <b>мышь</b> смотреть · <b>E</b> действие · <b>B</b> сумка · <b>L</b> пейзаж</div>
+      <div class="belt" id="beltBar" hidden><span id="beltName"></span><i><u id="beltFill"></u></i></div>
+      <div class="joy" id="joy" hidden><i id="joyKnob"></i></div>
+      <button class="act" id="actBtn" type="button" hidden aria-label="Действие">E</button>
+      <div class="load" id="load"><div><b>Ковчег</b><span id="loadTxt">Рисуем комнаты…</span></div></div>
+
+      <div class="panel" id="panel" hidden>
+        <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+          <div class="sh-head"><h2 id="shTitle"></h2><button class="bt ic" id="shClose" type="button" aria-label="Закрыть">✕</button></div>
+          <div class="sh-body" id="shBody"></div>
+        </div>
+      </div>
+      <div class="dive" id="dive" hidden><canvas id="diveC"></canvas><div class="dv-box"><h3 id="dvTitle"></h3><ol id="dvList"></ol><button class="bt big" id="dvExit" type="button">Выйти из варианта</button></div></div>
+    </div>
+  </section>
+  <p class="cap">Это интерфейс сайта в виде комнаты: подойди к полке — откроется дверь в библиотеку; к реактору — загрузи идеи и книги; к столу — реши судьбу плана. Меню ☰ переносит в любое место.</p>
+</main>
+<noscript><p class="ns">Для «Ковчега» нужен JavaScript и WebGL.</p></noscript>
+
+<script src="../runner/vendor/three.min.js"></script>
+<script src="../runner/vendor/post/RoomEnvironment.js"></script>
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/build.js"></script>
+<script src="js/world.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

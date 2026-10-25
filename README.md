@@ -16,6 +16,7 @@
 - Меню выбора собаки: `https://reactor888hui.github.io/AnimalDesign/runner/`
 - Сразу Бегун: `…/runner/#runner`, Охранник: `…/runner/#guard`, Нюхач: `…/runner/#sniffer`
 - Квартал: `https://reactor888hui.github.io/AnimalDesign/`
+- **Ковчег** (3D-библиотека и Знаниевый Реактор, отдельный проект в `ark/`): `https://reactor888hui.github.io/AnimalDesign/ark/` — описание в [docs/ARK.md](docs/ARK.md)
 
 ## Бегун
 
