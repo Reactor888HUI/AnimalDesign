@@ -47,7 +47,7 @@ def node_mat(name, m, part_tris, wheel=0):
         else: L.new(em.outputs[0], out.inputs[0])
         return M
     metal, rough = m["metal"], m["rough"]
-    if AFTER and not glass and not lens and not emis:
+    if AFTER and not glass and not lens and not emis and not m.get("map"):
         # прогноз: запечённая тень (AO) — темнее в арках, щелях, снизу; в игре — цвет вершин, как у руля
         ao = N.new("ShaderNodeAmbientOcclusion"); ao.inputs["Distance"].default_value = .35; ao.samples = 8
         mix = N.new("ShaderNodeMix"); mix.data_type = "RGBA"; mix.blend_type = "MULTIPLY"; mix.inputs[0].default_value = .85
