@@ -109,13 +109,13 @@
 
 Имена: `SIGNALS`, `tickSignals`
 
-### `14-car.js` — 781 строк, 85 КБ
+### `14-car.js` — 807 строк, 88 КБ
 
 Машины игрока: «восьмёрка» и внедорожник.
 
 Разделы: машина игрока (стр. 4)
 
-Имена: `paintIdx`, `PAINTS`, `glassify`, `smoothNormals`, `makeVaz2108`, `carObj`, `VAZ_PARTS`, `SUV`, `TUNES`, `setTune`, `EGGPLANT`, `carEnv`, `paintCarEnv`, `setPaint`, `shadow`, `marker`
+Имена: `paintIdx`, `PAINTS`, `glassify`, `smoothNormals`, `rubberMetal`, `makeVaz2108`, `carObj`, `VAZ_PARTS`, `SUV`, `TUNES`, `setTune`, `EGGPLANT`, `carEnv`, `paintCarEnv`, `setPaint`, `shadow`, `marker`
 
 ### `15-traffic.js` — 94 строк, 8 КБ
 
@@ -460,6 +460,7 @@
 | `rollErr` | `17-state.js` |
 | `ROW0` | `01-core.js` |
 | `RS` | `01-core.js` |
+| `rubberMetal` | `14-car.js` |
 | `save` | `01-core.js` |
 | `scene` | `01-core.js` |
 | `sceneChunk` | `09-scenes.js` |

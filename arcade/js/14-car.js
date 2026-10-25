@@ -61,6 +61,18 @@ function smoothNormals(geo, crease = 30) {
   }
   geo.setAttribute("normal", new T.BufferAttribute(N, 3)); return geo;
 }
+// колесо одним материалом, но резина и металл раздельно: по яркости цвета вершин (тёмное — шина: без металла, матовая;
+// светлое — колпак, диск, спицы: металл с бликом и отражением неба). Вызовов отрисовки не прибавляет
+function rubberMetal(m, lo, hi, metal = .85) {
+  m.metalness = 0; m.roughness = 1; m.userData.carShiny = true; m.userData.envI = .9;
+  m.onBeforeCompile = sh => {
+    sh.fragmentShader = sh.fragmentShader
+      .replace("#include <roughnessmap_fragment>", `float rmW = smoothstep(${lo.toFixed(3)}, ${hi.toFixed(3)}, dot(vColor.rgb, vec3(.299, .587, .114)));\nfloat roughnessFactor = mix(.9, .3, rmW);`)
+      .replace("#include <metalnessmap_fragment>", `float metalnessFactor = mix(0., ${metal.toFixed(2)}, rmW);`);
+  };
+  m.customProgramCacheKey = () => "rubberMetal" + lo + "/" + hi + "/" + metal;
+  return m;
+}
 function makeVaz2108() {
   // Размеры сняты с заводского чертежа ВАЗ-2108 (мм → м). Система: x вперёд, земля на y = −0.65.
   // Длина 4006, база 2460 (перед 785, зад 761), высота 1402, ширина 1650, колея 1400/1370, клиренс 160.
@@ -171,7 +183,14 @@ function makeVaz2108() {
   });
   const box = (w, h, d, m, x, y, z, ry = 0, rz = 0) => { const b = new T.Mesh(new T.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.rotation.set(0, ry, rz); g.add(b); return b; };
   // фары по чертежу: голубоватое стекло днём, ночью горят
-  const headM = nightReg(new T.MeshStandardMaterial({ color: 0xc9d6e2, emissive: 0xfff1c8, emissiveIntensity: .25, roughness: .15, metalness: .3 }), "emissiveIntensity", { sunset: .35, day: .2, night: 1.3 });
+  // стекло фары — рифлёное (призмы-полоски), за ним светлый отражатель: маленькая текстура вместо плоского белого
+  const lensT = (() => { const c = document.createElement("canvas"); c.width = 64; c.height = 32; const q = c.getContext("2d");
+    q.fillStyle = "#cfd8df"; q.fillRect(0, 0, 64, 32);
+    for (let x = 0; x < 64; x += 4) { q.fillStyle = "rgba(255,255,255,.55)"; q.fillRect(x, 0, 1, 32); q.fillStyle = "rgba(60,70,80,.25)"; q.fillRect(x + 2, 0, 1, 32); }
+    for (let y = 0; y < 32; y += 8) { q.fillStyle = "rgba(60,70,80,.18)"; q.fillRect(0, y, 64, 1); }
+    q.strokeStyle = "rgba(255,255,255,.5)"; q.lineWidth = 2; q.strokeRect(1, 1, 62, 30);
+    const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; })();
+  const headM = nightReg(new T.MeshStandardMaterial({ color: 0xffffff, map: lensT, emissive: 0xfff1c8, emissiveIntensity: .25, roughness: .1, metalness: .2 }), "emissiveIntensity", { sunset: .35, day: .2, night: 1.3 });
   const amberM = new T.MeshStandardMaterial({ color: 0xff9a2a, emissive: 0xff8a1a, emissiveIntensity: .5 });
   const redM = new T.MeshStandardMaterial({ color: 0x6a0206, emissive: 0x9a0008, emissiveIntensity: .55, roughness: .3 });   // насыщенный красный, не розовый
   // стекло задних фонарей: цвет и (для стоп-сигнала) свечение только красных секций
@@ -239,7 +258,9 @@ function makeVaz2108() {
     [X(1180), X(2600)].forEach(x => box(.008, yBelt - .02 - yBot(X(2000)), .004, black, x, (yBelt - .02 + yBot(X(2000))) / 2, sd * .828));
     box(X(1130) - X(2915), .06, .012, black, (X(1130) + X(2915)) / 2, H(430), sd * .832);   // молдинг — только между арками, как на чертеже
     box(.13, .03, .015, black, X(2370), H(800), sd * .832);
-    box(.12, .09, .11, black, X(1380), H(1030), sd * .865);                     // зеркало: невысокое, выступает на ~10 см
+    // зеркало по фото: чёрный треугольный «парус» в углу стекла и выступающий корпус, чуть отклонённый назад
+    box(.13, .075, .022, black, X(1380), H(1005), sd * .838);
+    box(.07, .095, .12, black, X(1380) - .045, H(1040), sd * .91, sd * -.12);
     box(.07, .035, .01, amberM, X(1066), H(700), sd * .829);                    // повторитель поворота на крыле, как на чертеже
     box(.06, .03, .1, black, X(1360), H(990), sd * .8);
     box(.02, .015, .46, black, X(1080), H(1000), sd * .1 - .22, .18);         // дворники
@@ -293,7 +314,7 @@ function makeVaz2108() {
   Object.values(opt).forEach(o => { o.userData.dyn = true; g.add(o); });
   // колёса 13": шина Ø576, колея 1400 / 1370. Отдельные узлы: передние поворачиваются, все крутятся.
   // Каждое колесо целиком — одна сетка с цветами по вершинам (один вызов отрисовки); диски — штампованные, литые, PRO
-  const wheelM = new T.MeshStandardMaterial({ vertexColors: true, roughness: .45, metalness: .3 });
+  const wheelM = rubberMetal(new T.MeshStandardMaterial({ vertexColors: true }), .1, .3, .45);   // колпак — светлый, металла меньше
   const part = (geo, hex) => { const q = geo.index ? geo.toNonIndexed() : geo, c = new T.Color(hex), a = new Float32Array(q.attributes.position.count * 3);
     for (let i = 0; i < a.length; i += 3) { a[i] = c.r; a[i + 1] = c.g; a[i + 2] = c.b; } q.setAttribute("color", new T.BufferAttribute(a, 3)); q.deleteAttribute("uv"); return q; };
   const cylG = (r, w, n, dz = 0) => new T.CylinderGeometry(r, r, w, n).rotateX(Math.PI / 2).translate(0, 0, dz);
@@ -302,12 +323,13 @@ function makeVaz2108() {
   [[XF, .7], [XF, -.7], [XR, .685], [XR, -.685]].forEach(([x, z]) => {
     const sd = Math.sign(z), steer = new T.Group(), spin = new T.Group(), w = { steer, spin, front: x > 0 };
     steer.position.set(x, YW, z); steer.userData.dyn = true; steer.add(spin); g.add(steer);
-    const tire = [[cylG(.288, .165, 20), 0x0b0e17], [cylG(.055, .185, 8), 0x2a2d36]];
-    // заводской колпак по чертежу: серебристый почти во весь диск, тёмный обод, два тёмных сектора-«бабочки» по сторонам от ступицы, 4 болта
-    const sector = a0 => new T.CylinderGeometry(.15, .15, .012, 8, 1, false, a0, 1.0).rotateX(Math.PI / 2).translate(0, 0, sd * .094);
-    w.stock = wheelMesh([...tire, [cylG(.205, .17, 20), 0x3a3d44], [cylG(.188, .178, 20), 0xc9ccd2], [cylG(.06, .19, 12), 0xe2e4e8],
-      [sector(Math.PI / 2 - .5), 0x55585f], [sector(-Math.PI / 2 - .5), 0x55585f],
-      ...[0, 1, 2, 3].map(k => [new T.BoxGeometry(.022, .022, .02).translate(Math.cos(k * Math.PI / 2 + .78) * .085, Math.sin(k * Math.PI / 2 + .78) * .085, sd * .096), 0x2a2d36])]);   // видно, что крутится
+    const tire = [[cylG(.288, .165, 20), 0x08090a], [cylG(.055, .185, 8), 0x2a2d36]];
+    // штампованный стальной диск 13" по фото: серебристый, обод меньше шины (видна высокая боковина 175/70), выпуклое кольцо,
+    // шесть отверстий, центр с четырьмя болтами (видно, что крутится)
+    const face = sd * .0885, hole = a => new T.CylinderGeometry(.021, .021, .006, 8).rotateX(Math.PI / 2).translate(Math.cos(a) * .132, Math.sin(a) * .132, face);
+    w.stock = wheelMesh([...tire, [cylG(.178, .168, 24), 0xa9aeb4], [cylG(.166, .176, 24), 0xd5d9de], [cylG(.108, .18, 20), 0xc3c8ce],
+      ...[0, 1, 2, 3, 4, 5].map(k => [hole(k / 6 * Math.PI * 2 + .26), 0x17181b]), [cylG(.05, .186, 12), 0xb4b9bf],
+      ...[0, 1, 2, 3].map(k => [new T.BoxGeometry(.018, .018, .02).translate(Math.cos(k * Math.PI / 2 + .78) * .072, Math.sin(k * Math.PI / 2 + .78) * .072, sd * .095), 0x3a3d43])]);
     w.alloy = wheelMesh([...tire, [cylG(.19, .172, 20), 0x3b3f48],
       ...[0, 1, 2, 3, 4].map(k => [new T.BoxGeometry(.045, .3, .02).rotateZ(k / 5 * Math.PI * 2).translate(0, 0, sd * .09), 0xd8dbe2])]);   // пять спиц
     spin.add(w.stock, w.alloy);
@@ -323,14 +345,14 @@ function makeVaz2108() {
   const pro = opt.pro = new T.Group(); pro.userData.dyn = true; g.add(pro);
   [[XF, .74, RF], [XF, -.74, RF], [XR, .725, RR], [XR, -.725, RR]].forEach(([x, z, r], i) => {
     const w = wheels[i], dz = z - Math.sign(z) * (i < 2 ? .7 : .685);           // широкие колёса стоят чуть шире
-    w.pro = wheelMesh([[cylG(.3, .25, 22, dz), 0x0b0e17], [cylG(.205, .258, 22, dz), 0xd8dce4], [cylG(.12, .262, 6, dz), 0xf0a0ff]]); w.spin.add(w.pro);
+    w.pro = wheelMesh([[cylG(.3, .25, 22, dz), 0x08090a], [cylG(.205, .258, 22, dz), 0xd8dce4], [cylG(.12, .262, 6, dz), 0xf0a0ff]]); w.spin.add(w.pro);
     const fl = new T.Mesh(new T.CylinderGeometry(r * 1.16, r * 1.16, .16, 14, 1, true, Math.PI / 2, Math.PI), paint);   // расширитель арки
     fl.rotation.x = Math.PI / 2; fl.position.set(x, YW, Math.sign(z) * .86); pro.add(fl);
   });
   // дрифт-трек 888: широкая резина и дрифтовые диски — полированная глубокая полка, бронзовые спицы, фиолетовый колпачок
   wheels.forEach((w, i) => {
     const sd = i % 2 ? -1 : 1, dz = sd * .035, face = sd * .142 + dz;
-    w.drift = wheelMesh([[cylG(.302, .27, 22, dz), 0x101114], [cylG(.222, .276, 22, dz), 0xdfe2e8], [cylG(.205, .28, 20, dz), 0x26282e],
+    w.drift = wheelMesh([[cylG(.302, .27, 22, dz), 0x0a0a0b], [cylG(.222, .276, 22, dz), 0xdfe2e8], [cylG(.205, .28, 20, dz), 0x26282e],
       ...[0, 1, 2, 3, 4, 5].map(k => [new T.BoxGeometry(.05, .37, .02).rotateZ(k / 6 * Math.PI).translate(0, 0, face), 0xb8893e]),
       [cylG(.055, .29, 8, dz), 0x9b4dff]]);
     w.drift.visible = false; w.spin.add(w.drift);
@@ -389,7 +411,7 @@ const SUV = SUV_DATA ? (() => {
     return { mat: H.mats[r.m], pos, nor, ed, idx: Uint32Array.from(qi) };
   });
   // материалы → «вёдра»: похожие склеиваются в одну сетку с цветом по вершинам (меньше вызовов отрисовки)
-  const C = { paint_obsidian_black: [.012, .014, .02], glass_tinted: [.06, .11, .15], light_lens: [.6, .8, .95], rear_lens: [.18, .002, .006], optic_led: [.75, .88, 1], rear_led_rings: [.7, .002, .008],
+  const C = { paint_obsidian_black: [.012, .014, .02], glass_tinted: [.06, .11, .15], light_lens: [.9, .92, .94], rear_lens: [.18, .002, .006], optic_led: [.92, .93, .95], rear_led_rings: [.7, .002, .008],
     interior: [.35, .36, .37], leather_ivory: [.62, .5, .33], cabin_charcoal: [.012, .014, .018], trim_black: [.018, .022, .026], rubber: [.012, .014, .016], trim_metal: [.03, .035, .045],
     optic_reflector: [.42, .47, .5], optic_projector: [.07, .18, .25], rear_projector: [.13, .003, .008],
     driver_charcoal: [.012, .014, .018], driver_soft_black: [.025, .028, .032], driver_premium_ivory: [.66, .52, .34], driver_ivory: [.62, .49, .32], driver_walnut: [.13, .035, .012], driver_chrome: [.42, .46, .5], driver_screen: [.006, .025, .032], driver_gauge: [.02, .04, .045] };
@@ -407,9 +429,9 @@ const SUV = SUV_DATA ? (() => {
   const M = {
     paint: new T.MeshPhysicalMaterial({ color: new T.Color(...C.paint_obsidian_black), metalness: .35, roughness: .32, clearcoat: 1, clearcoatRoughness: .05, side: T.DoubleSide }),
     glass: new T.MeshPhysicalMaterial({ color: new T.Color(...C.glass_tinted), roughness: .03, metalness: 0, transparent: true, opacity: .5, depthWrite: false, side: T.DoubleSide }),
-    lens: new T.MeshPhysicalMaterial({ color: new T.Color(...C.light_lens), roughness: .08, transparent: true, opacity: .2, depthWrite: false, side: T.DoubleSide }),
+    lens: new T.MeshPhysicalMaterial({ color: new T.Color(...C.light_lens), roughness: .08, transparent: true, opacity: .14, depthWrite: false, side: T.DoubleSide }),
     rlens: new T.MeshPhysicalMaterial({ color: new T.Color(...C.rear_lens), roughness: .12, transparent: true, opacity: .45, depthWrite: false, side: T.DoubleSide }),
-    head: new T.MeshStandardMaterial({ color: new T.Color(...C.optic_led), emissive: 0xc6e7ff, emissiveIntensity: .35, roughness: .2 }),
+    head: new T.MeshStandardMaterial({ color: new T.Color(...C.optic_led), emissive: 0xfff4e8, emissiveIntensity: .35, roughness: .2 }),
     tail: new T.MeshStandardMaterial({ color: new T.Color(...C.rear_led_rings), emissive: 0xff0310, emissiveIntensity: .55, roughness: .24 }),
     screen: new T.MeshStandardMaterial({ vertexColors: true, emissive: 0x2a9bd0, emissiveIntensity: .8, roughness: .25 }),
     metal: new T.MeshStandardMaterial({ vertexColors: true, metalness: .85, roughness: .22 }),
@@ -417,6 +439,10 @@ const SUV = SUV_DATA ? (() => {
     ivory: new T.MeshStandardMaterial({ vertexColors: true, map: leather.t, bumpMap: leather.tb, bumpScale: .005, roughness: .75, metalness: 0, side: T.DoubleSide }),
   };
   [M.paint, M.glass, M.lens, M.rlens, M.metal].forEach(m => { m.userData.carShiny = true; m.userData.envI = m === M.paint ? 1.1 : m === M.glass ? 1.05 : .8; });
+  // колёса — свой материал: шина резиновая (матовая, без металла), диск — графит с полировкой (раньше всё колесо было чёрным металлом)
+  M.wheel = rubberMetal(new T.MeshStandardMaterial({ vertexColors: true }), .03, .09);
+  const graphiteRims = g => { const c = g.attributes.color.array, r = C.rubber;
+    for (let i = 0; i < c.length; i += 3) if (Math.abs(c[i] - r[0]) + Math.abs(c[i + 1] - r[1]) + Math.abs(c[i + 2] - r[2]) > 1e-4) { c[i] = c[i + 1] = .16; c[i + 2] = .17; } };
   glassify(M.glass, { T: .62, tint: 0x0b1c26, edge: true, shade: [.76, .86, .25], glare: [.58, .44, .3], priv: [-.35, .26] });
   nightReg(M.head, "emissiveIntensity", { sunset: .5, day: .3, night: 1.6 });
   function mesh(list) {                                // склейка частей одного ведра: позиции, нормали, цвет, UV (для кожи), индексы
@@ -449,7 +475,7 @@ const SUV = SUV_DATA ? (() => {
   const dash = new T.Group(); build("dash").forEach(m => dash.add(m)); root.add(dash);   // панель кузова — видна снаружи сквозь стёкла
   const sp = H.pivots.steer, eye = new T.Vector3(sp[0] - .65, sp[1] + .27, sp[2]);   // глаз водителя — позади руля и выше
   const wheels = ["wheel_front_left", "wheel_front_right", "wheel_rear_left", "wheel_rear_right"].map(n => {
-    const st = new T.Group(), spin = new T.Group(); st.position.set(...H.pivots[n]); st.add(spin); build(n, true).forEach(m => { m.material = M.metal; spin.add(m); }); root.add(st);
+    const st = new T.Group(), spin = new T.Group(); st.position.set(...H.pivots[n]); st.add(spin); build(n, true).forEach(m => { m.material = M.wheel; graphiteRims(m.geometry); spin.add(m); }); root.add(st);
     return { steer: st, spin, front: n.includes("front"), y0: st.position.y };
   });
   M.metal.vertexColors = true; M.metal.roughness = .4;   // колёса: резина, диск, тормоз — цвет по вершинам
