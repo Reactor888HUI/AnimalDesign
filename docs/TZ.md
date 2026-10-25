@@ -236,8 +236,8 @@ arcade/
     protect.json → protect.js  (заповедник)
   vendor/three.min.js        (r149, для офлайна)
 tools/build.py →
-  dist/web/                  папкой: для артефакта, сайта, zip «папка»
-  dist/single/index.html     всё в одном файле (как сейчас) — запасной вариант
+  dist/vosmerka-web/         папкой: index.html + data/ + vendor/ (сделано в этапе 0.1)
+  dist/vosmerka-baklazhan/   всё в одном файле + zip (как раньше)
 ```
 
 ### 6.3. Где играть на телефоне
@@ -290,7 +290,7 @@ tools/build.py →
 (OSM-DATA, WEST-DATA, MODELS-DATA, SUV_DATA, WHEEL_DATA, PHOTO_*, записи мотора) —
 обёрткой, которая работает и с file:// (подключение <script src>, без fetch).
 Поправь tools/osm-to-game.py, build-suv.py, build-wheel.py, obj-to-game.py, чтобы писали в новые файлы.
-tools/build-offline.py: две сборки — dist/web/ (папкой) и dist/single/index.html (всё в одном).
+tools/build-offline.py: две сборки — dist/vosmerka-web/ (папкой) и dist/vosmerka-baklazhan/index.html (всё в одном).
 Логику игры не меняй. Докажи равенство: все тесты как до изменений (сначала сними эталон),
 кадры из 6 точек совпадают попиксельно, офлайн-zip открывается из папки.
 ```
@@ -347,10 +347,10 @@ tools/build-offline.py: две сборки — dist/web/ (папкой) и dist
 
 ---
 
-## 9. Открытые вопросы к заказчику
-1. Стык Садовой с автобаном — «плато» (рекомендую) или съезд?
-2. Если настоящий холм окажется слишком крут для езды — разрешаешь масштаб 0,85 или ограничение 12 %?
-3. Нужен ли хостинг с установкой иконкой (PWA) или пока хватает артефакта и zip?
+## 9. Решения заказчика (25.10.2026)
+1. Стык Садовой с автобаном — **плато**: вымышленный север поднимается на высоту Садовой.
+2. Если холм слишком крут — **масштаб 0,85 разрешён**.
+3. **PWA пока не нужен**: артефакт и zip.
 
 ## Источники
 - [Kenney Car Kit](https://kenney-assets.itch.io/car-kit) · [Kenney City Kit Suburban](https://kenney-assets.itch.io/city-kit-suburban) · [City Kit Commercial](https://opengameart.org/content/city-kit-commercial) · [City Kit Industrial](https://opengameart.org/content/city-kit-industrial)

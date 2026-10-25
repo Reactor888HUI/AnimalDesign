@@ -1,12 +1,12 @@
 """Выгрузка OpenStreetMap (.osm) → данные карты для «Восьмёрки Баклажан».
 
-Запуск: python3 -I tools/osm-to-game.py arcade/refs/rostov-center.osm arcade/refs/rostov-arena.osm arcade/index.html
+Запуск: python3 -I tools/osm-to-game.py arcade/refs/rostov-center.osm arcade/refs/rostov-arena.osm arcade/data/osm-main.js
 Можно несколько выгрузок: система координат берётся по первой (чтобы старая карта не сдвинулась),
 данные объединяются по id OpenStreetMap, обрезка — по общей рамке всех выгрузок.
-Пишет JSON между маркерами /*OSM-DATA*/ … /*/OSM-DATA*/ в index.html.
+Пишет JSON между маркерами /*OSM-DATA*/ … /*/OSM-DATA*/ в arcade/data/osm-main.js.
 
 Сцены (подгружаются в игре, когда к ним подъезжаешь): MARK=WEST-DATA python3 -I tools/osm-to-game.py \
-  arcade/refs/rostov-center.osm arcade/refs/rostov-west.osm arcade/index.html
+  arcade/refs/rostov-center.osm arcade/refs/rostov-west.osm arcade/data/osm-west.js
 — координаты по первой выгрузке (якорь), обрезка — только по остальным; пишет между /*WEST-DATA*/ … /*/WEST-DATA*/.
 Мостовые пути железной дороги в сценах идут отдельным списком "lb" — мост строится своей моделью.
 
@@ -232,6 +232,6 @@ js = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
 html = open(DST, encoding="utf8").read()
 M0, M1 = "/*" + MARK + "*/", "/*/" + MARK + "*/"
 new = re.sub(re.escape(M0) + r".*?" + re.escape(M1), lambda m: M0 + js + M1, html, count=1, flags=re.S)
-assert new != html or M0 + js in html, f"в index.html нет маркеров {M0} … {M1}"
+assert new != html or M0 + js in html, f"в {DST} нет маркеров {M0} … {M1}"
 open(DST, "w", encoding="utf8").write(new)
 print(f"полоса {W:.0f}×{H:.0f} м: домов {len(out['b'])}, дорог {len(out['r'])}, площадей {len(out['a'])}, деревьев {len(out['t']) // 2}, зон {len(out['z'])}, {len(js) // 1024} КБ")

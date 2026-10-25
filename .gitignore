@@ -4,3 +4,6 @@ dist/three.min.js
 /*.png
 tools/__pycache__/
 /video/
+
+# сборка папкой (tools/build-offline.py) — собирается заново, в git не хранится
+dist/vosmerka-web/

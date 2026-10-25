@@ -1,5 +1,5 @@
 """Внедорожник для игры — второй машиной. Из GLB параллельной версии (range-rover-race.glb, v10: чёрный глянец, салон
-слоновой кости, руль, приборы) собирает компактный игровой ассет и встраивает его в arcade/index.html (блок SUV-DATA).
+слоновой кости, руль, приборы) собирает компактный игровой ассет и встраивает его в arcade/data/suv.js (блок SUV-DATA).
 
 Что делает:
   • мировые матрицы узлов; поворот на 180° (у модели перёд к −X, в игре — к +X), масштаб 0,92 (длина ≈4,1 м, как у
@@ -190,8 +190,8 @@ out = data + bytes(blob)
 print(f'треугольников {total}, убрано логотипов {removed} тр., ассет {len(out) / 1024:.0f} КБ, base64 {len(out) * 4 / 3 / 1024:.0f} КБ')
 for g, rs in header['groups'].items(): print(' ', g, sum(r['i'] // 3 for r in rs), [mat_used[r['m']] for r in rs])
 b64 = base64.b64encode(out).decode()
-html = os.path.join(ROOT, 'arcade', 'index.html'); s = open(html, encoding='utf-8').read()
+html = os.path.join(ROOT, 'arcade', 'data', 'suv.js'); s = open(html, encoding='utf-8').read()
 import re
 s2, n = re.subn(r'const SUV_DATA = "[^"]*";', 'const SUV_DATA = "%s";' % b64, s)
-if n != 1: sys.exit('нет метки const SUV_DATA = "…"; в index.html')
+if n != 1: sys.exit('нет метки const SUV_DATA = "…"; в arcade/data/suv.js')
 open(html, 'w', encoding='utf-8').write(s2); print('встроено в', html)

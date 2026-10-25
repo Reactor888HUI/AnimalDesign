@@ -14,7 +14,7 @@
 | Готовая игра (zip, скачать) | https://github.com/Reactor888HUI/AnimalDesign/raw/ccr-db926758-gzqv44/dist/vosmerka-baklazhan.zip |
 | Готовая игра (один html) | `dist/vosmerka-baklazhan/index.html` в той же ветке |
 | Артефакт claude.ai (просмотр с компьютера) | https://claude.ai/artifact/W1TUmH6qKjdqGvaFqH1nJ5 |
-| Исходник игры | `arcade/index.html` |
+| Исходник игры | `arcade/index.html` (код) + `arcade/data/*.js` (данные) |
 | Песня вечеринки (8 с) | `arcade/refs/music/party.mp3` |
 
 Если репозиторий приватный, ссылки на GitHub открываются только у владельца. В новом чате Claude Code репозиторий подключается к сессии (см. раздел 8).
@@ -128,11 +128,13 @@
 ## 5. Техническое устройство
 
 ### Файлы
-- `arcade/index.html` — вся игра: HTML + CSS + JS, ~5300 строк. Three.js **r149** (UMD, глобальный `THREE`, алиас `T`). Не обновлять до r160+: там нет UMD-сборки.
+- `arcade/index.html` — код игры: HTML + CSS + JS, ~6 840 строк, ~640 КБ. Три.js подключается первым, затем `arcade/data/*.js`, затем код. Three.js **r149** (UMD, глобальный `THREE`, алиас `T`). Не обновлять до r160+: там нет UMD-сборки.
 - `arcade/refs/` — исходники карты (`*.osm`; `rostov-west.osm` — западная сцена), чертёж-наложение машины, CC0-модели автобуса (Quaternius) и маршрутки (Kenney) с `README.txt`, песня `music/party.mp3`.
-- `tools/build-offline.py` — сборка в один файл. Встраивает Three.js и песню (data:).
-- `tools/osm-to-game.py` — карта → данные между маркерами `/*OSM-DATA*/`; со `MARK=WEST-DATA` — данные сцены между `/*WEST-DATA*/` (координаты по центральной выгрузке, обрезка — по своей).
-- `tools/obj-to-game.py` — CC0-модели → `VEHICLE_MODELS` между `/*MODELS-DATA*/`.
+- `arcade/data/` — данные, вынесенные из кода (подключаются `<script src>`, работают и с `file://`): `osm-main.js`, `osm-west.js` (карта), `photos.js` (небо, фактуры), `suv.js`, `wheel.js`, `vehicles.js` (модели), `sounds.js` (мотор). Это обычные `const`, общие для всех скриптов страницы. Руками не править — их пишут инструменты ниже.
+- `tools/build-offline.py` — две сборки: `dist/vosmerka-baklazhan/index.html` (всё в одном файле, + zip) и `dist/vosmerka-web/` (папкой: `index.html` + `data/` + `vendor/three.min.js`; в git не хранится).
+- `tools/osm-to-game.py` — карта → `arcade/data/osm-main.js` между маркерами `/*OSM-DATA*/` (`python3 -I tools/osm-to-game.py arcade/refs/rostov-center.osm arcade/refs/rostov-arena.osm arcade/refs/rostov-bridge.osm arcade/data/osm-main.js`); со `MARK=WEST-DATA` — данные сцены между `/*WEST-DATA*/` (координаты по центральной выгрузке, обрезка — по своей).
+- `tools/obj-to-game.py` — CC0-модели → `VEHICLE_MODELS` в `arcade/data/vehicles.js`. `tools/build-suv.py` → `arcade/data/suv.js`, `tools/build-wheel.py` → `arcade/data/wheel.js`.
+- `tools/arcade-same.cjs` + `tools/same-diff.py` — проверка «ничего не изменилось»: замороженные часы, 7 точек мира, кадры и сводка сцены; сравнение с эталоном с учётом шума (игра не повторяет кадры бит-в-бит).
 - `tools/arcade-*.cjs` — автотесты Playwright.
 - `tools/video/` — съёмка роликов: `cine.js` (сценарий), `crec.cjs` (покадровая запись), `cparty.cjs` (клип вечеринки).
 - `docs/` — этот документ и история проходов.
@@ -170,7 +172,7 @@
 - **Тестовые крючки** `#test` → `window.__t`: `teleport`, `setCar`, `car`, `party`, `music`, `camSet`, `cine`, `cineStep`, `cineCap`, `ARENA`, `INNER`, `salute`, `setTime`, `paint` и др.
 
 ### Жёсткие рамки
-- Офлайн `index.html` ≤ 3 МБ (сейчас ~1,5 МБ), zip ≤ 1,5 МБ (~0,54 МБ).
+- Старт (код + данные) ≤ 4 МБ; сейчас один файл 3,55 МБ, zip 1,6 МБ. Новые районы — отдельными файлами с подгрузкой (docs/TZ.md, раздел 6).
 - Кадр ≤ 150 тыс. треугольников и ≤ 120 вызовов отрисовки (сейчас ~110 тыс., до 116 на автобане).
 - Главная аудитория — Android-телефон в портрете (~400×820).
 - **Шрифты Google грузятся в фоне** (`media="print" onload`): если сервер шрифтов молчит (в России без VPN), обычная ссылка вешала страницу на «Загружаю город». Не возвращать блокирующую ссылку и не добавлять других блокирующих внешних ресурсов.
@@ -179,7 +181,7 @@
 
 ### Сборка и проверка
 ```bash
-python3 -I tools/build-offline.py                  # → dist/vosmerka-baklazhan/index.html и .zip
+python3 -I tools/build-offline.py                  # → dist/vosmerka-baklazhan/index.html и .zip, dist/vosmerka-web/
 export PW=$(npm root -g)/playwright                # Chromium: /opt/pw-browsers/chromium, --use-gl=swiftshader
 for t in smoke menu multitouch eight inner pro roads perf; do node tools/arcade-$t.cjs | grep -m1 '"ok"'; done
 ```
@@ -242,7 +244,7 @@ arcade/index.html (HTML+CSS+JS, Three.js r149 UMD, алиас T). Заказчи
 
 Жёсткие рамки:
 - офлайн: никаких сетевых запросов во время игры; ассеты — код, base64 или CC0 с подписью;
-- index.html ≤ 3 МБ, zip ≤ 1,5 МБ; кадр ≤ 150 тыс. треугольников, ≤ 120 вызовов отрисовки;
+- старт (код + данные) ≤ 4 МБ; кадр ≤ 150 тыс. треугольников, ≤ 120 вызовов отрисовки;
 - телефон в портрете ~400×820 — главный экран; проверяй на нём;
 - сохранение localStorage["baklan3d-v1"] не ломать (миграция при смене формата);
 - у артефакта claude.ai НЕ объявлять capabilities (на Android страница не открывается);

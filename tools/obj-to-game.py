@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Готовые модели (CC0) → компактные данные для игры, вшиваются в arcade/index.html между маркерами /*MODELS-DATA*/.
+"""Готовые модели (CC0) → компактные данные для игры, пишутся в arcade/data/vehicles.js между маркерами /*MODELS-DATA*/.
 
-Запуск: python3 -I tools/obj-to-game.py arcade/index.html
+Запуск: python3 -I tools/obj-to-game.py arcade/data/vehicles.js
 
 Модели лежат в arcade/refs/models/ (лицензия CC0, см. README.txt там же):
   quaternius-bus.obj  — «LowPoly Public Transport», Quaternius (opengameart.org/content/lowpoly-public-transport)
@@ -200,7 +200,7 @@ def convert(name, spec):
 
 
 def main():
-    html = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "arcade", "index.html")
+    html = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "arcade", "data", "vehicles.js")
     data = {n: convert(n, s) for n, s in MODELS.items()}
     js = "const VEHICLE_MODELS = " + json.dumps(data, separators=(",", ":")) + ";"
     src = open(html, encoding="utf8").read()

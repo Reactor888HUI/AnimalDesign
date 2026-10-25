@@ -1,5 +1,5 @@
 """Руль внедорожника: результат tools/blender/wheel.py (двоичный: JSON-заголовок + треугольники по материалам) → компактный
-ассет в arcade/index.html (блок `const WHEEL_DATA = "…";`). Сварка одинаковых вершин, оси Blender (X вправо, Y к панели, Z вверх)
+ассет в arcade/data/wheel.js (блок `const WHEEL_DATA = "…";`). Сварка одинаковых вершин, оси Blender (X вправо, Y к панели, Z вверх)
 → оси машины (x к панели, y вверх, z вправо); позиции int16, нормали int8, AO uint8, UV uint16 (только у сенсорных панелей),
 индексы uint16.
 Запуск: blender -b --factory-startup --python tools/blender/wheel.py -- wheel.bin && python3 -I tools/build-wheel.py wheel.bin
@@ -27,7 +27,7 @@ for name, cnt in hdr.items():
 hj = json.dumps(recs, separators=(',', ':')).encode(); data = struct.pack('<I', len(hj)) + hj
 while len(data) % 4: data += b'\0'
 out = base64.b64encode(data + bytes(blob)).decode()
-html = os.path.join(ROOT, 'arcade', 'index.html'); s = open(html, encoding='utf-8').read()
+html = os.path.join(ROOT, 'arcade', 'data', 'wheel.js'); s = open(html, encoding='utf-8').read()
 s2, k = re.subn(r'const WHEEL_DATA = "[^"]*";', 'const WHEEL_DATA = "%s";' % out, s)
-if k != 1: sys.exit('нет метки const WHEEL_DATA = "…"; в index.html')
+if k != 1: sys.exit('нет метки const WHEEL_DATA = "…"; в arcade/data/wheel.js')
 open(html, 'w', encoding='utf-8').write(s2); print(f'руль: {len(out) // 1024} КБ base64 → {html}')
