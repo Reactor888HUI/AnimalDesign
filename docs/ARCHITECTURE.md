@@ -18,7 +18,7 @@ assets/maps/        отдельные ассеты (low-poly карта цен�
 
 ### Порядок загрузки страницы
 1. `three.min.js` r149 (в рабочей версии — с jsdelivr, в сборках — свой файл). Глобальное имя `THREE`, в коде алиас `T`.
-2. `data/*.js` — обычные `const` (`OSM`, `WEST`, `PHOTO_*`, `SUV_DATA`, `WHEEL_DATA`, `VEHICLE_MODELS`, `ENGINE_SND`).
+2. `data/*.js` — обычные `const` (`OSM`, `WEST`, `PHOTO_*`, `SUV_DATA`, `WHEEL_DATA`, `VAZ_BODY_DATA`, `VEHICLE_MODELS`, `ENGINE_SND`).
 3. `js/01-core.js` … `js/26-frame.js`. Последняя строка `26-frame.js` — `requestAnimationFrame(frame)`: запуск главного цикла.
 
 Все скрипты — классические (не модули): имена верхнего уровня (`const`, `let`, `function`) **общие для всех файлов**. Каждый файл начинается с `"use strict"`. Так работает и с сайта, и прямо из файла на телефоне (`file://`), где браузер запрещает `fetch` соседних файлов, но разрешает `<script src>`.
@@ -44,7 +44,7 @@ assets/maps/        отдельные ассеты (low-poly карта цен�
 | `11-ships.js` | суда `SHIPS` |
 | `12-photo.js` | режим «Фото» `PHOTO`, кино-повтор `KINO`, под водой `UNDER`, PRO-разгоны |
 | `13-streets.js` | фонари, светофоры, «зебры» |
-| `14-car.js` | «восьмёрка» `makeVaz2108`, краски `PAINTS`, стёкла `glassify`, внедорожник `SUV` с салоном |
+| `14-car.js` | «восьмёрка» `makeVaz2108` (кузов из `VAZ_BODY_DATA`), краски `PAINTS`, стёкла `glassify`, колёса `rubberMetal`, данные с тенью `aoGeos`, внедорожник `SUV` с салоном |
 | `15-traffic.js` | трафик |
 | `16-fx.js` | частицы, вечеринка `PARTY`, ряд машин полигона |
 | `17-state.js` | состояние `car`/`free`, физика полигона |
@@ -73,6 +73,8 @@ assets/maps/        отдельные ассеты (low-poly карта цен�
 | Главный экран | Android-телефон в портрете ~400×820 |
 | Новый район | отдельными файлами с подгрузкой; квадрат 500 м — ≤ 300 КБ, ≤ 15 вызовов, ≤ 25 тыс. тр. |
 
+Скрипты Blender начинают с `bpy.ops.wm.read_factory_settings(use_empty=True)`: в стандартной сцене есть кубик 2 м в начале координат — при запекании тени он оказывается внутри модели.
+
 Прочие рамки: без сетевых запросов во время игры; шрифты Google — только фоновой загрузкой; у артефакта claude.ai **не объявлять capabilities**; без брендов; чужие модели — только CC0 с подписью; `localStorage["baklan3d-v1"]` — менять формат только с миграцией.
 
 ## 4. Данные и инструменты
@@ -83,6 +85,7 @@ assets/maps/        отдельные ассеты (low-poly карта цен�
 | `data/vehicles.js` | `tools/obj-to-game.py` | `python3 -I tools/obj-to-game.py arcade/data/vehicles.js` |
 | `data/suv.js` | `tools/build-suv.py` | из `range-rover-race.glb` (см. журнал) |
 | `data/wheel.js` | `tools/blender/wheel.py` → `tools/build-wheel.py` | `blender -b --factory-startup --python tools/blender/wheel.py -- wheel.bin && python3 -I tools/build-wheel.py wheel.bin` |
+| `data/vaz-body.js` | `tools/blender/vaz-body.py` → `tools/build-vaz-body.py` | `blender -b --factory-startup --python tools/blender/vaz-body.py -- body.bin && python3 -I tools/build-vaz-body.py body.bin` (кузов «восьмёрки» ниже линии окон; таблицы чертежа — те же, что в `makeVaz2108`) |
 | `data/sounds.js` | `tools/v8synth.py` | вставка вручную (петли мотора) |
 | `data/photos.js` | вручную (фото пользователя, CC0-фактуры) | — |
 

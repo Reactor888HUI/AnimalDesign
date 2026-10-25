@@ -109,13 +109,13 @@
 
 Имена: `SIGNALS`, `tickSignals`
 
-### `14-car.js` — 807 строк, 88 КБ
+### `14-car.js` — 840 строк, 92 КБ
 
 Машины игрока: «восьмёрка» и внедорожник.
 
 Разделы: машина игрока (стр. 4)
 
-Имена: `paintIdx`, `PAINTS`, `glassify`, `smoothNormals`, `rubberMetal`, `makeVaz2108`, `carObj`, `VAZ_PARTS`, `SUV`, `TUNES`, `setTune`, `EGGPLANT`, `carEnv`, `paintCarEnv`, `setPaint`, `shadow`, `marker`
+Имена: `paintIdx`, `PAINTS`, `glassify`, `smoothNormals`, `rubberMetal`, `aoGeos`, `makeVaz2108`, `carObj`, `VAZ_PARTS`, `SUV`, `TUNES`, `setTune`, `EGGPLANT`, `carEnv`, `paintCarEnv`, `setPaint`, `shadow`, `marker`
 
 ### `15-traffic.js` — 94 строк, 8 КБ
 
@@ -229,9 +229,13 @@
 
 Имена: `ENGINE_SND`
 
-### `suv.js` — 5 строк, 650 КБ
+### `suv.js` — 5 строк, 719 КБ
 
 Имена: `SUV_DATA`
+
+### `vaz-body.js` — 4 строк, 202 КБ
+
+Имена: `VAZ_BODY_DATA`
 
 ### `vehicles.js` — 5 строк, 70 КБ
 
@@ -251,6 +255,7 @@
 | `aeroStart` | `20-aerotube.js` |
 | `AIR_SLOW` | `01-core.js` |
 | `airControls` | `17-state.js` |
+| `aoGeos` | `14-car.js` |
 | `applyLook` | `19-drive.js` |
 | `ARENA` | `06-arena.js` |
 | `arenaB` | `22-ui.js` |
@@ -572,6 +577,7 @@
 | `ui` | `25-input.js` |
 | `under` | `02-sky.js` |
 | `UNDER` | `12-photo.js` |
+| `VAZ_BODY_DATA` | `vaz-body.js` |
 | `VAZ_PARTS` | `14-car.js` |
 | `VMAXF` | `01-core.js` |
 | `WAKE` | `02-sky.js` |

@@ -73,6 +73,22 @@ function rubberMetal(m, lo, hi, metal = .85) {
   m.customProgramCacheKey = () => "rubberMetal" + lo + "/" + hi + "/" + metal;
   return m;
 }
+// данные «с тенью» из Blender (руль, кузов «восьмёрки»): заголовок JSON + по материалу позиции int16, нормали int8, AO uint8, UV, индексы.
+// Цвет вершины = a0 + (1 − a0)·AO (a0 — насколько темно в самом закрытом углу)
+function aoGeos(b64, a0 = .35, full = 1) {   // full — AO, начиная с которого место считается открытым (без затенения)
+  const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0)), hl = new DataView(raw.buffer).getUint32(0, true);
+  const recs = JSON.parse(new TextDecoder().decode(raw.subarray(4, 4 + hl))), base = (4 + hl + 3) & ~3;
+  return recs.map(r => {
+    const q = new Int16Array(raw.buffer, base + r.o[0], r.n * 3), qn = new Int8Array(raw.buffer, base + r.o[1], r.n * 3), qa = new Uint8Array(raw.buffer, base + r.o[2], r.n),
+      qu = new Uint16Array(raw.buffer, base + r.o[3], r.n * 2), qi = new (r.big ? Uint32Array : Uint16Array)(raw.buffer, base + r.o[4], r.i);
+    const pos = new Float32Array(r.n * 3), nor = new Float32Array(r.n * 3), col = new Float32Array(r.n * 3), uv = new Float32Array(r.n * 2);
+    for (let k = 0; k < r.n * 3; k++) { const a = k % 3; pos[k] = r.mn[a] + (q[k] + 32768) / 65535 * r.sc[a]; nor[k] = qn[k] / 127; }
+    for (let k = 0; k < r.n; k++) { const v = a0 + (1 - a0) * Math.min(1, qa[k] / 255 / full); col[k * 3] = col[k * 3 + 1] = col[k * 3 + 2] = v; uv[k * 2] = qu[k * 2] / 65535; uv[k * 2 + 1] = qu[k * 2 + 1] / 65535; }
+    const g = new T.BufferGeometry(); g.setAttribute("position", new T.BufferAttribute(pos, 3)); g.setAttribute("normal", new T.BufferAttribute(nor, 3));
+    g.setAttribute("color", new T.BufferAttribute(col, 3)); g.setAttribute("uv", new T.BufferAttribute(uv, 2)); g.setIndex(new T.BufferAttribute(Uint32Array.from(qi), 1));
+    return { m: r.m, geo: g };
+  });
+}
 function makeVaz2108() {
   // Размеры сняты с заводского чертежа ВАЗ-2108 (мм → м). Система: x вперёд, земля на y = −0.65.
   // Длина 4006, база 2460 (перед 785, зад 761), высота 1402, ширина 1650, колея 1400/1370, клиренс 160.
@@ -141,8 +157,10 @@ function makeVaz2108() {
     const mesh = new T.Mesh(geo, m); g.add(mesh); return mesh;
   }
   const span = (a, b, n) => Array.from({ length: n + 1 }, (_, i) => a + (b - a) * i / n);
-  // нижняя часть кузова
-  loft(span(X(4006), X(0), 110), x => {
+  // нижняя часть кузова: из Blender (tools/blender/vaz-body.py — то же сечение чертежа, но с подворотом к порогу, выпуклостью
+  // двери, ребром плеча, выпуклым капотом, скруглёнными арками с отбортовкой и запечённой тенью); без данных — прежняя протяжка
+  if (VAZ_BODY_DATA) g.add(new T.Mesh(aoGeos(VAZ_BODY_DATA, .5, .55)[0].geo, paint));
+  else loft(span(X(4006), X(0), 110), x => {
     const yb = yBot(x), yt = Math.max(yTop(x), yb + .02), w = halfW(x);
     const ySh = Math.min(Math.max(H(760), yb + .06), yt - .02);
     return [[0, yb], [w - .04, yb], [w, yb + .05], [w, ySh], [Math.min(w - .04, taper(x) * .762 + .01), yt], [0, yt]];
@@ -255,9 +273,9 @@ function makeVaz2108() {
       const m = new T.Mesh(q, tailM); m.position.set(X(3952) - .021, H(715), sd * .555); m.rotation.z = .08; g.add(m); }
     box(.1, .16, .03, amberM, X(3935), H(715), sd * .79, -sd * .5, .08);   // поворотник заходит на бок
     // двери, молдинг, ручка, зеркало
-    [X(1180), X(2600)].forEach(x => box(.008, yBelt - .02 - yBot(X(2000)), .004, black, x, (yBelt - .02 + yBot(X(2000))) / 2, sd * .828));
-    box(X(1130) - X(2915), .06, .012, black, (X(1130) + X(2915)) / 2, H(430), sd * .832);   // молдинг — только между арками, как на чертеже
-    box(.13, .03, .015, black, X(2370), H(800), sd * .832);
+    [X(1180), X(2600)].forEach(x => box(.008, yBelt - .02 - yBot(X(2000)), .004, black, x, (yBelt - .02 + yBot(X(2000))) / 2, sd * .834));   // кузов из Blender выпуклый — щели и молдинг на 6 мм наружу
+    box(X(1130) - X(2915), .06, .012, black, (X(1130) + X(2915)) / 2, H(430), sd * .838);   // молдинг — только между арками, как на чертеже
+    box(.13, .03, .015, black, X(2370), H(800), sd * .838);
     // зеркало по фото: чёрный треугольный «парус» в углу стекла и выступающий корпус, чуть отклонённый назад
     box(.13, .075, .022, black, X(1380), H(1005), sd * .838);
     box(.07, .095, .12, black, X(1380) - .045, H(1040), sd * .91, sd * -.12);
@@ -391,6 +409,12 @@ function makeVaz2108() {
   // тёмные фартуки под бамперами: на чертеже спереди и сзади под бампером не кузов, а тень днища
   box(.03, H(345) - H(185), 1.3, black, X(470), (H(345) + H(185)) / 2, 0);
   box(.03, H(310) - H(185), 1.3, black, X(3600), (H(310) + H(185)) / 2, 0);
+  // запечённая тень кузова — в цвете вершин; остальным деталям в цвет кузова — белый цвет, чтобы склеились в одну сетку
+  if (VAZ_BODY_DATA) {
+    paint.vertexColors = true;
+    g.traverse(o => { if (o.isMesh && o.material === paint && !o.geometry.attributes.color) { const n = o.geometry.attributes.position.count;
+      o.geometry.setAttribute("color", new T.BufferAttribute(new Float32Array(n * 3).fill(1), 3)); } });
+  }
   freeze(g, true);
   g.userData.paint = paint;
   return g;
