@@ -7,3 +7,6 @@ tools/__pycache__/
 
 # сборка папкой (tools/build-offline.py) — собирается заново, в git не хранится
 dist/vosmerka-web/
+
+# отчёт tools/check.sh
+.check/
