@@ -470,6 +470,15 @@ const SUV = SUV_DATA ? (() => {
     const b = new T.BoxGeometry(.7, .74, 1.1); b.translate(1.58, -.1, 0);
     parts.body.push({ mat: "rubber", pos: b.attributes.position.array, nor: b.attributes.normal.array, ed: null, idx: Uint32Array.from(b.index.array) });
   }
+  {   // подкрылки: у исходной модели арки пустые — сквозь них просвечивал фон (светлые «разрывы»). Тёмная полукруглая стенка
+      // над колесом (радиус 0,44 — с запасом на ход подвески) и щиток с внутренней стороны; в то же «ведро», без новых вызовов
+    ["wheel_front_left", "wheel_front_right", "wheel_rear_left", "wheel_rear_right"].forEach(n => {
+      const [x, y, z] = H.pivots[n], s = Math.sign(z), z0 = s * .6, z1 = s * .88, w = Math.abs(z1 - z0);
+      const arch = new T.CylinderGeometry(.44, .44, w, 14, 1, true, Math.PI / 2, Math.PI).rotateX(Math.PI / 2).translate(x, y, (z0 + z1) / 2);
+      const wall = new T.CircleGeometry(.44, 14, 0, Math.PI).translate(x, y, z0);
+      [arch, wall].forEach(g => parts.body.push({ mat: "rubber", pos: g.attributes.position.array, nor: g.attributes.normal.array, ed: null, idx: Uint32Array.from(g.index.array) }));
+    });
+  }
   const root = new T.Group(); root.name = "внедорожник"; root.userData.dyn = true; root.visible = false;
   const body = new T.Group(); build("body").forEach(m => body.add(m)); root.add(body);
   const dash = new T.Group(); build("dash").forEach(m => dash.add(m)); root.add(dash);   // панель кузова — видна снаружи сквозь стёкла

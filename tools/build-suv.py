@@ -154,7 +154,7 @@ def edge_dist(P, F):                              # стекло: расстоя
     return out
 
 # сколько треугольников оставить: крупные «оболочки» кузова и колёс — проще, мелочь — как есть
-TARGET = {'trim_metal': .42, 'paint_obsidian_black': .5, 'rubber': .3, 'interior': .3, 'leather_ivory': .45, 'light_lens': .4, 'trim_black': .6, 'cabin_charcoal': .6}
+TARGET = {'trim_metal': .5, 'paint_obsidian_black': .7, 'rubber': .3, 'interior': .25, 'leather_ivory': .4, 'light_lens': .4, 'trim_black': .6, 'cabin_charcoal': .6}
 blob, header, total = bytearray(), {'mats': [], 'groups': {}, 'pivots': pivots}, 0
 mat_used = sorted({m for (_, m) in parts})
 header['mats'] = mat_used
@@ -165,7 +165,7 @@ for (g, mat), lst in sorted(parts.items()):
     F = np.concatenate([q[1] + o for q, o in zip(lst, off)])
     P, F = weld(P, F); F = F[(F[:, 0] != F[:, 1]) & (F[:, 1] != F[:, 2]) & (F[:, 0] != F[:, 2])]
     keep = TARGET.get(mat, 1)
-    if g.startswith('wheel_'): keep = min(keep, .32)
+    if g.startswith('wheel_'): keep = min(keep, .4)
     if keep < 1 and len(F) > 600:
         P2, F2 = fast_simplification.simplify(P.astype(np.float32), F.astype(np.int64), target_reduction=1 - keep)
         if len(F2) > 50: P, F = P2.astype(np.float64), F2.astype(np.int64)
