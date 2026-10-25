@@ -2,7 +2,11 @@
 // Код игры разбит на файлы arcade/js/NN-*.js; они грузятся по порядку номеров и делят общие имена (docs/ARCHITECTURE.md).
 "use strict";
 /* ---------- земля и полигон ---------- */
-flat(5600, 4300, new T.MeshLambertMaterial({ color: 0xa79d7a, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }), 1100, -800, 0);   // до западной сцены
+// земля до западной сцены: южная часть — на нуле (город лежит на ней своим склоном), северная — плато (поднимается в конце файла)
+flat(5600, 2868, new T.MeshLambertMaterial({ color: 0xa79d7a, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }), 1100, -1516, 0);   // свой материал: под слоями воды и газонов
+const groundM = new T.MeshLambertMaterial({ color: 0xa79d7a, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 });   // плато и склоны к нему (отдельно от южной земли)
+const N03 = northMark();
+flat(5600, 1432, groundM, 1100, 634, 0);
 flat(360, 10, under(0x45474b), 120, 0, .02);
 const markM = new T.MeshBasicMaterial({ color: 0xbfc4d0 });
 for (let x = -20; x < 300; x += 6) flat(2.5, .2, markM, x, 0, .03);
@@ -113,4 +117,4 @@ const rampY = t => RH * t * t;
   gantry(250, ["Ростов ← налево", "Трюк-парк → направо"]);
   gantry(650, ["Трамплин на крайней", "правой полосе"]);
 })();
-
+northLift(N03);

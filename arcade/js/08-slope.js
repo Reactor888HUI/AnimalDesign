@@ -113,6 +113,14 @@ const HILL = (() => {
   paint();
   return { paint, mesh };
 })();
+// склоны к плато за краями карты по x (на востоке до −1700, на западе до 3900 — как земля): та же земля groundM, склеится с ней в один вызов
+[[-1700, TX0], [TX1, 3900]].forEach(([x0, x1]) => {
+  const NX = Math.ceil((x1 - x0) / 40), NZ = 24, pos = [], idx = [];
+  for (let i = 0; i <= NX; i++) for (let j = 0; j <= NZ; j++) { const x = x0 + (x1 - x0) * i / NX, z = sideZ(x0) + (-82 - sideZ(x0)) * j / NZ; pos.push(x, terrainH(x, z), z); }
+  for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) { const a = i * (NZ + 1) + j, b = a + NZ + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+  const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  scene.add(new T.Mesh(g, groundM));
+});
 kickers.forEach(festKicker);                         // праздничные лампочки и вымпелы на всех трамплинах
 if (FEST.geos.length) { scene.add(new T.Mesh(mergeGeos(FEST.geos), FEST_M)); FEST.geos = []; }
 freeze(scene);   // вся неподвижная геометрия мира — несколько склеенных мешей

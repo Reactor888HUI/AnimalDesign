@@ -5,7 +5,7 @@
 function kicker(x, z, yaw, len, w, h, color = 0x3a3f58, curve = false, y0 = 0) {
   // curve — «четверть трубы»: профиль-парабола h·(u/len)², в конце крутизна atan(2h/len)
   // y0 — высота основания: трамплин может стоять на крыше
-  const k = { x, z, yaw, len, w, h, curve, y0, fx: Math.cos(yaw), fz: -Math.sin(yaw) };
+  const k = { x, z, yaw, len, w, h, curve, y0, roof: y0 > 0, fx: Math.cos(yaw), fz: -Math.sin(yaw) };
   kickers.push(k);
   const g = new T.Group();
   const slope = Math.atan(h / len), L2 = Math.hypot(len, h);
@@ -47,6 +47,7 @@ function buildRings() {
   [...groups.values()].forEach((list, gi) => list.forEach((r, i) => { r.im = CHUNKS[n0 + gi].obj; r.ii = i; }));
   ringQ.length = 0;
 }
+const N05 = northMark();               // трюк-парк ниже — на плато (northLift в конце)
 (() => {
   flat(330, 100, under(0x8a8a86), 460, 15, .02);
   const s = new T.Mesh(new T.PlaneGeometry(14, 3.5), new T.MeshBasicMaterial({ map: textTex(["ТРЮК-ПАРК"], 512, 128, "#2b2438", "#9fe3ff"), side: T.DoubleSide }));
@@ -66,4 +67,4 @@ function buildRings() {
   kicker(900, ZA - 13.75, Math.PI, 14, 3.2, 4.5);
   ring(760, 9, ZA + 13.75); ring(1190, 16, ZA + 13.75);
 })();
-
+northLift(N05);

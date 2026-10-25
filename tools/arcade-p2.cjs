@@ -45,10 +45,10 @@ const SHOTS = process.env.SHOTS || ".";
   out.replayVia = out.replayBtn ? "кнопка на экране" : "меню «⋯»";
   if (out.best.frames) { await p.click(out.replayBtn ? "#b-replay" : "#m-replay"); await run(600); out.replayOn = (await ev(() => __t.best())).replay; await shot("p2-replay.png"); await run(6000); out.replayEnded = !(await ev(() => __t.best())).replay; }
   // три кольца подряд: пролетаем сквозь кольца трюк-парка
-  for (const [x, y, z] of [[349, 6.4, 0], [397, 12.4, 30], [527, 21.4, -15]]) { await ev(([x, y, z]) => { __t.teleport(x, z, 0); __t.setCar({ y, vy: 0, v: 14, air: true }); }, [x, y, z]); await run(2500); }
+  for (const [x, y, z] of [[349, 6.4, 0], [397, 12.4, 30], [527, 21.4, -15]]) { await ev(([x, y, z]) => { __t.teleport(x, z, 0); __t.setCar({ y: __t.carY() + y, vy: 0, v: 14, air: true }); }, [x, y, z]); await run(2500); }
   out.rings3 = !!(await M()).rings3;
   // две бочки: посадка ровно с накрученными 720°
-  await ev(() => { __t.teleport(-300, 150, 0); __t.setCar({ y: 6, vy: 0, v: 5, air: true }); __t.spin(720); }); await run(3000);
+  await ev(() => { __t.teleport(-300, 150, 0); __t.setCar({ y: __t.carY() + 6, vy: 0, v: 5, air: true }); __t.spin(720); }); await run(3000);
   out.barrel2 = !!(await M()).barrel2;
   // «Восьмёрка»: едем по точкам двух петель
   await ev(() => __t.teleport(1010, 172, -Math.PI / 2));
@@ -89,7 +89,7 @@ const SHOTS = process.env.SHOTS || ".";
   out.traffic = { minGapBehind: +minGap.toFixed(1), laneChanges: changed > 0 };
   // авария сверху: падаем на крышу машины в потоке
   const tc = (await ev(() => __t.traffic())).find(c => c.x > -400 && c.x < 1200 && c.z > -60 && !c.wreck);
-  await ev(c => { __t.teleport(c.x, c.z, 0); __t.setCar({ y: 3.2, vy: -2, v: c.v, air: true }); }, tc); await run(800);
+  await ev(c => { __t.teleport(c.x, c.z, 0); __t.setCar({ y: __t.carY() + 3.2, vy: -2, v: c.v, air: true }); }, tc); await run(800);
   const after = await ev(() => __t.traffic());
   out.stomp = { wrecked: after.some(c => c.wreck > 0), car: await ev(() => __t.car()) };
   await shot("p2-stomp.png");

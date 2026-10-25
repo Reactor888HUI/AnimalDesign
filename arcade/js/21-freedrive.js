@@ -58,14 +58,14 @@ function stepFree(dt) {
   if (phase === "fcork") {   // штопор полигона
     const t = (car.x - RS) / RL, ang = Math.atan(2 * RH * t / RL);
     car.v -= G * Math.sin(ang) * dt;
-    if (car.v <= .5) { car.x = RS - 3; car.v = 0; car.y = 0; car.roll = 0; car.pitch = 0; phase = "free"; showToast("Не хватило скорости на штопор", "bad"); return; }
+    if (car.v <= .5) { car.x = RS - 3; car.v = 0; car.y = PLAT; car.roll = 0; car.pitch = 0; phase = "free"; showToast("Не хватило скорости на штопор", "bad"); return; }
     car.x += car.v * Math.cos(ang) * dt;
     const t2 = Math.min(1, (car.x - RS) / RL);
-    car.y = rampY(t2); car.pitch = ang; car.roll = 180 * smooth(t2);
+    car.y = PLAT + rampY(t2); car.pitch = ang; car.roll = 180 * smooth(t2);
     if (car.x >= RX) {
       const a = Math.atan(2 * RH / RL);
       car.vy = car.v * Math.sin(a); car.v = car.v * Math.cos(a);
-      car.roll = 180; car.om = 180 / timeToGround();
+      car.roll = 180; car.om = 180 / timeToGround(PLAT);
       takeoff(true);
     }
     return;
@@ -166,7 +166,7 @@ function stepFree(dt) {
       car.x = nx; car.z = nz; return sink();
     } else {
       if (Math.abs(nz) < 1.8 && nx >= RS - .3 && nx <= RS + 1.5 && nfx > .85 && car.v > 6) {
-        car.x = RS; car.z = 0; car.yaw = 0; car.y = 0; phase = "fcork"; return;
+        car.x = RS; car.z = 0; car.yaw = 0; car.y = PLAT; phase = "fcork"; return;
       }
       const crest = g0.hump && car.v > 6 && car.pitch > .08 && Math.atan(Math.tan(g0.slope) * (nfx * g0.rx + nfz * g0.rz)) < -.05;   // гребень трамплина-горба: нос ещё вверх, дальше скат — отрыв
       if (crest) { car.x = nx; car.z = nz; car.vy = car.v * Math.sin(car.pitch); car.v = car.v * Math.cos(car.pitch); takeoff(false); return; }
@@ -259,11 +259,11 @@ function stepFree(dt) {
   landingReserve(dt, Math.max(free.gh, ahead(.3), ahead(.6)));
   const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw), yPrev = car.y;
   car.x += fx * car.v * dt; car.z += fz * car.v * dt; car.y += car.vy * dt;
-  if (car.y > 3.6 && car.x > 386 && car.x < 448 && Math.abs(car.z - 30) < 3.5) free.overBus = true;
-  if (car.vy < 0 && car.y > .9) for (const c of traffic) if (!(c.wreck > 0) && car.y < c.H + 1 && Math.abs(car.x - c.x) < c.L / 2 + .4 && Math.abs(car.z - c.z) < 1.4) {
-    c.wreck = 6; c.v = 0; dust(c.x, c.H, c.z, 12); sfx.crash();     // прыгнули на крышу машины в потоке: она встаёт, мы отскакиваем
+  if (car.y > PLAT + 3.6 && car.x > 386 && car.x < 448 && Math.abs(car.z - 30) < 3.5) free.overBus = true;
+  if (car.vy < 0 && car.y > PLAT + .9) for (const c of traffic) if (!(c.wreck > 0) && car.y < PLAT + c.H + 1 && Math.abs(car.x - c.x) < c.L / 2 + .4 && Math.abs(car.z - c.z) < 1.4) {
+    c.wreck = 6; c.v = 0; dust(c.x, PLAT + c.H, c.z, 12); sfx.crash();     // прыгнули на крышу машины в потоке: она встаёт, мы отскакиваем
     const big = c.kind !== "car", pts = c.kind === "bus" ? 700 : big ? 500 : 400;
-    car.vy = 7; car.y = c.H + 1; free.score += pts; save.freeBest = Math.max(save.freeBest, free.score); persist();
+    car.vy = 7; car.y = PLAT + c.H + 1; free.score += pts; save.freeBest = Math.max(save.freeBest, free.score); persist();
     queueToast(`${c.kind === "bus" ? "По крыше автобуса" : c.kind === "van" ? "По крыше маршрутки" : "По крыше машины"}! Авария в потоке  +${pts}`, "good", 1800); break;
   }
   car.pitch += (Math.atan2(car.vy, Math.abs(car.v) + .1) * .35 - car.pitch) * Math.min(1, dt * 4);

@@ -21,7 +21,7 @@ const path = require("path");
   out.link = link.map(l => l.name);
   const way = [P(north ? D.s1 - 5 : D.s0 + 5), ...(link[0] ? link[0].pts.slice(1) : [])];
   let c, maxY = 0, wi = 0;
-  for (let i = 0; i < 160 && wi < way.length; i++) {
+  for (let i = 0; i < 240 && wi < way.length; i++) {   // мост теперь с подъёмом от правого берега — едем дольше
     c = await ev(() => __t.car()); maxY = Math.max(maxY, c.y); if (c.phase !== "free") break;
     while (wi < way.length && Math.hypot(way[wi][0] - c.x, way[wi][1] - c.z) < 10) wi++;
     if (wi >= way.length) break;

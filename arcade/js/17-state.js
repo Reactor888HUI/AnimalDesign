@@ -17,7 +17,7 @@ function zone(y0, y1) {
   const geo = new T.BoxGeometry(14, y1 - y0, 7);
   zoneMesh = new T.Mesh(geo, new T.MeshBasicMaterial({ color: 0x6fdc8c, transparent: true, opacity: .14, depthWrite: false }));
   zoneMesh.add(new T.LineSegments(new T.EdgesGeometry(geo), new T.LineBasicMaterial({ color: 0x6fdc8c })));
-  zoneMesh.position.set(car.x, (y0 + y1) / 2, 0); scene.add(zoneMesh);
+  zoneMesh.position.set(car.x, PLAT + (y0 + y1) / 2, 0); scene.add(zoneMesh);
 }
 function reset(li) {
   L = LEVELS[li]; L.i = li; buildLevel();
@@ -27,7 +27,7 @@ function reset(li) {
 }
 const rollErr = r => ((r % 360) + 540) % 360 - 180;
 const timeToGround = (gh = 0) => { const h = Math.max(0, car.y - gh); return (car.vy + Math.sqrt(Math.max(0, car.vy * car.vy + 2 * G * h))) / G; };
-const nozzle = (lx, ly) => new T.Vector3(lx, ly, 0).applyEuler(carObj.rotation).add(carObj.position);
+const nozzle = (lx, ly) => { const p = new T.Vector3(lx, ly, 0).applyEuler(carObj.rotation).add(carObj.position); if (mode !== "free") p.y -= PLAT; return p; };   // в высотах физики (в уровнях — от земли полигона)
 
 /* ---------- физика полигона (уровни и уроки) ---------- */
 function step(dt) {

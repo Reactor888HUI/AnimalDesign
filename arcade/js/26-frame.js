@@ -3,7 +3,10 @@
 "use strict";
 /* ---------- кадр ---------- */
 const camPos = new T.Vector3(SPAWN.x - 10, 4, SPAWN.z), look = new T.Vector3();
-function render(dt) {
+// уроки и уровни полигона считают высоту от его земли (0), а полигон стоит на плато: на время отрисовки машина — на PLAT выше
+let RYO = 0;
+function render(dt) { RYO = mode === "free" ? 0 : PLAT; car.y += RYO; try { renderAt(dt); } finally { car.y -= RYO; } }
+function renderAt(dt) {
   carObj.position.set(car.x, car.y + WHEEL, car.z);
   const lean = SUV && SUV.on ? SUV.LEAN : { roll: 1, pitch: 1 };   // внедорожник кренится мягче
   carObj.rotation.set((car.roll + (car.bodyRoll || 0) * lean.roll + (car.slopeRoll || 0)) * DEG, car.yaw, car.pitch + (car.bodyPitch || 0) * lean.pitch * DEG, "YZX");
@@ -28,7 +31,7 @@ function render(dt) {
     U.wheels.forEach(w => { w.spin.rotation.z = -U.wa; w.steer.rotation.y = w.front ? U.st : 0; });
     U.redM.emissiveIntensity = PARTY.on ? PARTY.red : !replay && brk() > .1 ? 2.4 : .55;
   }
-  const gh = mode === "free" ? groundAt(car.x, car.z, car.y + .5).h : 0;
+  const gh = mode === "free" ? groundAt(car.x, car.z, car.y + .5).h : RYO;   // в уроках земля полигона — на плато
   const hgt = Math.max(0, car.y - gh);
   shadow.visible = !(mode === "free" && (free.wall || free.tube)) && !CINE.noShadow;
   shadow.position.set(car.x, gh + .15, car.z); shadow.rotation.z = car.yaw;
@@ -55,7 +58,7 @@ function render(dt) {
     carObj.visible = true;
   } else if (replay) {
     carObj.visible = true;
-    const eye = replay.eye || new T.Vector3(TRIB.x - 4, 5, TRIB.z - 3);
+    const eye = replay.eye || new T.Vector3(TRIB.x - 4, PLAT + 5, TRIB.z - 3);
     camPos.copy(eye); camera.position.copy(eye); camera.up.set(0, 1, 0);
     look.set(car.x, car.y + .6, replay.free ? car.z : 0); camera.lookAt(look);
     camera.fov = Math.max(14, Math.min(55, 2 * Math.atan(12 / eye.distanceTo(look)) / DEG));
@@ -69,7 +72,7 @@ function render(dt) {
     camera.fov = suv ? (tall ? 80 : 68) : 75; camPos.copy(eye); camera.near = suv ? .08 : .5;   // из кабины зеркало и стойки ближе полуметра
   } else {
     carObj.visible = true; if (SUV && SUV.on) SUV.cockpit(false);
-    const air = phase === "air" || phase === "crash" || phase === "fcrash" || phase === "drill" || (phase === "brief" && briefPhase === "drill") || (phase === "lesson-done" && car.y > .5) || (mode === "free" && (free.air || free.aero));
+    const air = phase === "air" || phase === "crash" || phase === "fcrash" || phase === "drill" || (phase === "brief" && briefPhase === "drill") || (phase === "lesson-done" && car.y - RYO > .5) || (mode === "free" && (free.air || free.aero));
     const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw);
     let want, tight = false;
     if (mode === "free") {
@@ -102,7 +105,7 @@ function render(dt) {
     camera.position.copy(camPos); camera.up.set(0, 1, 0);
     if (mode === "free" && free.cat && free.air) look.set(car.x, car.y + .5, car.z);                 // панорама: смотрим на саму машину
     else if (mode === "free") look.set(car.x + fx * (tight ? 14 : 6), car.y + .8 - (air && !free.aero ? Math.min(3, hgt * .25) : 0), car.z + fz * (tight ? 14 : 6));
-    else look.set(car.x + (air ? 6 : 5), car.y + .6 - (air ? Math.min(3, car.y * .25) : 0), 0);
+    else look.set(car.x + (air ? 6 : 5), car.y + .6 - (air ? Math.min(3, (car.y - RYO) * .25) : 0), 0);
     camera.lookAt(look); camera.fov = 60 + (mode === "free" ? Math.min(14, Math.abs(car.v) * .25) : 0);
     const orb = mode === "free" && !replay && PARTY.orbit();
     if (orb) {                                             // вечеринка: облёт камеры — один плавный пролёт, как дроном: 225° вокруг машины,
@@ -312,7 +315,7 @@ if (location.hash === "#test") window.__t = { carObj, suv: on => { if (on !== un
       if (bb.max.y - bb.min.y < 2.5 || Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) > 1.2) return;
       for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m4); v.setFromMatrixPosition(m4); out.poles.checked++; if (onCarriageway(v.x, v.z, 0)) { out.poles.onRoad++; if (out.poles.where.length < 10) out.poles.where.push([Math.round(v.x), Math.round(v.z)]); } }
     });
-    scene.traverse(o => { if (!o.isInstancedMesh) return; for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m4); v.setFromMatrixPosition(m4); const t = terrainH(v.x, v.z); if (t < 1) continue; out.items.checked++; if (v.y < t - .5) out.items.off++; } });
+    scene.traverse(o => { if (!o.isInstancedMesh) return; o.updateMatrixWorld(); for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m4); v.setFromMatrixPosition(m4).applyMatrix4(o.matrixWorld); const t = terrainH(v.x, v.z); if (t < 1) continue; out.items.checked++; if (v.y < t - .5) out.items.off++; } });
     return out;
   },
   ground: (x, z, y) => { const g = groundAt(x, z, y); return { h: g.h, deck: !!g.deck, hill: !!g.hill, ter: terrainH(x, z), solid: (hitSolid(x, z, y + .2) || {}).name || "" }; },

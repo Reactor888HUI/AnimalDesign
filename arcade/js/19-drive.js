@@ -6,7 +6,7 @@ function groundAt(x, z, y = -1) {   // y — высота машины: крыш
   let h = terrainH(x, z), slope = 0, roof = null;
   for (const k of kickers) {
     const dx = x - k.x, dz = z - k.z, u = dx * k.fx + dz * k.fz, w = -dx * k.fz + dz * k.fx;
-    if (u >= 0 && u <= k.len && Math.abs(w) <= k.w / 2 && !(k.y0 && y < k.y0 - 1)) {
+    if (u >= 0 && u <= k.len && Math.abs(w) <= k.w / 2 && !(k.roof && y < k.y0 - 1)) {
       const hh = k.y0 + (k.curve ? k.h * (u / k.len) ** 2 : k.h * u / k.len);
       if (hh > h) { h = hh; slope = k.curve ? Math.atan(2 * k.h * u / (k.len * k.len)) : Math.atan(k.h / k.len); }
     }
@@ -51,6 +51,7 @@ function startFree(toast = true, pro = false) {
   L = FREE; buildLevel(); freshCar();
   car.x = START.x; car.z = START.z; car.yaw = START.yaw;
   if (/^#(side|rear|front|corner)(-pro)?$/.test(location.hash)) { car.x = -400; car.z = 180; if (/-pro$/.test(location.hash)) pro = true; }   // чертёжные виды — на пустом месте
+  car.y = surfaceH(car.x, car.z);                                   // старт на автобане — на плато
   Object.assign(free, { air: false, airT: 0, cork: false, ringBonus: 0, safe: { ...START }, safeT: 0, gh: 0, hopLock: false, wall: null, aero: null, tube: null, lap: null, pro, proA: null });
   proGroup.visible = pro; applyLook();
   assistOn = save.assist;

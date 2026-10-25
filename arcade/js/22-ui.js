@@ -155,8 +155,8 @@ let replayBtnUntil = 0;
 function startFreeReplay() {
   const fr = free.bestRec; if (!fr || fr.length < 5) return;
   // «оператор» сбоку от середины траектории, чуть выше её верхней точки
-  const a = fr[0], b = fr[fr.length - 1], dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz) || 1, top = Math.max(...fr.map(f => f.y));
-  const eye = new T.Vector3((a.x + b.x) / 2 - dz / L * (L * .55 + 14), Math.max(4, top * .6 + 3), (a.z + b.z) / 2 + dx / L * (L * .55 + 14));
+  const a = fr[0], b = fr[fr.length - 1], dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz) || 1, top = Math.max(...fr.map(f => f.y)), base = Math.min(a.y, b.y);   // base — земля у взлёта/посадки (город на склоне, север на плато)
+  const eye = new T.Vector3((a.x + b.x) / 2 - dz / L * (L * .55 + 14), base + Math.max(4, (top - base) * .6 + 3), (a.z + b.z) / 2 + dx / L * (L * .55 + 14));
   if (hitSolid(eye.x, eye.z, eye.y)) eye.y = Math.max(...solidsNear(eye.x, eye.z).map(s => s.h)) + 4;
   replay = { t: fr[0].t, end: fr[fr.length - 1].t - .8, final: { ...car }, frames: fr, eye, free: true };
   car.bodyRoll = car.bodyPitch = 0;
@@ -453,6 +453,6 @@ $("m-go").addEventListener("click", e => {
   if (mode !== "free") startFree(false, false);
   free.proA = null;
   car.x = x; car.z = z; car.yaw = yaw; tickScenes(true); car.y = surfaceH(x, z); car.v = 0; car.vy = 0; car.roll = car.om = car.pitch = 0;   // сцену там — достроить сразу
-  free.air = false; free.wall = null; free.aero = null; free.tube = null; free.lap = null; free.safe = { x, z, yaw, y: car.y }; phase = "free"; camPos.set(x - 9, 3.2, z);
+  free.air = false; free.wall = null; free.aero = null; free.tube = null; free.lap = null; free.safe = { x, z, yaw, y: car.y }; phase = "free"; camPos.set(x - 9, car.y + 3.2, z);
   zoneAt = -1; closeDock(); showToast(`${n}. Джойстик вверх — поехали`, "good", 2500);
 });

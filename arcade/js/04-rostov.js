@@ -43,7 +43,7 @@ const ROADS = OSM.r.map(r => [...r, OSM.n]).concat((WEST.r || []).map(r => [...r
 });
 function deckH(d, s, l = d.lc) {                 // концы — вровень с землёй (правый берег высокий, по ширине тоже), посередине — не ниже 13 м
   const ter = (t, w) => terrainH(d.cx + d.dx * t + d.nx * w, d.cz + d.dz * t + d.nz * w);
-  if (d.Hm == null) d.Hm = Math.max(d.H, ter(d.s0, d.lc) + 1, ter(d.s1, d.lc) + 1);
+  if (d.Hm == null) d.Hm = Math.max(d.H, Math.max(ter(d.s0, d.lc), ter(d.s1, d.lc)) + 8);   // середина — на 8 м выше высокого берега (съезд на левом берегу проходит над улицей)
   const a = Math.min(1, (s - d.s0) / d.R), b = Math.min(1, (d.s1 - s) / d.R), ha = ter(d.s0, l), hb = ter(d.s1, l);
   const u = (s - d.s0) / (d.s1 - d.s0), arch = 2.5 * Math.max(0, 1 - ((u - .5) / .32) ** 2);   // над водой — лёгкая арка, как на фото
   const h = Math.min(ha + (d.Hm - ha) * smooth(Math.max(0, a)), hb + (d.Hm - hb) * smooth(Math.max(0, b))) + arch * Math.min(1, a, b);
@@ -74,9 +74,23 @@ const PIERS = OSM.p.map(dm);
 
 /* ---------- рельеф правого берега ---------- */
 // Правый берег Ростова — высокий склон: у воды гранитная набережная (2 м над Доном), за Береговой улицей город
-// поднимается в гору (Богатяновский спуск, Седова, Станиславского) до ~38 м и к автобану плавно сходит на нет.
-// Левый берег, Арена, автобан, трюк-парк и полигон — на нуле, как раньше.
-const TER = { Q: 2, H: 38, rise: 240, fall: 200, edge: 240, step: 10 };
+// поднимается в гору по настоящим высотам (data/height.js: Copernicus GLO-30, ×0,85) до ~40–50 м у Садовой,
+// последние 200 м плавно сходятся к плато PLAT — на нём стоит весь север (автобан, трюк-парк, полигон, «Восьмёрка»).
+// За краями карты по x — ровный придуманный склон к плато: на западе от −760 (западная сцена и ж/д мост ниже −835 — на нуле),
+// на востоке от −420 (Дон там доходит до −506).
+// Левый берег и Арена — на нуле, как раньше.
+const TER = { Q: 2, grade: .18, top: 400, edge: 240, step: 10, sideW: -760, sideE: -420 };
+const DEM = (() => {                              // сетка высот: строки по z, шаг HEIGHT.step, высота = байт × 0,25 м
+  if (typeof HEIGHT === "undefined") return null;
+  const b = atob(HEIGHT.q), a = new Float32Array(b.length);
+  for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i) * .25;
+  return { ...HEIGHT, a };
+})();
+const demH = (x, z) => {                          // билинейно, за краем сетки — край
+  const D = DEM, fx = Math.max(0, Math.min(D.nx - 1.001, (x - D.x0) / D.step)), fz = Math.max(0, Math.min(D.nz - 1.001, (z - D.z0) / D.step));
+  const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, A = D.a, n = D.nx, k = j * n + i;
+  return (A[k] * (1 - u) + A[k + 1] * u) * (1 - v) + (A[k + n] * (1 - u) + A[k + n + 1] * u) * v;
+};
 const TX0 = STRIP.x0 - TER.edge, TX1 = STRIP.x1 + TER.edge;   // холм сходит на нет уже за краем карты, а не на её улицах
 const BANK = [], FOOT = [];                       // для x с шагом 10 м: z северного берега Дона и подножия склона
 (() => {
@@ -89,12 +103,23 @@ const BANK = [], FOOT = [];                       // для x с шагом 10 �
   BANK.forEach((zb, i) => { const bz = berZ(TX0 + i * TER.step); FOOT.push(zb == null ? null : Math.max(zb + 30, bz == null ? zb + 40 : bz + 18)); });
 })();
 const terLerp = (A, x) => { const f = (x - TX0) / TER.step, i = Math.floor(f); if (i < 0 || i >= A.length - 1 || A[i] == null || A[i + 1] == null) return null; return A[i] + (A[i + 1] - A[i]) * (f - i); };
+const clamp01 = t => Math.max(0, Math.min(1, t));
+const sideZ = x => x < (TX0 + TX1) / 2 ? TER.sideE : TER.sideW;
+const sideH = (x, z) => PLAT * smooth(clamp01((z - sideZ(x)) / (-82 - sideZ(x))));   // придуманный склон за краями карты
 function terrainH(x, z) {
-  if (z > -82 || x < TX0 || x > TX1) return 0;
-  const zb = terLerp(BANK, x); if (zb == null || z <= zb) return 0;
-  const ft = terLerp(FOOT, x), e = smooth(Math.max(0, Math.min(1, (x - TX0) / TER.edge))) * smooth(Math.max(0, Math.min(1, (TX1 - x) / TER.edge)));
-  const up = z <= ft ? 0 : TER.H * smooth(Math.min(1, (z - ft) / TER.rise)) * smooth(Math.min(1, (-82 - z) / TER.fall));
-  return (TER.Q * smooth(Math.min(1, (-82 - z) / 40)) + up) * e;
+  if (z > -82) return PLAT;
+  if (x < TX0 || x > TX1) return sideH(x, z);
+  const zb = terLerp(BANK, x); if (zb != null && z <= zb) return 0;
+  const e = smooth(clamp01((x - TX0) / TER.edge)) * smooth(clamp01((TX1 - x) / TER.edge));
+  const side = sideH(x, z) * (zb == null ? 1 : smooth(clamp01((z - zb) / 80)));
+  if (e <= 0 || !DEM) return side;
+  const ft = terLerp(FOOT, x) ?? zb ?? -1e4;
+  // от подножия (за Береговой) склон не круче 18 %: настоящие высоты, срезанные линией подъёма (мягкий минимум, без излома)
+  // последние TER.top метров к автобану настоящие высоты плавно сходятся к плато
+  const d = demH(x, z), a = Math.max(TER.Q, d + (PLAT - d) * smooth(clamp01((z + 82 + TER.top) / TER.top)));
+  const b = TER.Q + TER.grade * Math.max(0, z - ft), k = clamp01(.5 + .5 * (b - a) / 4);
+  const h = Math.max(TER.Q, b + (a - b) * k - 4 * k * (1 - k));
+  return h * e + side * (1 - e);
 }
 const surfaceH = (x, z) => { const dk = DECKS.length && deckAt(x, z, 1e3); return Math.max(terrainH(x, z), dk ? dk.h : 0); };   // земля или настил моста
 const terrainN = (x, z) => { const gx = (terrainH(x + 1, z) - terrainH(x - 1, z)) / 2, gz = (terrainH(x, z + 1) - terrainH(x, z - 1)) / 2; return [gx, gz]; };

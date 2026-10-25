@@ -16,7 +16,7 @@ const path = require("path");
   // скорость касания: запоминаем вертикальную скорость в последнем кадре полёта
   await p.evaluate(() => { let last = 0; setInterval(() => { const d = __t.vy(); if (d.air) last = d.vy; else if (last) { window.__impact = +(-last).toFixed(1); last = 0; } }, 5); });
   const drop = async (name, o) => {
-    await p.evaluate(o => { __t.teleport(-300, 150, 0); __t.setGas(0); __t.setCar({ y: o.y, vy: 0, v: 8, roll: o.roll, om: 0, air: true }); }, o);
+    await p.evaluate(o => { __t.teleport(-300, 150, 0); __t.setGas(0); __t.setCar({ y: __t.carY() + o.y, vy: 0, v: 8, roll: o.roll, om: 0, air: true }); }, o);
     const b0 = (await p.evaluate(() => __t.burst())).used;
     // ждём касания (с запасом ×2): в нагруженном тестовом браузере кадров меньше — фиксированное время давало ложные провалы
     await p.clock.runFor(o.ms * .6);
@@ -34,7 +34,7 @@ const path = require("path");
   await p.click("#dock-btn"); await p.clock.runFor(150); await p.click("#m-assist"); await p.click("#dock-btn"); await p.clock.runFor(150);
   // подлёт к площадке «H» сбоку: касание крыши тоже мягкое
   // площадка, к которой с запада (25 м) свободный подлёт: по пути нет домов выше её крыши
-  const pd = await p.evaluate(() => { const H = __t.houses(); return __t.pads().find(pd => pd.h > 6 && !H.some(b => b.h > pd.h - .5 && b.x1 > pd.x - 27 && b.x0 < pd.x - 4 && b.z1 > pd.z - 3 && b.z0 < pd.z + 3)); });
+  const pd = await p.evaluate(() => { const H = __t.houses(); return __t.pads().find(pd => pd.h - __t.ground(pd.x, pd.z, -1).ter > 6 && !H.some(b => b.h > pd.h - .5 && b.x1 > pd.x - 27 && b.x0 < pd.x - 4 && b.z1 > pd.z - 3 && b.z0 < pd.z + 3)); });
   await p.evaluate(pd => { __t.teleport(pd.x - 25, pd.z, 0); __t.setGas(0); __t.setCar({ y: pd.h + 12, vy: 3, v: 9, roll: 0, om: 0, air: true }); }, pd);
   await p.clock.runFor(2500);
   for (let t = 2500; t < 8000 && (await p.evaluate(() => __t.car())).air; t += 250) await p.clock.runFor(250);
