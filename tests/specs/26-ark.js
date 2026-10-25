@@ -104,7 +104,8 @@ exports.run = async t => {
     UI.closePanel(); W.teleport('desk'); UI.openDesk();
     out.gateButtons = [...document.querySelectorAll('#shBody button')].map(b => b.textContent).filter(x => /Одобрить|Вернуть|Отклонить|Погрузиться/.test(x));
     const mine0 = S.mine.length; const run = S.runs[0];
-    UI.closePanel(); UI.startConveyor(run);
+    UI.closePanel(); const t0 = S.tasks.length; UI.approve(run);
+    out.planTasks = S.tasks.length - t0; out.approveMsg = S.msgs.some(m => /одобрен/.test(m.text));
     out.stations = await until(() => W.B.reactor.stations.length === 5, 5000);
     out.finished = await until(() => S.out, 60000);
     out.card = W.B.reactor.card.material.opacity >= 0 && W.B.reactor.card.visible;
@@ -122,8 +123,41 @@ exports.run = async t => {
   t.ok(path.done && path.pending === 'pending' && path.verdicts >= 20 && path.lamps === 8, 'the run goes through eight stages and the plan waits at the Human Gate', path);
   t.ok(path.noConveyorYet, 'without a human "yes" the conveyor does not start', path);
   t.ok(path.gateButtons.length === 4, 'the desk offers: dive into the variant, approve, send back, reject', path.gateButtons);
+  t.ok(path.planTasks === 4 && path.approveMsg, 'approving turns the plan into four tasks of the project and writes a message', { tasks: path.planTasks, msg: path.approveMsg });
   t.ok(path.stations && path.finished && path.card && path.saved && path.shelf >= 4, 'approved: a conveyor of 5 stations is built, it runs, the result is printed and shelved in "my library"', path);
   t.ok(path.outPrompt === 'output' && path.version === '1.1' && path.runsMem === 1 && path.outCleared, 'the result is picked up, rated 5: the reactor becomes v1.1', path);
+
+  // ---- the neon monitor: a pane of the glass turns into a screen --------------------------------------------------------------------------
+  const mon = await page.evaluate(async () => {
+    const { W, UI, A } = window.__ark, B = W.B, out = {}, wait = ms => new Promise(r => setTimeout(r, ms));
+    UI.closePanel(); W.teleport('desk'); __run(40, 0.1); out.k = B.monitor.k;
+    const px = B.monitor.canvas.getContext('2d').getImageData(0, 0, 1024, 560).data; let cy = 0, mg = 0;
+    for (let i = 0; i < px.length; i += 4) { if (px[i] < 120 && px[i + 1] > 200 && px[i + 2] > 230) cy++; if (px[i] > 220 && px[i + 1] < 120 && px[i + 2] > 200) mg++; }
+    out.neon = [cy, mg];
+    const v = new THREE.Vector3(); B.monitor.screen.getWorldPosition(v); W.faceTo(v.x, v.z); W.player.pitch = Math.atan2(v.y - 1.62, Math.hypot(v.x - W.player.x, v.z - W.player.z)); __run(6, 0.1);
+    out.prompt = W.prompt && W.prompt.type;
+    let got = null; A.hooks.onTask = t => { got = t.text; };
+    const S = UI.S(), n0 = S.tasks.length, ver0 = B.monitor.tex.version;
+    UI.addTask('Написать письмо партнёру'); out.tasks = S.tasks.length - n0; out.hook = got; out.msg = S.msgs[S.msgs.length - 1].text;
+    await wait(400); out.redrawn = B.monitor.tex.version > ver0;
+    UI.openMonitor(); const cb = document.querySelector('#shBody input[type=checkbox]'); cb.click(); out.done = S.tasks.some(t => t.done); UI.closePanel();
+    UI.openMonitor(); const field = document.querySelector('#shBody input[type=text]'); field.value = 'Вторая задача'; field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); out.typed = S.tasks.some(t => t.text === 'Вторая задача'); UI.closePanel();
+    W.setMonitor(false); __run(40, 0.1); out.off = B.monitor.k; W.setMonitor(true); __run(40, 0.1); out.on = B.monitor.k;
+    return out;
+  });
+  t.ok(mon.k > 0.95 && mon.neon[0] > 2000 && mon.neon[1] > 300, 'the west window behind the desk is a neon monitor: cyan and magenta letters on a dark screen', mon);
+  t.ok(mon.prompt === 'monitor', 'looking at the monitor names it', mon.prompt);
+  t.ok(mon.tasks === 1 && mon.hook === 'Написать письмо партнёру' && mon.msg.startsWith('Новая задача') && mon.redrawn && mon.done && mon.typed, 'a task is added (also with Enter), shown on the screen, done by a tick, and handed to Ark.hooks.onTask', mon);
+  t.ok(mon.off < 0.05 && mon.on > 0.95, 'the monitor turns back into a window with the landscape, and on again', { off: mon.off, on: mon.on });
+
+  // ---- a model built in Blender, loaded as glTF -------------------------------------------------------------------------------------------------
+  await page.waitForFunction(() => window.__ark.W.B.blenderLamp, null, { timeout: 30000 });
+  const lamp = await page.evaluate(() => {
+    const { W } = window.__ark, B = W.B, L = B.blenderLamp; let meshes = 0, tris = 0; const box = new THREE.Box3().setFromObject(L), names = [];
+    L.traverse(o => { if (o.isMesh) { meshes++; tris += o.geometry.index ? o.geometry.index.count / 3 : o.geometry.attributes.position.count / 3; names.push(o.material.name); } });
+    return { meshes, tris, height: +(box.max.y - box.min.y).toFixed(2), foot: +box.min.y.toFixed(2), names, oldHidden: B.deskLampOld.every(o => !o.visible) };
+  });
+  t.ok(lamp.meshes === 2 && lamp.tris > 200 && lamp.height > 0.35 && lamp.height < 0.45 && Math.abs(lamp.foot - 0.79) < 0.01 && lamp.oldHidden, 'the desk lamp comes from Blender (a glb file): two meshes, brass and green glass, standing on the desk', lamp);
 
   // ---- the landscapes behind the glass -------------------------------------------------------------------------------------------------
   await page.waitForFunction(() => window.__ark.W.land.textures[1] instanceof THREE.Texture, null, { timeout: 60000 });

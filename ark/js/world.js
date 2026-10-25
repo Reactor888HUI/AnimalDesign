@@ -10,7 +10,7 @@
     forest: [0xa9cde8, 0xfbeed0, 0x3a2a18], desert: [0x4f9cee, 0xfcebc4, 0xad7438], space: [0x02030a, 0x02030a, 0x080a14],
   };
   const SPOTS = {
-    room: { x: 3.4, z: 2.8, look: [0, -0.6] }, reactor: { x: 2.7, z: 2.3, look: [0, -0.6] }, desk: { x: -3.5, z: -1.6, look: [-6, -1.6] },
+    room: { x: 3.4, z: 2.8, look: [0, -0.6] }, reactor: { x: 2.7, z: 2.3, look: [0, -0.6] }, desk: { x: -3.5, z: -1.2, look: [-7, -0.4] },
     mine: { x: -4.6, z: 1.9, look: [-4.6, 5] }, hall: { x: 8.6, z: 0.6, look: [29, 0.6] }, books: { x: 15, z: -3.9, look: [15, -6.5] },
     search: { x: 8.9, z: 1.6, look: [10.4, 1.6] }, conveyor: { x: 4.7, z: 0.7, look: [0, 2.6] }, artifacts: { x: 10, z: 3.2, look: [18, 6.5] }, output: { x: 1.0, z: 2.9, look: [0, 4.4] },
   };
@@ -31,6 +31,16 @@
     // the environment gives soft reflections; not so much that the lamps stop mattering
     scene.traverse(o => { if (o.material) for (const m of [].concat(o.material)) if (m.isMeshStandardMaterial && m.envMapIntensity === 1) m.envMapIntensity = 0.35; });
     W.renderer = renderer; W.scene = scene; W.camera = camera;
+    // models built in Blender (tools/blender/*.py -> ark/models/*.glb) replace the primitives that stand in for them
+    const loader = T.GLTFLoader ? new T.GLTFLoader() : null;
+    W.loadModel = (url, place, done) => {
+      if (!loader) return;
+      loader.load(url, g => {
+        g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material && o.material.isMeshStandardMaterial && o.material.envMapIntensity === 1) o.material.envMapIntensity = 0.6; } });
+        place(g.scene); scene.add(g.scene); if (done) done(g.scene);
+      }, undefined, () => console.warn('model not loaded: ' + url));
+    };
+    W.loadModel('models/desk_lamp.glb', m => m.position.set(-5.4, 0.79, -1.0), m => { B.blenderLamp = m; for (const o of B.deskLampOld || []) o.visible = false; });
 
     // ---- the sky colours and the light of the landscape ----------------------------------------------------
     const skyPos = B.sky.geometry.attributes.position, skyCol = B.sky.geometry.attributes.color, c1 = new T.Color(), c2 = new T.Color();
@@ -189,9 +199,11 @@
     const ray = new T.Raycaster(), fwd = new T.Vector3(), ctr = new T.Vector2(0, 0);
     let pickT = 0;
     function pick() {
-      camera.updateMatrixWorld(); ray.setFromCamera(ctr, camera); ray.far = 3.6; camera.getWorldDirection(fwd);
-      const hits = ray.intersectObjects([B.hallBooks, B.mineBooks].concat(B.artMeshes), false);
+      camera.updateMatrixWorld(); ray.setFromCamera(ctr, camera); ray.far = 5.0; camera.getWorldDirection(fwd);   // (the big screen is seen from further than a book can be reached)
+      const hits = ray.intersectObjects([B.hallBooks, B.mineBooks, B.monitor.screen].concat(B.artMeshes), false);
       for (const h of hits) {
+        if (h.object === B.monitor.screen) { if (B.monitor.k > 0.3) return { type: 'monitor', text: 'Монитор · задачи и сообщения', act: 'открыть' }; continue; }
+        if (h.distance > 3.6) continue;
         if (h.object === B.hallBooks || h.object === B.mineBooks) {
           const item = (h.object === B.hallBooks ? hallItems : mineItems)[h.instanceId];
           if (!item || item.taken) continue;
@@ -210,6 +222,8 @@
       }
       return best ? { type: best.key, text: best.text, act: best.key === 'output' ? 'забрать результат' : 'открыть' } : null;
     }
+    W.setMonitor = on => { B.monitor.want = on ? 1 : 0; };
+    W.monitorDraw = d => B.monitor.draw(d);
     W.interact = function () { if (!W.enabled || !W.prompt) return false; if (hooks.onInteract) hooks.onInteract(W.prompt); return true; };
     W.teleport = function (name, fromX, fromZ) {
       const s = SPOTS[name]; if (!s) return false;

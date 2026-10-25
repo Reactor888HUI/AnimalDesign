@@ -25,7 +25,7 @@
   ];
   function load() {
     let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
-    s = Object.assign({ mine: [], bag: [], runs: [], out: null, seen: false }, s || {});
+    s = Object.assign({ mine: [], bag: [], runs: [], out: null, seen: false, tasks: [], msgs: [], monitor: true }, s || {});
     if (!s.mine.length && !s.seeded) { s.mine = STARTER.map((b, i) => ({ id: 'm' + i, kind: 'note', title: b[0], author: b[1], tags: b[2], blurb: b[3], text: b[3], mineBook: true })); s.seeded = true; }
     return s;
   }
@@ -126,6 +126,7 @@
     else if (p.type === 'desk') openDesk();
     else if (p.type === 'search') openSearch();
     else if (p.type === 'output') openResult();
+    else if (p.type === 'monitor') openMonitor();
   }
 
   // ---- an artifact card -----------------------------------------------------------------------------------------------------------
@@ -237,10 +238,16 @@
       draw();
     }, { wide: true, onClose: () => { UI.redrawDesk = null; } });
   }
-  function approve(run) { run.status = 'approved'; save(); startConveyor(run); }
-  function reject(run) { run.status = 'rejected'; const mem = R.loadMemory(); R.learn(mem, run, 2); R.saveMemory(mem); save(); toast('План отклонён. Реактор учтёт это'); if (UI.redrawDesk) UI.redrawDesk(); }
+  function approve(run) {
+    run.status = 'approved'; save();
+    msg('План одобрен человеком: ' + run.plan.title, 'ok');
+    for (const h of run.plan.horizons) addTask(h.name + ': ' + h.steps[0], { src: 'plan', run: run.id }, true);   // the plan becomes tasks of the project
+    startConveyor(run);
+  }
+  UI.approve = approve;
+  function reject(run) { run.status = 'rejected'; const mem = R.loadMemory(); R.learn(mem, run, 2); R.saveMemory(mem); save(); msg('План отклонён: ' + run.plan.title, 'warn'); toast('План отклонён. Реактор учтёт это'); if (UI.redrawDesk) UI.redrawDesk(); }
   function sendBack(run, note) {
-    run.status = 'returned'; save();
+    run.status = 'returned'; save(); msg('План возвращён на доработку: ' + run.plan.title, 'warn');
     RX.items = (run.items || []).slice(); if (note.trim()) RX.items.push({ id: 'n' + Date.now(), kind: 'thought', title: 'Правка человека', text: note.trim() });
     RX.phase = 'load'; closePanel(); W.teleport('reactor'); openReactor();
     toast('План вернулся в реактор вместе с твоим комментарием');
@@ -383,6 +390,7 @@
     run.plan = R.plan(run.winners[0], run.frame, col, sel); run.selfcheck = R.selfCheck(run.plan);
     run.conveyor = R.conveyor(run.plan); run.package = R.packageText(run.plan, run.conveyor, sel, run.frame);
     rlog('План готов: ' + run.plan.title + (run.selfcheck.ok ? '' : ' · самоисправлений: ' + run.selfcheck.patches.length), 'ok');
+    msg('План готов и ждёт решения: ' + run.plan.title, 'info');
     RX.run = run; redrawReactor(); await sleep(900);
     // 8 gate: it waits for a person
     setStage(7);
@@ -424,6 +432,7 @@
     S.mine.push(book); byId.set(book.id, book); W.addMine(book);
     run.status = 'done'; S.out = run.id; save();
     bar.hidden = true; $('beltFill').style.width = '100%';
+    msg('Конвейер ' + run.conveyor.name + ' завершён. Результат у стола', 'ok');
     toast('Готово. Результат лежит у конвейера: подойди и нажми E', 4200);
   }
   UI.startConveyor = startConveyor;
@@ -440,7 +449,7 @@
       b.append(stars, msg, el('div', { class: 'row' }, btn('Оценить', () => {
         if (!rating) { toast('Выбери оценку от 1 до 5'); return; }
         const mem = R.loadMemory(), line = R.learn(mem, run, rating); R.saveMemory(mem); S.out = null; save(); W.B.reactor.clearCard();
-        msg.textContent = line; msg.className = 'ok';
+        msg.textContent = line; msg.className = 'ok'; UI.msg(line, 'info');
       }, 'go'), btn('Закрыть', () => closePanel()), btn('Скопировать текст', () => { try { navigator.clipboard.writeText(run.package); toast('Скопировано'); } catch (e) { toast('Не удалось скопировать'); } })),
         el('pre', { class: 'log', style: 'white-space:pre-wrap;max-height:none' }, run.package));
     }, { wide: true });
@@ -481,6 +490,7 @@
           item('Главная комната', 'панорамные окна, стол, реактор', () => go('room')),
           item('Знаниевый Реактор', 'загрузить идеи и книги, получить план', () => go('reactor', openReactor)),
           item('Стол · Человеческий гейт', 'решить судьбу плана: ' + S.runs.filter(r => r.status === 'pending').length + ' ждут', () => go('desk', openDesk)),
+          item('Монитор проекта', 'неоновый экран: задачи и сообщения', () => go('desk', openMonitor)),
           item('Моя библиотека', 'твои заметки и результаты реактора', () => go('mine')),
           item('Библиотека «Ковчег»', 'книги слева, артефакты справа', () => go('hall')),
           item('Читальный зал · поиск', 'мгновенно найти книгу, новость, заметку', () => go('search', openSearch)),
@@ -508,6 +518,47 @@
     S.seen = true; save();
   }
 
+  // ---- the project: tasks and messages, shown on the neon monitor -------------------------------------------------------------------------------------------------
+  // Tasks typed here are the project's tasks. When a real back end exists, set Ark.hooks.onTask = task => fetch(...) and every new task goes there too.
+  A.hooks = A.hooks || {};
+  let monT = 0;
+  function refreshMonitor() {
+    clearTimeout(monT);
+    monT = setTimeout(() => { const mem = R.loadMemory(); W.monitorDraw({ tasks: S.tasks, msgs: S.msgs.slice().reverse(), version: mem.version.join('.'), pending: S.runs.filter(r => r.status === 'pending').length, hint: S.runs.some(r => r.status === 'pending') ? 'У стола ждёт решения план' : 'E у экрана: добавить задачу' }); }, 120);
+  }
+  function msg(text, kind) { S.msgs.push({ ts: Date.now(), text, kind: kind || 'info' }); if (S.msgs.length > 40) S.msgs.shift(); save(); refreshMonitor(); }
+  function addTask(text, o, quiet) {
+    text = String(text || '').trim(); if (!text) return null;
+    const task = Object.assign({ id: 't' + Date.now() + Math.random().toString(36).slice(2, 5), text, done: false, ts: Date.now() }, o || {});
+    S.tasks.push(task); if (S.tasks.length > 200) S.tasks.shift(); save();
+    if (typeof A.hooks.onTask === 'function') { try { A.hooks.onTask(task); } catch (e) { msg('Задача не ушла во внешний сервис', 'bad'); } }
+    if (!quiet) msg('Новая задача: ' + text, 'ok'); else refreshMonitor();
+    return task;
+  }
+  function openMonitor() {
+    openPanel('Монитор проекта', b => {
+      const draw = () => {
+        b.textContent = '';
+        const inp = el('input', { type: 'text', placeholder: 'Новая задача для проекта…', autofocus: true, 'aria-label': 'Новая задача' });
+        const add = () => { if (addTask(inp.value)) { draw(); const n = $('shBody').querySelector('input'); if (n && !coarse) n.focus(); } };
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+        b.append(el('p', { class: 'dim' }, 'Окно за столом превращается в неоновый монитор. Задачи и сообщения проекта видны на нём издалека.'),
+          el('div', { class: 'row' }, inp, btn('Добавить', add, 'go')),
+          el('div', { class: 'row' }, btn(W.B.monitor.want ? 'Показать пейзаж вместо монитора' : 'Включить монитор', () => { S.monitor = !S.monitor; W.setMonitor(S.monitor); save(); draw(); }), btn('Убрать выполненные', () => { S.tasks = S.tasks.filter(t => !t.done); save(); refreshMonitor(); draw(); })));
+        b.append(el('h3', null, 'Задачи (' + S.tasks.filter(t => !t.done).length + ' открыто)'));
+        if (!S.tasks.length) b.append(el('p', { class: 'dim' }, 'Пока нет. Напиши первую выше, а одобренный план реактора сам разложится на задачи.'));
+        for (const t of S.tasks.slice().reverse().slice(0, 60)) {
+          const chk = el('input', { type: 'checkbox', 'aria-label': 'Готово' }); chk.checked = t.done;
+          chk.addEventListener('change', () => { t.done = chk.checked; save(); if (t.done) msg('Задача выполнена: ' + t.text, 'ok'); else refreshMonitor(); draw(); });
+          b.append(el('div', { class: 'res' }, chk, el('div', null, el('b', { style: t.done ? 'text-decoration:line-through;opacity:.6' : '' }, t.text), t.src === 'plan' ? el('span', { class: 'badge' }, 'из плана') : null),
+            el('div', { class: 'btns' }, btn('В реактор', () => { RX.items.push({ id: 'u' + Date.now(), kind: 'idea', text: t.text }); toast('Задача лежит в реакторе'); }), btn('✕', () => { S.tasks = S.tasks.filter(x => x !== t); save(); refreshMonitor(); draw(); }, '', { 'aria-label': 'Удалить' })), el('div', { class: 'meta' }, new Date(t.ts).toLocaleString('ru-RU'))));
+        }
+        b.append(el('h3', null, 'Сообщения'), el('div', { class: 'log' }, S.msgs.slice(-12).reverse().map(m => el('div', { class: m.kind === 'ok' ? 'ok' : m.kind === 'bad' ? 'bad' : m.kind === 'warn' ? 'gold' : '' }, new Date(m.ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + '  ' + m.text))));
+      };
+      draw();
+    });
+  }
+
   // ---- touch controls: a joystick and an action button -------------------------------------------------------------------------------------------------------------
   if (coarse) {
     $('joy').hidden = false; $('actBtn').hidden = false;
@@ -521,7 +572,10 @@
   }
 
   // ---- start ---------------------------------------------------------------------------------------------------------------------------------------------------------------
-  UI.S = () => S; UI.openBag = openBag; UI.openMenu = openMenu; UI.openDesk = openDesk; UI.openResult = openResult; UI.openArtifact = openArtifact; UI.showOnShelf = showOnShelf; UI.byId = byId; UI.catalog = catalog; UI.openHelp = openHelp;
+  UI.S = () => S;
+  UI.msg = (t, k) => msg(t, k); UI.addTask = (t, o) => addTask(t, o); UI.openMonitor = openMonitor; UI.refreshMonitor = () => refreshMonitor(); UI.openBag = openBag; UI.openMenu = openMenu; UI.openDesk = openDesk; UI.openResult = openResult; UI.openArtifact = openArtifact; UI.showOnShelf = showOnShelf; UI.byId = byId; UI.catalog = catalog; UI.openHelp = openHelp;
+  W.setMonitor(S.monitor); if (!S.msgs.length) { S.msgs.push({ ts: Date.now(), text: 'Монитор включён. Пиши задачи проекта', kind: 'info' }); save(); }
+  refreshMonitor();
   window.__ark = { W, A, UI };
   setTimeout(() => $('load').classList.add('off'), 150);
   $('landName').textContent = W.landscapeName();

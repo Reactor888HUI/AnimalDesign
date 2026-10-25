@@ -47,7 +47,47 @@
       pane.renderOrder = 5;
     }
     glassWall('x', -5, -7, 7); glassWall('z', -7, -5, 5);
-    // the terrace outside
+
+    // ---- the monitor: the west glass behind the desk (two panes wide) turns into a neon screen ------------------------
+    // the messages and the tasks of the project are written on it in a large, plain monospace font
+    const MW = 4.8, MH = 1.75, CW = 1536, CH = 560;
+    const mon = B.monitor = { want: 1, k: 0, flash: 0, canvas: TX.canvas(CW, CH) };
+    mon.ctx = mon.canvas.getContext('2d'); mon.tex = TX.tex(mon.canvas); mon.tex.anisotropy = 8;
+    const MG = new T.Group(); MG.position.set(-6.93, 2.2, 0); MG.rotation.y = Math.PI / 2; room.add(MG);
+    mon.screen = mesh(MG, new T.PlaneGeometry(MW, MH), new T.MeshBasicMaterial({ map: mon.tex, transparent: true, opacity: 0, toneMapped: false }), 0, 0, 0); mon.screen.renderOrder = 8;
+    mon.mats = [];
+    const frame = (w, h, x, y, c, op) => { const m = new T.MeshBasicMaterial({ color: c, toneMapped: false, transparent: true, opacity: 0, blending: op < 1 ? T.AdditiveBlending : T.NormalBlending, depthWrite: false }); const b = box(MG, w, h, 0.03, m, x, y, 0.005); b.renderOrder = 9; mon.mats.push({ m, op }); };
+    for (const [c, th, op] of [[0x35e6ff, 0.04, 1], [0x35e6ff, 0.18, 0.16]]) { frame(MW + 0.06 + th, th, 0, MH / 2 + th / 2, c, op); frame(MW + 0.06 + th, th, 0, -MH / 2 - th / 2, c, op); }
+    for (const [c, th, op] of [[0xff3df0, 0.04, 1], [0xff3df0, 0.18, 0.16]]) { frame(th, MH + 0.06 + th, -MW / 2 - th / 2 - 0.03, 0, c, op); frame(th, MH + 0.06 + th, MW / 2 + th / 2 + 0.03, 0, c, op); }
+    mon.light = new T.PointLight(0x40e0ff, 0, 7, 2); mon.light.position.set(-5.4, 2.3, 0); scene.add(mon.light);
+    const MONO = '"DejaVu Sans Mono", Consolas, Menlo, "Liberation Mono", monospace';
+    const neonText = (g, txt, x, y, c, size, glow) => { g.font = '700 ' + size + 'px ' + MONO; g.shadowColor = c; g.shadowBlur = glow === undefined ? 14 : glow; g.fillStyle = c; g.fillText(txt, x, y); g.shadowBlur = 0; };
+    const clip = (g, txt, w) => { if (g.measureText(txt).width <= w) return txt; while (txt.length > 1 && g.measureText(txt + '…').width > w) txt = txt.slice(0, -1); return txt + '…'; };
+    const hhmm = ts => { const d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+    // d: { tasks: [{ text, done }], msgs: [{ ts, text, kind }], version, pending, hint }
+    mon.draw = function (d) {
+      const g = mon.ctx, KC = { ok: '#7dffb0', warn: '#ffd36a', bad: '#ff8686', info: '#d6f2ff' };
+      g.clearRect(0, 0, CW, CH); g.fillStyle = '#04060d'; g.fillRect(0, 0, CW, CH);
+      g.fillStyle = 'rgba(80,200,255,.05)'; for (let y = 0; y < CH; y += 4) g.fillRect(0, y, CW, 1);
+      g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+      neonText(g, 'КОВЧЕГ · ПРОЕКТ', 28, 52, '#35e6ff', 42); g.textAlign = 'right'; neonText(g, hhmm(Date.now()), CW - 28, 52, '#ff3df0', 42); g.textAlign = 'left';
+      g.fillStyle = '#35e6ff'; g.fillRect(28, 70, CW - 56, 3);
+      const open = d.tasks.filter(t => !t.done), done = d.tasks.filter(t => t.done), list = open.concat(done);
+      neonText(g, 'ЗАДАЧИ ' + open.length + (done.length ? ' · готово ' + done.length : ''), 28, 118, '#ff3df0', 30, 10);
+      g.font = '700 33px ' + MONO;
+      if (!list.length) neonText(g, 'пока пусто', 28, 176, '#7f90a8', 33, 0);
+      list.slice(0, 7).forEach((t, i) => { const y = 174 + i * 51; neonText(g, t.done ? '▣' : '▢', 28, y, t.done ? '#7dffb0' : '#ff3df0', 33, 8); g.font = '700 33px ' + MONO; g.fillStyle = t.done ? '#7dffb0' : '#ffffff'; g.globalAlpha = t.done ? 0.7 : 1; g.fillText(clip(g, t.text, 650), 76, y); g.globalAlpha = 1; });
+      g.fillStyle = '#35e6ff'; g.fillRect(760, 92, 3, 390);
+      neonText(g, 'СООБЩЕНИЯ', 796, 118, '#35e6ff', 30, 10);
+      d.msgs.slice(0, 7).forEach((m, i) => { const y = 174 + i * 51, c = KC[m.kind] || KC.info; g.font = '700 25px ' + MONO; g.fillStyle = '#8aa0bd'; g.fillText(hhmm(m.ts), 796, y); g.font = '700 31px ' + MONO; g.fillStyle = c; g.shadowColor = c; g.shadowBlur = i === 0 ? 9 : 0; g.fillText(clip(g, m.text, 600), 892, y); g.shadowBlur = 0; });
+      g.fillStyle = '#0b1830'; g.fillRect(0, CH - 66, CW, 66); g.fillStyle = '#35e6ff'; g.fillRect(0, CH - 66, CW, 3);
+      g.font = '700 28px ' + MONO; g.fillStyle = '#a6eaff'; g.fillText(clip(g, d.hint || 'E у экрана: добавить задачу', 900), 28, CH - 24);
+      g.textAlign = 'right'; g.fillStyle = '#ff9af5'; g.fillText('реактор v' + (d.version || '1.0') + (d.pending ? ' · ждут решения: ' + d.pending : ''), CW - 28, CH - 24); g.textAlign = 'left';
+      mon.tex.needsUpdate = true; mon.flash = 1;
+    };
+    mon.draw({ tasks: [], msgs: [{ ts: Date.now(), text: 'Монитор включается…', kind: 'info' }] });
+
+        // the terrace outside
     const deck = M(0xffffff, 0.8, 0, { map: TX.wood([5, 3]) });
     mesh(room, new T.PlaneGeometry(21, 8), deck, -3.5, -0.02, -9, { rx: -Math.PI / 2 }).receiveShadow = true;
     mesh(room, new T.PlaneGeometry(8, 10), deck, -11, -0.02, 0, { rx: -Math.PI / 2 }).receiveShadow = true;
@@ -67,7 +107,8 @@
     const lap = new T.Group(); lap.position.set(0.05, 0.79, -0.2); lap.rotation.y = Math.PI / 2; desk.add(lap);
     box(lap, 0.34, 0.02, 0.24, steel, 0, 0, 0); const scr = box(lap, 0.34, 0.22, 0.015, enamel, 0, 0.12, -0.11, { rx: -0.25 });
     B.deskScreen = mesh(lap, new T.PlaneGeometry(0.3, 0.18), new T.MeshBasicMaterial({ map: TX.plate('ЧЕЛОВЕЧЕСКИЙ\nГЕЙТ', { w: 256, h: 160, bg: '#10243a', fg: '#7fe0b0', font: 'Arial, sans-serif', size: 30 }), toneMapped: false }), 0, 0.12, -0.1, { rx: -0.25 });
-    cyl(desk, 0.05, 0.07, 0.03, brass, 0.3, 0.8, 0.6); cyl(desk, 0.01, 0.01, 0.3, brass, 0.3, 0.95, 0.6); cyl(desk, 0.02, 0.12, 0.12, M(0x1e6a46, 0.4, 0.2), 0.28, 1.15, 0.6, 16);
+    // (a lamp from primitives; when the one built in Blender has loaded, world.js hides these three)
+    B.deskLampOld = [cyl(desk, 0.05, 0.07, 0.03, brass, 0.3, 0.8, 0.6), cyl(desk, 0.01, 0.01, 0.3, brass, 0.3, 0.95, 0.6), cyl(desk, 0.02, 0.12, 0.12, M(0x1e6a46, 0.4, 0.2), 0.28, 1.15, 0.6, 16)];
     for (let i = 0; i < 4; i++) box(desk, 0.22 - i * 0.01, 0.035, 0.16, M(R(i + 3)() * 0xffffff | 0x404040, 0.8), -0.2, 0.815 + i * 0.036, 0.55, { ry: i * 0.3 });
     cyl(desk, 0.04, 0.035, 0.09, M(0xe8e0d0, 0.5), -0.25, 0.83, -0.5, 14);
     const chair = new T.Group(); chair.position.set(-4.7, 0, -1.6); room.add(chair);
@@ -419,6 +460,9 @@
     const tmp = new T.Vector3(), up = new T.Vector3();
     B.update = function (dt, t, cam) {
       for (const u of B.updaters) u(dt, t);
+      // the monitor: the pane turns into a screen and back
+      { const k0 = mon.k; mon.k += (mon.want - mon.k) * (1 - Math.exp(-2.2 * dt)); if (Math.abs(mon.want - mon.k) < 0.002) mon.k = mon.want; mon.flash *= Math.exp(-2.5 * dt);
+        if (mon.k !== k0 || mon.flash > 0.01) { mon.screen.material.opacity = Math.min(1, mon.k * 1.15); for (const f of mon.mats) f.m.opacity = mon.k * f.op * (f.op < 1 ? 1 + mon.flash * 1.5 : 1); mon.light.intensity = mon.k * (0.7 + 0.8 * mon.flash); mon.screen.visible = mon.k > 0.01; } }
       // the shelf-door
       const D = B.door; D.open += (D.want - D.open) * (1 - Math.exp(-2.4 * dt));
       D.group.position.z = D.open * 3.3; D.block.z0 = -1.7 + D.open * 3.3; D.block.z1 = 1.7 + D.open * 3.3; D.block.off = D.open > 0.9;
