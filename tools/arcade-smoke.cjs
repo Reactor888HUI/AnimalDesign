@@ -25,8 +25,10 @@ const PAGE = "file://" + path.resolve(__dirname, "../arcade/index.html");
 
   // джойстик: зажать в центре и потянуть вверх — газ
   await p.mouse.move(200, 500); await p.mouse.down(); await p.mouse.move(200, 440, { steps: 4 });
-  await p.clock.runFor(3000);
-  const speed = +(await p.textContent("#h-speed"));
+  // ждём разгона до 20 км/ч не дольше 12 с: на «ненастоящих» часах кадры приходят редко (программная отрисовка),
+  // а шаг кадра в игре ограничен 0,1 с — за фиксированные 3 с игра успевала прожить то больше, то меньше
+  let speed = 0;
+  for (let t = 0; t < 12000 && speed <= 20; t += 500) { await p.clock.runFor(500); speed = +(await p.textContent("#h-speed")); }
   await p.mouse.move(245, 445, { steps: 3 }); await p.clock.runFor(500); await shot("drive");
   await p.mouse.up();
 
