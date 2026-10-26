@@ -46,6 +46,14 @@
       Promise.all([ao('models/ao_main.jpg'), ao('models/ao_hall.jpg')]).then(([m, h]) => W.loadModel('models/rooms.glb', root => B.useRooms(root, { main: m, hall: h }), root => { B.roomsRoot = root; }))
         .catch(() => console.warn('the rooms from Blender did not load: the primitives stay'));
     }
+    // the body of the reactor, built in Blender, with its own baked occlusion
+    {
+      const tl = new T.TextureLoader();
+      tl.load('models/ao_reactor.jpg', t => {
+        t.flipY = false; t.colorSpace = T.NoColorSpace; t.channel = 1;
+        W.loadModel('models/reactor.glb', root => { root.position.copy(B.reactor.group.position); B.useReactor(root, t); }, root => { B.reactorRoot = root; });
+      }, undefined, () => console.warn('the reactor from Blender did not load: the primitives stay'));
+    }
     W.loadModel('models/desk_lamp.glb', m => m.position.set(-5.4, 0.79, -1.0), m => { B.blenderLamp = m; for (const o of B.deskLampOld || []) o.visible = false; });
 
     // ---- the sky colours and the light of the landscape ----------------------------------------------------

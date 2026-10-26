@@ -155,13 +155,15 @@
     // ======================================================== THE REACTOR ===================================
     const rx = 0, rz = -0.6;
     const rg = new T.Group(); rg.position.set(rx, 0, rz); room.add(rg);
-    cyl(rg, 1.15, 1.25, 0.3, steel, 0, 0.15, 0, 40); cyl(rg, 1.0, 1.05, 0.1, brass, 0, 0.35, 0, 40);
+    // the body of the reactor is built in Blender (ark/models/reactor.glb); these primitives stand in until it has loaded
+    const body = B.reactorOld = [];
+    body.push(cyl(rg, 1.15, 1.25, 0.3, steel, 0, 0.15, 0, 40), cyl(rg, 1.0, 1.05, 0.1, brass, 0, 0.35, 0, 40));
     const tubeMat = new T.MeshStandardMaterial({ color: 0xbfe6ff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.16, side: T.DoubleSide, depthWrite: false });
     const tube = cyl(rg, 0.78, 0.78, 2.5, tubeMat, 0, 1.65, 0, 40, {}); tube.renderOrder = 6;
-    cyl(rg, 0.9, 0.9, 0.18, steel, 0, 2.99, 0, 40); cyl(rg, 0.82, 0.82, 0.08, brass, 0, 3.1, 0, 40);
-    const hopper = mesh(rg, new T.CylinderGeometry(0.95, 0.32, 0.5, 32, 1, true), M(0x59616e, 0.35, 0.85, { side: T.DoubleSide }), 0, 3.4, 0);
-    mesh(rg, new T.TorusGeometry(0.95, 0.03, 8, 40), brass, 0, 3.65, 0, { rx: Math.PI / 2 });
-    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; cyl(rg, 0.035, 0.035, 2.5, brass, Math.cos(a) * 0.8, 1.65, Math.sin(a) * 0.8, 8); }
+    body.push(cyl(rg, 0.9, 0.9, 0.18, steel, 0, 2.99, 0, 40), cyl(rg, 0.82, 0.82, 0.08, brass, 0, 3.1, 0, 40));
+    body.push(mesh(rg, new T.CylinderGeometry(0.95, 0.32, 0.5, 32, 1, true), M(0x59616e, 0.35, 0.85, { side: T.DoubleSide }), 0, 3.4, 0));
+    body.push(mesh(rg, new T.TorusGeometry(0.95, 0.03, 8, 40), brass, 0, 3.65, 0, { rx: Math.PI / 2 }));
+    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.283; body.push(cyl(rg, 0.035, 0.035, 2.5, brass, Math.cos(a) * 0.8, 1.65, Math.sin(a) * 0.8, 8)); }
     const coreMat = new T.MeshBasicMaterial({ color: 0x6fd3ff, toneMapped: false }), core = mesh(rg, new T.IcosahedronGeometry(0.3, 1), coreMat, 0, 1.65, 0);
     const wireMat = new T.MeshBasicMaterial({ color: 0x6fd3ff, wireframe: true, transparent: true, opacity: 0.5, toneMapped: false }), wire = mesh(rg, new T.IcosahedronGeometry(0.46, 1), wireMat, 0, 1.65, 0);
     const ringMat = new T.MeshBasicMaterial({ color: 0x6fd3ff, toneMapped: false }), rings = [];
@@ -486,6 +488,21 @@
       });
       archA.visible = false; archH.visible = false;
       B.roomsMeshes = meshes;
+    };
+
+    // the reactor made in Blender: the body (plinth, columns, cap, hopper, pipe, gauge) with its baked occlusion replaces the primitives
+    B.useReactor = function (root, ao) {
+      const look = { 'steel.reactor': () => steel.clone(), 'brass.reactor': () => brass.clone(), 'dark.reactor': () => M(0x24272e, 0.55, 0.6), 'dial.reactor': () => M(0xf2ecd6, 0.6) };
+      let meshes = 0;
+      root.traverse(o => {
+        if (!o.isMesh) return;
+        const name = o.material.name, make = look[name];
+        if (!make) return;
+        const m = make(); m.name = name; m.aoMap = ao; m.aoMapIntensity = 1;
+        o.material = m; meshes++; o.castShadow = true; o.receiveShadow = true;
+      });
+      for (const o of B.reactorOld) o.visible = false;
+      B.reactorMeshes = meshes;
     };
 
     // ---- per-frame --------------------------------------------------------------------------------------------------

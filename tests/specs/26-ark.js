@@ -184,6 +184,24 @@ exports.run = async t => {
   t.ok(rm.hall[0] <= 7.2 && rm.hall[0] > 7.0 && rm.hall[1] >= 29.0 && rm.hall[1] < 29.8 && rm.hall[2] <= -6.5 && rm.hall[2] > -7.0 && rm.hall[3] >= 6.5 && rm.hall[3] < 7.0 && rm.hall[4] >= 4.6 && rm.hall[4] < 5.0, 'the hall holds the walking area (22 x 13 m) with its trim outside it', rm.hall);
   t.ok(rm.door.every(d => d === null) && rm.wall.every(d => d !== null && d < 2.5) && Math.abs(rm.floors[0] - 2) < 0.05 && Math.abs(rm.floors[1] - 2) < 0.05 && Math.abs(rm.ceilings[0] - 1.8) < 0.1 && Math.abs(rm.ceilings[1] - 2.6) < 0.1, 'the doorway is open at |z| < 1.3 and walled beside it; the floors are at 0, the ceilings at 3.8 and 4.6', rm);
 
+  // ---- the body of the reactor, built in Blender ----------------------------------------------------------------------------------
+  const rb = await page.evaluate(() => {
+    const W = window.__ark.W, B = W.B, T = THREE, out = {};
+    out.loaded = B.reactorMeshes; out.oldHidden = B.reactorOld.every(o => !o.visible);
+    const root = B.reactorRoot; root.updateMatrixWorld(true);
+    const box = new T.Box3().setFromObject(root); out.box = [box.min.x, box.max.x, box.min.y, box.max.y, box.min.z, box.max.z].map(v => +v.toFixed(2));
+    let ao = 0, std = 0, names = []; root.traverse(o => { if (o.isMesh) { std++; names.push(o.material.name); if (o.material.aoMap && o.material.aoMap.channel === 1 && o.geometry.attributes.uv1) ao++; } });
+    out.std = std; out.ao = ao; out.names = names.sort();
+    out.live = [!!B.reactor.group.children.find(c => c.isPoints), B.reactor.group.children.some(c => c.isPointLight)];
+    // the live parts still follow the stage: the core takes the colour of the stage
+    B.reactor.setStage(3, 0xff8844, 2); for (let i = 0; i < 40; i++) B.update(0.1, i * 0.1, W.camera);
+    out.colour = B.reactor.color.getHex();
+    return out;
+  });
+  t.ok(rb.loaded === 4 && rb.oldHidden && rb.std === 4 && rb.ao === 4 && rb.names.join() === 'brass.reactor,dark.reactor,dial.reactor,steel.reactor', 'the body of the reactor comes from Blender (four materials, each with the baked occlusion); the primitives are hidden', rb);
+  t.ok(rb.box[0] > -1.4 && rb.box[1] < 1.4 && rb.box[2] >= -0.01 && rb.box[3] > 3.6 && rb.box[3] < 3.8 && rb.box[4] > -1.95 && rb.box[5] < 0.75, 'it stands on the floor inside the walking box of the reactor (x ±1.3, z -1.9..0.7), 3.7 m high', rb.box);
+  t.ok(rb.live[0] && rb.live[1] && rb.colour === 0xff8844, 'the particles, the light and the core still live in the page and follow the stage', rb);
+
   // ---- the landscapes behind the glass -------------------------------------------------------------------------------------------------
   await page.waitForFunction(() => window.__ark.W.land.textures[1] instanceof THREE.Texture, null, { timeout: 60000 });
   const land = await page.evaluate(() => {
