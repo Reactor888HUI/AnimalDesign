@@ -47,14 +47,14 @@
 </main>
 <noscript><p class="ns">Для «Ковчега» нужен JavaScript и WebGL.</p></noscript>
 
-<script src="../runner/vendor/three.min.js"></script>
-<script src="../runner/vendor/post/RoomEnvironment.js"></script>
-<script src="../runner/vendor/GLTFLoader.js"></script>
-<script src="js/data.js"></script>
-<script src="js/engine.js"></script>
-<script src="js/textures.js"></script>
-<script src="js/build.js"></script>
-<script src="js/world.js"></script>
-<script src="js/ui.js"></script>
+<!-- Three.js 0.186 as modules (ark/vendor/three); our files are modules too, run in this order, and share the global Ark -->
+<script type="importmap">{ "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } }</script>
+<script type="module" src="js/three-global.js"></script>
+<script type="module" src="js/data.js"></script>
+<script type="module" src="js/engine.js"></script>
+<script type="module" src="js/textures.js"></script>
+<script type="module" src="js/build.js"></script>
+<script type="module" src="js/world.js"></script>
+<script type="module" src="js/ui.js"></script>
 </body>
 </html>

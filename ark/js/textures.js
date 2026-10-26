@@ -8,7 +8,7 @@
   const canvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
   const tex = (c, rep, srgb) => {
     const t = new T.CanvasTexture(c);
-    if (srgb !== false) t.encoding = T.sRGBEncoding;
+    if (srgb !== false) t.colorSpace = T.SRGBColorSpace;
     t.anisotropy = 4;
     if (rep) { t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(rep[0], rep[1]); }
     return t;

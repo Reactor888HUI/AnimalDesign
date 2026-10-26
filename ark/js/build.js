@@ -59,7 +59,7 @@
     const frame = (w, h, x, y, c, op) => { const m = new T.MeshBasicMaterial({ color: c, toneMapped: false, transparent: true, opacity: 0, blending: op < 1 ? T.AdditiveBlending : T.NormalBlending, depthWrite: false }); const b = box(MG, w, h, 0.03, m, x, y, 0.005); b.renderOrder = 9; mon.mats.push({ m, op }); };
     for (const [c, th, op] of [[0x35e6ff, 0.04, 1], [0x35e6ff, 0.18, 0.16]]) { frame(MW + 0.06 + th, th, 0, MH / 2 + th / 2, c, op); frame(MW + 0.06 + th, th, 0, -MH / 2 - th / 2, c, op); }
     for (const [c, th, op] of [[0xff3df0, 0.04, 1], [0xff3df0, 0.18, 0.16]]) { frame(th, MH + 0.06 + th, -MW / 2 - th / 2 - 0.03, 0, c, op); frame(th, MH + 0.06 + th, MW / 2 + th / 2 + 0.03, 0, c, op); }
-    mon.light = new T.PointLight(0x40e0ff, 0, 7, 2); mon.light.position.set(-5.4, 2.3, 0); scene.add(mon.light);
+    mon.light = new T.PointLight(0x40e0ff, 0, 7, 0); mon.light.position.set(-5.4, 2.3, 0); scene.add(mon.light);
     const MONO = '"DejaVu Sans Mono", Consolas, Menlo, "Liberation Mono", monospace';
     const neonText = (g, txt, x, y, c, size, glow) => { g.font = '700 ' + size + 'px ' + MONO; g.shadowColor = c; g.shadowBlur = glow === undefined ? 14 : glow; g.fillStyle = c; g.fillText(txt, x, y); g.shadowBlur = 0; };
     const clip = (g, txt, w) => { if (g.measureText(txt).width <= w) return txt; while (txt.length > 1 && g.measureText(txt + '…').width > w) txt = txt.slice(0, -1); return txt + '…'; };
@@ -165,7 +165,7 @@
     const wireMat = new T.MeshBasicMaterial({ color: 0x6fd3ff, wireframe: true, transparent: true, opacity: 0.5, toneMapped: false }), wire = mesh(rg, new T.IcosahedronGeometry(0.46, 1), wireMat, 0, 1.65, 0);
     const ringMat = new T.MeshBasicMaterial({ color: 0x6fd3ff, toneMapped: false }), rings = [];
     [[0.56, 0], [0.5, Math.PI / 2.4], [0.63, -Math.PI / 3]].forEach(([r, t], i) => { const g = new T.Group(); g.position.set(0, 1.65, 0); g.rotation.x = t; rg.add(g); const m = mesh(g, new T.TorusGeometry(r, 0.014, 6, 64), ringMat); rings.push({ g, m, s: 1 + i * 0.6 }); });
-    const rlight = new T.PointLight(0x6fd3ff, 1.2, 8, 2); rlight.position.set(0, 1.65, 0); rg.add(rlight); B.lights.reactor = rlight;
+    const rlight = new T.PointLight(0x6fd3ff, 1.2, 8, 0); rlight.position.set(0, 1.65, 0); rg.add(rlight); B.lights.reactor = rlight;
     const lampMats = [], lamps = [];
     for (let i = 0; i < 9; i++) { const a = -Math.PI * 0.2 + i / 9 * Math.PI * 1.7, m = new T.MeshBasicMaterial({ color: 0x2a3340, toneMapped: false }); lampMats.push(m); lamps.push(mesh(rg, new T.SphereGeometry(0.05, 12, 8), m, Math.cos(a) * 1.08, 0.5, Math.sin(a) * 1.08)); }
     const N = 260, pg = new T.BufferGeometry(), pp = new Float32Array(N * 3), pd = [];
@@ -266,7 +266,7 @@
     const spineTex = TX.spine();
     const bookGeo = new T.BoxGeometry(1, 1, 1), bookMat = new T.MeshStandardMaterial({ map: spineTex, roughness: 0.75, metalness: 0 });
     const HUES = [0.0, 0.02, 0.06, 0.1, 0.12, 0.33, 0.38, 0.55, 0.6, 0.66, 0.78, 0.9];
-    function bookColor(r, c) { const k = r(); if (k < 0.12) return c.setHSL(0.11, 0.25, 0.72); if (k < 0.2) return c.setHSL(0, 0, 0.18 + r() * 0.1); return c.setHSL(HUES[Math.floor(r() * HUES.length)] + (r() - 0.5) * 0.03, 0.35 + r() * 0.25, 0.22 + r() * 0.2); }
+    function bookColor(r, c) { const k = r(); if (k < 0.12) return c.setHSL(0.11, 0.25, 0.72, T.SRGBColorSpace); if (k < 0.2) return c.setHSL(0, 0, 0.18 + r() * 0.1, T.SRGBColorSpace); return c.setHSL(HUES[Math.floor(r() * HUES.length)] + (r() - 0.5) * 0.03, 0.35 + r() * 0.25, 0.22 + r() * 0.2, T.SRGBColorSpace); }
     // a row of book slots along x (ax 'x') or along z (ax 'z'); front = the plane the spines are on; away = +1 / -1 into the shelf
     function row(out, ax, a, b, y, front, away, r) {
       let p = a;
@@ -319,7 +319,7 @@
     const gem = (kind, scale) => {
       const prof = { diamond: [[0, -0.1], [0.06, -0.01], [0.078, 0.012], [0.052, 0.044], [0, 0.044]], emerald: [[0, -0.07], [0.04, -0.035], [0.056, 0], [0.056, 0.04], [0.04, 0.062], [0, 0.062]], ruby: [[0, -0.09], [0.055, -0.01], [0.07, 0.02], [0.04, 0.05], [0, 0.05]] }[kind];
       const seg = kind === 'diamond' ? 8 : kind === 'emerald' ? 8 : 6;
-      const m = new T.Mesh(new T.LatheGeometry(prof.map(p => new T.Vector2(p[0], p[1])), seg), new T.MeshStandardMaterial({ color: { diamond: 0xbfe6ff, emerald: 0x05803a, ruby: 0x9a0626 }[kind], emissive: { diamond: 0x10202e, emerald: 0x02330f, ruby: 0x4a0010 }[kind], roughness: 0.08, metalness: kind === 'diamond' ? 0.1 : 0.15, flatShading: true, envMapIntensity: 0.9, toneMapped: false }));
+      const m = new T.Mesh(new T.LatheGeometry(prof.map(p => new T.Vector2(p[0], p[1])), seg), new T.MeshStandardMaterial({ color: { diamond: 0xbfe6ff, emerald: 0x05803a, ruby: 0x9a0626 }[kind], emissive: { diamond: 0x10202e, emerald: 0x02330f, ruby: 0x4a0010 }[kind], roughness: 0.08, metalness: kind === 'diamond' ? 0.1 : 0.15, flatShading: true, envMap: scene.environment, envMapIntensity: 0.9, toneMapped: false }));
       m.scale.setScalar(scale || 1); return m;
     };
     const makeArt = {
@@ -378,7 +378,7 @@
         g.userData.hit = g.children.slice(); return g;
       },
       unique() {
-        const g = new T.Group(), k = new T.Mesh(new T.TorusKnotGeometry(0.13, 0.04, 140, 16, 3, 5), new T.MeshStandardMaterial({ color: 0xdde8ff, emissive: 0x1a2a55, roughness: 0.1, metalness: 1, envMapIntensity: 2 }));
+        const g = new T.Group(), k = new T.Mesh(new T.TorusKnotGeometry(0.13, 0.04, 140, 16, 3, 5), new T.MeshStandardMaterial({ color: 0xdde8ff, emissive: 0x1a2a55, roughness: 0.1, metalness: 1, envMap: scene.environment, envMapIntensity: 1.6 }));
         k.position.y = 0.3; g.add(k); B.updaters.push(dt => { k.rotation.y += dt * 0.5; k.rotation.x += dt * 0.2; }); g.userData.hit = [k]; return g;
       },
       gems(kind) {
@@ -447,13 +447,13 @@
     B.landA = mkLand(); B.landB = mkLand(); B.landB.renderOrder = -4; B.landB.material.opacity = 0; B.landB.visible = false;
     B.sky = sky; B.ground = ground;
     // the sun: a spot light from outside the north-west; it reaches the main room and fades before the hall
-    const sun = new T.SpotLight(0xffd9a0, 1.2, 24, 0.95, 0.65, 1.6); sun.position.set(-9, 3.0, -14); sun.target.position.set(-0.5, 0, -0.5);
+    const sun = new T.SpotLight(0xffd9a0, 1.2, 24, 0.95, 0.65, 0); sun.position.set(-9, 3.0, -14); sun.target.position.set(-0.5, 0, -0.5);
     sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0006; sun.shadow.camera.near = 6; sun.shadow.camera.far = 26;
     scene.add(sun, sun.target); B.lights.sun = sun;
-    const hemi = new T.HemisphereLight(0xb7c4ee, 0x8a7a70, 0.55); scene.add(hemi); B.lights.hemi = hemi;
-    const lampA = new T.PointLight(0xffe2b0, 0.5, 11, 2); lampA.position.set(-3.5, 3.2, 1.2); scene.add(lampA);
-    const lampB = new T.PointLight(0xffe2b0, 0.45, 11, 2); lampB.position.set(3.5, 3.2, -1.8); scene.add(lampB);
-    const hl = [[11, 0], [17.5, 0], [24, 0], [27, 2]].map(([x, z]) => { const l = new T.PointLight(0xffe6c0, 0.9, 14, 2); l.position.set(x, 4.0, z); scene.add(l); return l; });
+    const hemi = new T.HemisphereLight(0xb7c4ee, 0x8a7a70, 0.55 * Math.PI * 0.8); scene.add(hemi); B.lights.hemi = hemi;
+    const lampA = new T.PointLight(0xffe2b0, 0.5 * Math.PI * 0.5, 11, 0); lampA.position.set(-3.5, 3.2, 1.2); scene.add(lampA);
+    const lampB = new T.PointLight(0xffe2b0, 0.45 * Math.PI * 0.5, 11, 0); lampB.position.set(3.5, 3.2, -1.8); scene.add(lampB);
+    const hl = [[11, 0], [17.5, 0], [24, 0], [27, 2]].map(([x, z]) => { const l = new T.PointLight(0xffe6c0, 0.9 * Math.PI * 0.5, 14, 0); l.position.set(x, 4.0, z); scene.add(l); return l; });
     B.lights.hall = hl; B.lights.lampA = lampA; B.lights.lampB = lampB;
 
     // ---- per-frame --------------------------------------------------------------------------------------------------
@@ -462,7 +462,7 @@
       for (const u of B.updaters) u(dt, t);
       // the monitor: the pane turns into a screen and back
       { const k0 = mon.k; mon.k += (mon.want - mon.k) * (1 - Math.exp(-2.2 * dt)); if (Math.abs(mon.want - mon.k) < 0.002) mon.k = mon.want; mon.flash *= Math.exp(-2.5 * dt);
-        if (mon.k !== k0 || mon.flash > 0.01) { mon.screen.material.opacity = Math.min(1, mon.k * 1.15); for (const f of mon.mats) f.m.opacity = mon.k * f.op * (f.op < 1 ? 1 + mon.flash * 1.5 : 1); mon.light.intensity = mon.k * (0.7 + 0.8 * mon.flash); mon.screen.visible = mon.k > 0.01; } }
+        if (mon.k !== k0 || mon.flash > 0.01) { mon.screen.material.opacity = Math.min(1, mon.k * 1.15); for (const f of mon.mats) f.m.opacity = mon.k * f.op * (f.op < 1 ? 1 + mon.flash * 1.5 : 1); mon.light.intensity = mon.k * (0.7 + 0.8 * mon.flash) * Math.PI * 0.5; mon.screen.visible = mon.k > 0.01; } }
       // the shelf-door
       const D = B.door; D.open += (D.want - D.open) * (1 - Math.exp(-2.4 * dt));
       D.group.position.z = D.open * 3.3; D.block.z0 = -1.7 + D.open * 3.3; D.block.z1 = 1.7 + D.open * 3.3; D.block.off = D.open > 0.9;
@@ -470,7 +470,7 @@
       Rx.color.lerp(Rx.target, 1 - Math.exp(-3 * dt)); Rx.speed += (Rx.tspeed - Rx.speed) * (1 - Math.exp(-2 * dt)); Rx.pulse *= Math.exp(-2.2 * dt);
       coreMat.color.copy(Rx.color); wireMat.color.copy(Rx.color); ringMat.color.copy(Rx.color); pmat.color.copy(Rx.color); rlight.color.copy(Rx.color);
       const pls = 1 + 0.07 * Math.sin(t * 3 * Rx.speed) + 0.25 * Rx.pulse; core.scale.setScalar(pls); core.rotation.y += dt * Rx.speed; wire.rotation.y -= dt * 0.6 * Rx.speed; wire.rotation.x += dt * 0.3 * Rx.speed; wire.scale.setScalar(1 + 0.12 * Rx.pulse);
-      rlight.intensity = 0.9 + 0.5 * Rx.speed + 1.6 * Rx.pulse;
+      rlight.intensity = (0.9 + 0.5 * Rx.speed + 1.6 * Rx.pulse) * Math.PI * 0.5;
       for (const r of rings) { r.g.rotation.y += dt * r.s * Rx.speed * 1.4; r.g.rotation.z += dt * 0.5 * r.s * Rx.speed; }
       lamps.forEach((m, i) => { const on = i < Rx.lit; lampMats[i].color.setHex(on ? 0xffe27a : 0x2a3340).multiplyScalar(on ? 1 : 1); if (on && i === Rx.lit - 1) lampMats[i].color.setHex(0xfff6c0); });
       for (let i = 0; i < N; i++) { const d = pd[i]; d.a += dt * d.v * Rx.speed * 1.5; d.y += dt * d.v * 0.25 * Rx.speed; if (d.y > 2.75) d.y = 0.5; const rr = d.r * (0.8 + 0.2 * Math.sin(t + i)); pp[i * 3] = Math.cos(d.a) * rr; pp[i * 3 + 1] = d.y; pp[i * 3 + 2] = Math.sin(d.a) * rr; }

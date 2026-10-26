@@ -21,22 +21,22 @@
     const W = { hooks, enabled: true, running: true, time: 0, prompt: null, zone: 'room', joy: { x: 0, y: 0 } };
     const coarse = matchMedia('(pointer: coarse)').matches;
     const renderer = new T.WebGLRenderer({ canvas, antialias: !coarse, powerPreference: 'high-performance' });
-    renderer.outputEncoding = T.sRGBEncoding; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFShadowMap;
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, coarse ? 1.5 : 2));
     const scene = new T.Scene(); scene.background = new T.Color(0x0b0f18);
     const camera = new T.PerspectiveCamera(68, 1, 0.05, 400); camera.rotation.order = 'YXZ';
     if (T.RoomEnvironment) { const pm = new T.PMREMGenerator(renderer); scene.environment = pm.fromScene(new T.RoomEnvironment(), 0.04).texture; pm.dispose(); }
     const B = W.B = A.build(scene);
     // the environment gives soft reflections; not so much that the lamps stop mattering
-    scene.traverse(o => { if (o.material) for (const m of [].concat(o.material)) if (m.isMeshStandardMaterial && m.envMapIntensity === 1) m.envMapIntensity = 0.35; });
+    scene.environmentIntensity = 0.5;
     W.renderer = renderer; W.scene = scene; W.camera = camera;
     // models built in Blender (tools/blender/*.py -> ark/models/*.glb) replace the primitives that stand in for them
     const loader = T.GLTFLoader ? new T.GLTFLoader() : null;
     W.loadModel = (url, place, done) => {
       if (!loader) return;
       loader.load(url, g => {
-        g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material && o.material.isMeshStandardMaterial && o.material.envMapIntensity === 1) o.material.envMapIntensity = 0.6; } });
+        g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         place(g.scene); scene.add(g.scene); if (done) done(g.scene);
       }, undefined, () => console.warn('model not loaded: ' + url));
     };
@@ -56,13 +56,13 @@
       const L = (x, y) => x + (y - x) * k;
       mood.sun.copy(a.sun).lerp(b.sun, k); mood.hemiS.copy(a.hemiS).lerp(b.hemiS, k); mood.hemiG.copy(a.hemiG).lerp(b.hemiG, k);
       mood.top.copy(a.top).lerp(b.top, k); mood.mid.copy(a.mid).lerp(b.mid, k); mood.ground.copy(a.ground).lerp(b.ground, k);
-      B.lights.sun.color.copy(mood.sun); B.lights.sun.intensity = L(a.sunI, b.sunI) * 1.6; B.lights.hemi.color.copy(mood.hemiS); B.lights.hemi.groundColor.copy(mood.hemiG); B.lights.hemi.intensity = L(a.hemiI, b.hemiI);
+      B.lights.sun.color.copy(mood.sun); B.lights.sun.intensity = L(a.sunI, b.sunI) * 1.6 * Math.PI * 0.5; B.lights.hemi.color.copy(mood.hemiS); B.lights.hemi.groundColor.copy(mood.hemiG); B.lights.hemi.intensity = L(a.hemiI, b.hemiI) * Math.PI * 0.8;
       mood.dir.copy(a.dir).lerp(b.dir, k); B.lights.sun.position.copy(mood.dir);
       B.ground.material.color.copy(mood.ground); setSky(mood.top.getHex(), mood.mid.getHex());
     }
     // ---- the landscape series: the current one, the next one prepared in the background -----------------
     const land = W.land = { index: 0, textures: {}, fade: -1, next: -1, timer: 0, auto: true, mood: null };
-    const mkTex = canvasEl => { const t = new T.CanvasTexture(canvasEl); t.encoding = T.sRGBEncoding; t.wrapS = T.RepeatWrapping; t.repeat.x = -1; t.offset.x = 1; t.anisotropy = 4; return t; };
+    const mkTex = canvasEl => { const t = new T.CanvasTexture(canvasEl); t.colorSpace = T.SRGBColorSpace; t.wrapS = T.RepeatWrapping; t.repeat.x = -1; t.offset.x = 1; t.anisotropy = 4; return t; };
     const ids = A.LANDSCAPES.map(l => l.id);
     function prepare(i) {
       if (land.textures[i] || land.textures[i] === 0) return;
