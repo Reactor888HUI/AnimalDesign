@@ -40,6 +40,12 @@
         place(g.scene); scene.add(g.scene); if (done) done(g.scene);
       }, undefined, () => console.warn('model not loaded: ' + url));
     };
+    // the rooms built in Blender, with their baked ambient occlusion: they take over from the primitives when they have loaded
+    {
+      const tl = new T.TextureLoader(), ao = url => new Promise((res, rej) => tl.load(url, t => { t.flipY = false; t.colorSpace = T.NoColorSpace; t.channel = 1; res(t); }, undefined, rej));
+      Promise.all([ao('models/ao_main.jpg'), ao('models/ao_hall.jpg')]).then(([m, h]) => W.loadModel('models/rooms.glb', root => B.useRooms(root, { main: m, hall: h }), root => { B.roomsRoot = root; }))
+        .catch(() => console.warn('the rooms from Blender did not load: the primitives stay'));
+    }
     W.loadModel('models/desk_lamp.glb', m => m.position.set(-5.4, 0.79, -1.0), m => { B.blenderLamp = m; for (const o of B.deskLampOld || []) o.visible = false; });
 
     // ---- the sky colours and the light of the landscape ----------------------------------------------------

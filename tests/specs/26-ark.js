@@ -159,6 +159,31 @@ exports.run = async t => {
   });
   t.ok(lamp.meshes === 2 && lamp.tris > 200 && lamp.height > 0.35 && lamp.height < 0.45 && Math.abs(lamp.foot - 0.79) < 0.01 && lamp.oldHidden, 'the desk lamp comes from Blender (a glb file): two meshes, brass and green glass, standing on the desk', lamp);
 
+  // ---- the rooms built in Blender: shape, baked occlusion, and the same measures as the walking rules ----------------------------------------------
+  await page.waitForFunction(() => window.__ark.W.B.roomsMeshes, null, { timeout: 60000 });
+  const rm = await page.evaluate(() => {
+    const { W } = window.__ark, B = W.B, root = B.roomsRoot, out = {}, ray = new THREE.Raycaster();
+    root.updateMatrixWorld(true);
+    const box = n => new THREE.Box3().setFromObject(root.getObjectByName(n) || root.children.find(c => c.name.startsWith(n)));
+    const nodes = []; root.traverse(o => { if (o.name && /^room_/.test(o.name)) nodes.push(o.name); });
+    const bm = new THREE.Box3(), bh = new THREE.Box3();
+    root.traverse(o => { if (o.isMesh) { const b = new THREE.Box3().setFromObject(o); (o.material.name.endsWith('.main') ? bm : bh).union(b); } });
+    out.main = [bm.min.x, bm.max.x, bm.min.z, bm.max.z, bm.max.y].map(v => +v.toFixed(2)); out.hall = [bh.min.x, bh.max.x, bh.min.z, bh.max.z, bh.max.y].map(v => +v.toFixed(2));
+    let std = 0, withAo = 0, uv1 = 0, meshes = 0;
+    root.traverse(o => { if (!o.isMesh) return; meshes++; if (o.geometry.attributes.uv1) uv1++; if (o.material.isMeshStandardMaterial) { std++; if (o.material.aoMap && o.material.aoMap.channel === 1) withAo++; } });
+    out.meshes = meshes; out.std = std; out.withAo = withAo; out.uv1 = uv1; out.primitivesHidden = B.arch.every(g => !g.visible);
+    const hit = (ox, oy, oz, dx, dy, dz, far) => { ray.set(new THREE.Vector3(ox, oy, oz), new THREE.Vector3(dx, dy, dz)); ray.far = far; const h = ray.intersectObject(root, true); return h.length ? +h[0].distance.toFixed(2) : null; };
+    // the doorway (the walking rules say |z| < 1.3): free at z = 0 and 1.0, a wall at 1.6 and -1.6
+    out.door = [0, 1.0, -1.0].map(z => hit(5, 1.5, z, 1, 0, 0, 6)); out.wall = [1.6, -1.6].map(z => hit(5, 1.5, z, 1, 0, 0, 6));
+    out.floors = [hit(0, 2, 0, 0, -1, 0, 4), hit(15.3, 2, 0, 0, -1, 0, 4)]; out.ceilings = [hit(0, 2, 0, 0, 1, 0, 4), hit(15.3, 2, 0, 0, 1, 0, 4)];
+    return out;
+  });
+  t.ok(rm.meshes >= 14 && rm.primitivesHidden && rm.std >= 10 && rm.withAo === rm.std && rm.uv1 === rm.meshes, 'the rooms come from Blender (a glb): every mesh has a second UV set, every lit material the baked occlusion map; the primitives are hidden', rm);
+  // walls, cornices and pilasters stick out past the walkable limits by a little, never inside them
+  t.ok(rm.main[0] <= -7.0 && rm.main[0] > -7.5 && rm.main[1] >= 7.2 && rm.main[1] < 7.5 && rm.main[2] <= -5.0 && rm.main[2] > -5.4 && rm.main[3] >= 5.3 && rm.main[3] < 5.6 && Math.abs(rm.main[4] - 4.6) < 0.1, 'the main room holds the walking area (14 x 10 m) with its trim outside it', rm.main);
+  t.ok(rm.hall[0] <= 7.2 && rm.hall[0] > 7.0 && rm.hall[1] >= 29.0 && rm.hall[1] < 29.8 && rm.hall[2] <= -6.5 && rm.hall[2] > -7.0 && rm.hall[3] >= 6.5 && rm.hall[3] < 7.0 && rm.hall[4] >= 4.6 && rm.hall[4] < 5.0, 'the hall holds the walking area (22 x 13 m) with its trim outside it', rm.hall);
+  t.ok(rm.door.every(d => d === null) && rm.wall.every(d => d !== null && d < 2.5) && Math.abs(rm.floors[0] - 2) < 0.05 && Math.abs(rm.floors[1] - 2) < 0.05 && Math.abs(rm.ceilings[0] - 1.8) < 0.1 && Math.abs(rm.ceilings[1] - 2.6) < 0.1, 'the doorway is open at |z| < 1.3 and walled beside it; the floors are at 0, the ceilings at 3.8 and 4.6', rm);
+
   // ---- the landscapes behind the glass -------------------------------------------------------------------------------------------------
   await page.waitForFunction(() => window.__ark.W.land.textures[1] instanceof THREE.Texture, null, { timeout: 60000 });
   const land = await page.evaluate(() => {

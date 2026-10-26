@@ -27,20 +27,21 @@
 
     // ======================================================== MAIN ROOM =====================================
     const room = new T.Group(); scene.add(room);
+    const archA = new T.Group(); room.add(archA);   // the walls, floor, ceiling and frames of the main room as primitives (replaced by the Blender rooms)
     const RH = 3.8;
-    const floorA = mesh(room, new T.PlaneGeometry(14, 10), woodFloorMat, 0, 0, 0, { rx: -Math.PI / 2 }); floorA.receiveShadow = true;
-    mesh(room, new T.PlaneGeometry(14, 10), M(0xf2ecdf, 1), 0, RH, 0, { rx: Math.PI / 2 });
-    for (const i of [-2, -1, 1, 2]) box(room, 0.3, 0.22, 10, plasterWarm, i * 3, RH - 0.11, 0);                       // beams
-    for (const x of [-3, 3]) box(room, 1.6, 0.03, 0.34, emis(0xfff0d0), x, RH - 0.23, 0);
+    const floorA = mesh(archA, new T.PlaneGeometry(14, 10), woodFloorMat, 0, 0, 0, { rx: -Math.PI / 2 }); floorA.receiveShadow = true;
+    mesh(archA, new T.PlaneGeometry(14, 10), M(0xf2ecdf, 1), 0, RH, 0, { rx: Math.PI / 2 });
+    for (const i of [-2, -1, 1, 2]) box(archA, 0.3, 0.22, 10, plasterWarm, i * 3, RH - 0.11, 0);                       // beams
+    for (const x of [-3, 3]) box(archA, 1.6, 0.03, 0.34, emis(0xfff0d0), x, RH - 0.23, 0);
     // south and east walls
-    box(room, 14.6, RH, 0.3, plaster, 0, RH / 2, 5.15).receiveShadow = true;
-    const east = x => { const w = box(room, 0.4, 4.6, 3.7, plaster, 7.0, 2.3, x); w.receiveShadow = true; w.castShadow = true; return w; };
-    east(-3.15); east(3.15); box(room, 0.4, 1.9, 2.6, plaster, 7.0, 3.65, 0);
-    box(room, 0.06, 2.7, 0.08, brass, 6.78, 1.35, 1.34); box(room, 0.06, 2.7, 0.08, brass, 6.78, 1.35, -1.34);   // door frame
+    box(archA, 14.6, RH, 0.3, plaster, 0, RH / 2, 5.15).receiveShadow = true;
+    const east = x => { const w = box(archA, 0.4, 4.6, 3.7, plaster, 7.0, 2.3, x); w.receiveShadow = true; w.castShadow = true; return w; };
+    east(-3.15); east(3.15); box(archA, 0.4, 1.9, 2.6, plaster, 7.0, 3.65, 0);
+    box(archA, 0.06, 2.7, 0.08, brass, 6.78, 1.35, 1.34); box(archA, 0.06, 2.7, 0.08, brass, 6.78, 1.35, -1.34);   // door frame
     // glass: north and west walls
     function glassWall(axis, fixed, a, b) {
       const len = b - a, n = Math.round(len / 2.3), c = (a + b) / 2;
-      const along = (l, h, d, mat, off, y) => axis === 'x' ? box(room, l, h, d, mat, off, y, fixed) : box(room, d, h, l, mat, fixed, y, off);
+      const along = (l, h, d, mat, off, y) => axis === 'x' ? box(archA, l, h, d, mat, off, y, fixed) : box(archA, d, h, l, mat, fixed, y, off);
       along(len, 0.18, 0.2, steel, c, RH - 0.09).castShadow = true; along(len, 0.1, 0.16, steel, c, 0.05);
       for (let i = 0; i <= n; i++) { const o = a + (len / n) * i; along(0.09, RH, 0.13, steel, o, RH / 2).castShadow = true; }
       const pane = mesh(room, new T.PlaneGeometry(len, RH), glassMat, axis === 'x' ? c : fixed, RH / 2, axis === 'x' ? fixed : c, axis === 'x' ? {} : { ry: Math.PI / 2 });
@@ -236,17 +237,19 @@
 
     // ======================================================== THE LIBRARY HALL =============================
     const hall = new T.Group(); scene.add(hall);
+    const archH = new T.Group(); hall.add(archH);   // the same for the hall
+    B.arch = [archA, archH];
     const HX0 = 7.2, HX1 = 29, HZ = 6.5, HH = 4.6;
-    mesh(hall, new T.PlaneGeometry(HX1 - HX0, HZ * 2), M(0xffffff, 0.3, 0.05, { map: TX.marble([5.5, 6.5]) }), (HX0 + HX1) / 2, 0, 0, { rx: -Math.PI / 2 }).receiveShadow = true;
-    mesh(hall, new T.PlaneGeometry(HX1 - HX0, HZ * 2), M(0xf0e8d6, 1), (HX0 + HX1) / 2, HH, 0, { rx: Math.PI / 2 });
-    box(hall, HX1 - HX0, HH, 0.3, plasterWarm, (HX0 + HX1) / 2, HH / 2, HZ + 0.15);           // south wall
-    box(hall, HX1 - HX0, HH, 0.3, plasterWarm, (HX0 + HX1) / 2, HH / 2, -HZ - 0.15);          // north wall
-    box(hall, 0.3, HH, HZ * 2, plasterWarm, HX1 + 0.15, HH / 2, 0);                            // the end wall
-    for (let x = 9; x < HX1; x += 3.6) { box(hall, 0.28, 0.3, HZ * 2, darkWood, x, HH - 0.15, 0); box(hall, 0.3, 0.9, 0.3, darkWood, x, HH - 0.55, HZ - 0.15); box(hall, 0.3, 0.9, 0.3, darkWood, x, HH - 0.55, -HZ + 0.15); }
-    for (let x = 10.8; x < HX1; x += 3.6) box(hall, 1.6, 0.03, 0.4, emis(0xfff0cc), x, HH - 0.32, 0);
+    mesh(archH, new T.PlaneGeometry(HX1 - HX0, HZ * 2), M(0xffffff, 0.3, 0.05, { map: TX.marble([5.5, 6.5]) }), (HX0 + HX1) / 2, 0, 0, { rx: -Math.PI / 2 }).receiveShadow = true;
+    mesh(archH, new T.PlaneGeometry(HX1 - HX0, HZ * 2), M(0xf0e8d6, 1), (HX0 + HX1) / 2, HH, 0, { rx: Math.PI / 2 });
+    box(archH, HX1 - HX0, HH, 0.3, plasterWarm, (HX0 + HX1) / 2, HH / 2, HZ + 0.15);           // south wall
+    box(archH, HX1 - HX0, HH, 0.3, plasterWarm, (HX0 + HX1) / 2, HH / 2, -HZ - 0.15);          // north wall
+    box(archH, 0.3, HH, HZ * 2, plasterWarm, HX1 + 0.15, HH / 2, 0);                            // the end wall
+    for (let x = 9; x < HX1; x += 3.6) { box(archH, 0.28, 0.3, HZ * 2, darkWood, x, HH - 0.15, 0); box(archH, 0.3, 0.9, 0.3, darkWood, x, HH - 0.55, HZ - 0.15); box(archH, 0.3, 0.9, 0.3, darkWood, x, HH - 0.55, -HZ + 0.15); }
+    for (let x = 10.8; x < HX1; x += 3.6) box(archH, 1.6, 0.03, 0.4, emis(0xfff0cc), x, HH - 0.32, 0);
     // the stained glass window and the name of the Ark on the end wall
     mesh(hall, new T.CircleGeometry(1.7, 48), new T.MeshBasicMaterial({ map: TX.glass(), toneMapped: false }), HX1 - 0.01, 2.8, 0, { ry: -Math.PI / 2 });
-    mesh(hall, new T.TorusGeometry(1.75, 0.07, 8, 48), brass, HX1 - 0.03, 2.8, 0, { ry: Math.PI / 2 });
+    mesh(archH, new T.TorusGeometry(1.75, 0.07, 8, 48), brass, HX1 - 0.03, 2.8, 0, { ry: Math.PI / 2 });
     mesh(hall, new T.PlaneGeometry(4, 0.62), new T.MeshBasicMaterial({ map: TX.plate('БИБЛИОТЕКА «КОВЧЕГ»', { w: 1024, h: 160, size: 80 }), toneMapped: false }), HX1 - 0.02, 0.9, 0, { ry: -Math.PI / 2 });
     // the aisle carpet and the reading tables
     mesh(hall, new T.PlaneGeometry(HX1 - HX0 - 3, 2.6), M(0xffffff, 1, 0, { map: TX.rug('#1f3a5a', '#d9b45a') }), 18, 0.012, 2.2, { rx: -Math.PI / 2 });
@@ -455,6 +458,35 @@
     const lampB = new T.PointLight(0xffe2b0, 0.45 * Math.PI * 0.5, 11, 0); lampB.position.set(3.5, 3.2, -1.8); scene.add(lampB);
     const hl = [[11, 0], [17.5, 0], [24, 0], [27, 2]].map(([x, z]) => { const l = new T.PointLight(0xffe6c0, 0.9 * Math.PI * 0.5, 14, 0); l.position.set(x, 4.0, z); scene.add(l); return l; });
     B.lights.hall = hl; B.lights.lampA = lampA; B.lights.lampB = lampB;
+
+    // ---- the rooms made in Blender (ark/models/rooms.glb): they replace the primitives of archA / archH ----------------------------
+    // Blender gives the shape, two UV sets (UVMap: one unit per metre, for tiling textures; UVLight: an atlas with the baked
+    // ambient occlusion). The look of each kind of material (plaster, wood, marble ...) is decided here.
+    B.useRooms = function (root, ao) {
+      const tile = (tx, r) => { tx.repeat.set(r, r); tx.flipY = false; tx.needsUpdate = true; return tx; };
+      const plasterTex = tile(TX.plaster([1, 1]), 0.45), warmTex = tile(TX.plaster([1, 1], '#d8cdb8'), 0.45), woodTex = tile(TX.wood([1, 1]), 0.7), marbleTex = tile(TX.marble([1, 1]), 0.42);
+      const look = {
+        'plaster.main': () => M(0xffffff, 0.95, 0, { map: plasterTex }), 'plaster.hall': () => M(0xffffff, 0.95, 0, { map: warmTex }),
+        'wood_floor.main': () => M(0xffffff, 0.55, 0, { map: woodTex }), 'marble.hall': () => M(0xffffff, 0.3, 0.05, { map: marbleTex }),
+        'ceiling.main': () => M(0xf2ecdf, 1), 'ceiling.hall': () => M(0xf0e8d6, 1),
+        'beam.main': () => M(0xffffff, 0.95, 0, { map: warmTex }), 'beam.hall': () => M(0x4a2e1a, 0.6),
+        'steel.main': () => steel.clone(), 'brass.main': () => brass.clone(), 'brass.hall': () => brass.clone(),
+        'trim_wood.main': () => darkWood.clone(), 'trim_wood.hall': () => darkWood.clone(),
+        'light_panel.main': () => emis(0xfff0d0), 'light_panel.hall': () => emis(0xfff0cc),
+      };
+      let meshes = 0;
+      root.traverse(o => {
+        if (!o.isMesh) return;
+        const name = o.material.name, room = name.split('.')[1], make = look[name];
+        if (!make) return;
+        const m = make(); m.name = name;
+        if (m.isMeshStandardMaterial && ao[room]) { m.aoMap = ao[room]; m.aoMapIntensity = 1; }
+        o.material = m; meshes++;
+        o.castShadow = !/^(ceiling|light_panel)/.test(name); o.receiveShadow = true;
+      });
+      archA.visible = false; archH.visible = false;
+      B.roomsMeshes = meshes;
+    };
 
     // ---- per-frame --------------------------------------------------------------------------------------------------
     const tmp = new T.Vector3(), up = new T.Vector3();

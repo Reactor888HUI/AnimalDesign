@@ -577,7 +577,8 @@
   W.setMonitor(S.monitor); if (!S.msgs.length) { S.msgs.push({ ts: Date.now(), text: 'Монитор включён. Пиши задачи проекта', kind: 'info' }); save(); }
   refreshMonitor();
   window.__ark = { W, A, UI };
-  setTimeout(() => $('load').classList.add('off'), 150);
+  // the cover goes when the rooms and the lamp built in Blender have loaded (at most 4.5 s: then the primitives stay)
+  { const t0 = performance.now(), wait = () => { if ((W.B.roomsMeshes && W.B.blenderLamp) || performance.now() - t0 > 4500) $('load').classList.add('off'); else setTimeout(wait, 60); }; setTimeout(wait, 150); }
   $('landName').textContent = W.landscapeName();
   { const m = /[?&]land=(\d+)/.exec(location.search); if (m) W.setLandscape(+m[1]); }
   if (!/[?&]manual/.test(location.search)) { W.start(); if (!S.seen) setTimeout(openHelp, 800); }
