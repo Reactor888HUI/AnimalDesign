@@ -26,6 +26,9 @@ bad=0; for f in arcade/js/*.js arcade/data/*.js; do node --check "$f" 2>>"$OUT/s
 say "-- сборка"
 python3 -I tools/build-offline.py > "$OUT/build.log" 2>&1; res "tools/build-offline.py ($(tail -2 "$OUT/build.log" | tr '\n' ' '))" $?
 
+say "-- чистая логика (arcade/lib): тесты Node"
+npm test --silent > "$OUT/unit.log" 2>&1; res "npm test ($(grep -E '^# (pass|fail)' "$OUT/unit.log" | tr '\n' ' '))" $?
+
 say "-- запуск (рабочая версия, один файл, папкой): без ошибок, кадры идут"
 cat > "$OUT/boot.cjs" <<'EOF'
 const { chromium } = require(process.env.PW);
