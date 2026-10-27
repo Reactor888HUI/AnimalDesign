@@ -29,6 +29,9 @@ python3 -I tools/build-offline.py > "$OUT/build.log" 2>&1; res "tools/build-offl
 say "-- чистая логика (arcade/lib): тесты Node"
 npm test --silent > "$OUT/unit.log" 2>&1; res "npm test ($(grep -E '^# (pass|fail)' "$OUT/unit.log" | tr '\n' ' '))" $?
 
+say "-- сервер игроков (server/): тесты Python"
+python3 -m unittest discover -s tests/server -t . > "$OUT/server.log" 2>&1; res "unittest ($(tail -3 "$OUT/server.log" | tr '\n' ' '))" $?
+
 say "-- запуск (рабочая версия, один файл, папкой): без ошибок, кадры идут"
 cat > "$OUT/boot.cjs" <<'EOF'
 const { chromium } = require(process.env.PW);

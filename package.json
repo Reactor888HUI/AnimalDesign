@@ -4,6 +4,7 @@
   "description": "Проверки чистой логики игры (arcade/lib). Сама игра — arcade/index.html, сборка — tools/build-offline.py.",
   "scripts": {
     "test": "node --test tests/unit/*.test.js",
-    "coverage": "mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='arcade/lib/**' --test-reporter=lcov --test-reporter-destination=coverage/lcov.info tests/unit/*.test.js"
+    "coverage": "mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-include='arcade/lib/**' --test-reporter=lcov --test-reporter-destination=coverage/lcov.info tests/unit/*.test.js",
+    "test:server": "python3 -m unittest discover -s tests/server -t ."
   }
 }
