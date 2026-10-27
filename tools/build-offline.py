@@ -28,7 +28,7 @@ assert len(mfile) == 1, "не найдена ссылка на песню веч
 mfile = mfile[0]
 mp3 = base64.b64encode(open(os.path.join(ARC, "refs", "music", "party.mp3"), "rb").read()).decode()
 music_js = 'const PARTY_MUSIC = "data:audio/mpeg;base64,%s";   /*PARTY-MUSIC*/' % mp3
-head = '<!doctype html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n</head>\n<body>\n'
+head = '<!doctype html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8D%86%3C/text%3E%3C/svg%3E">\n</head>\n<body>\n'
 tail = "\n</body>\n</html>\n"
 esc = lambda s: s.replace("</script", "<\\/script")
 three_note = "/* Three.js r149, MIT License, (c) 2010-2023 three.js authors — встроен, чтобы игра работала без интернета */\n"

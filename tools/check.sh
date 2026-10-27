@@ -42,6 +42,9 @@ for h in arcade/index.html dist/vosmerka-baklazhan/index.html dist/vosmerka-web/
   node "$OUT/boot.cjs" "$h" > "$OUT/boot-$(echo $h | tr / _).log" 2>&1; res "$h $(cut -c1-110 "$OUT/boot-$(echo $h | tr / _).log")" $?
 done
 
+say "-- по ссылке: сборка папкой по http из вложенной папки адреса (как на хостинге)"
+node tools/arcade-http.cjs > "$OUT/http.log" 2>&1; res "tools/arcade-http.cjs $(cut -c1-110 "$OUT/http.log")" $?
+
 say "-- бюджет кадра (≤120 вызовов, ≤150 тыс. треугольников): «восьмёрка» и внедорожник, кабина"
 for v in "vaz chase" "suv chase" "suv cockpit"; do set -- $v
   VEH=$1 CAM=$2 node tools/arcade-perf.cjs > "$OUT/perf-$1-$2.log" 2>&1
