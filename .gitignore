@@ -10,3 +10,10 @@ dist/vosmerka-web/
 
 # отчёт tools/check.sh
 .check/
+
+# навык ub-mode: инструменты качества и их отчёты
+.tools/
+.metrics/
+coverage/
+node_modules/
+target/
