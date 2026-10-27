@@ -1,0 +1,20 @@
+# arcade/lib/net-client.js — тесты tests/unit/netclient.test.js
+arcade/lib/net-client.js | n >= 0 && n <= MAX_SLOT ⇒ n >= 0 && n <= MAX_SLOT + 1
+arcade/lib/net-client.js | /^[A-Z2-9]{4}$/ ⇒ /^[A-Z2-9]{3,4}$/
+arcade/lib/net-client.js | m.players.length <= MAX_SLOT + 1 && ⇒ true &&
+arcade/lib/net-client.js | p.name.length <= 16 ⇒ true
+arcade/lib/net-client.js | (m.token === undefined || TOKEN.test(m.token)) ⇒ true
+arcade/lib/net-client.js | Number.isFinite(m.t) ⇒ true
+# Осознанно не мутируем: проверка !(buffer instanceof ArrayBuffer) не меняет результат (дальше всё равно null), но гарантирует, что разбор не бросает исключений на любом входе.
+arcade/lib/net-client.js | || slot === myslot ⇒ || false
+arcade/lib/net-client.js | if (m.token) state.token = m.token; ⇒ state.token = m.token;
+arcade/lib/net-client.js | state.room = null; state.token = null; }; ⇒ state.room = null; };
+arcade/lib/net-client.js | if (!state.open || !state.room) return false; ⇒ if (!state.open) return false;
+arcade/lib/net-client.js | catch (e) { return false; } ⇒ catch (e) { throw e; }
+arcade/lib/net-client.js | seq: seq++ ⇒ seq: seq
+arcade/lib/net-client.js | if (wasOpen) emit("close"); else ⇒ emit("close"); if (!wasOpen)
+arcade/lib/net-client.js | state.open = false; state.room = null; ⇒ state.open = false;
+arcade/lib/net-client.js | now() - m.t ⇒ m.t - now()
+arcade/lib/net-client.js | socket.binaryType = "arraybuffer"; ⇒ 
+arcade/lib/net-client.js | state.room && parsePoseFrame ⇒ true && parsePoseFrame
+arcade/lib/net-client.js | typeof e.data === "string" ⇒ true

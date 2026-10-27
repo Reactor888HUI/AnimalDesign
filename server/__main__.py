@@ -12,7 +12,7 @@ async def main():
     ap.add_argument("--origin", action="append", help="разрешённый адрес страницы игры (можно несколько); без него пускаем любой")
     args = ap.parse_args()
     server, _ = await relay.start(args.host, args.port, origins=set(args.origin) if args.origin else None)
-    print(f"слушаю ws://{args.host}:{args.port}/ws", flush=True)
+    print(f"слушаю ws://{args.host}:{server.sockets[0].getsockname()[1]}/ws", flush=True)   # настоящий порт (при --port 0 его выбирает система)
     async with server:
         await server.serve_forever()
 
