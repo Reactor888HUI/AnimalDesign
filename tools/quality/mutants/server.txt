@@ -1,0 +1,62 @@
+# server/*.py — тесты tests/server
+server/rooms.py | MAX_PLAYERS = 7 ⇒ MAX_PLAYERS = 8
+server/rooms.py | min(online or room) ⇒ min(room)
+server/rooms.py | msg.get("token") == p.token ⇒ True
+server/rooms.py | p.conn is None and msg.get ⇒ msg.get
+server/rooms.py | if here != code: ⇒ if False:
+server/rooms.py | > self._grace ⇒ < self._grace
+server/rooms.py | if self._host[code] == slot: ⇒ if False:
+server/rooms.py | if with_token: ⇒ if True:
+server/rooms.py | if not room: ⇒ if False:
+server/rooms.py | if self._host[code] not in room: ⇒ if False:
+server/rooms.py | "srv": self._now() ⇒ "srv": 0
+server/rooms.py | player.conn, player.offline_since = None, self._now() ⇒ player.conn, player.offline_since = None, 0
+server/rooms.py | p.conn is not None and p.conn != conn ⇒ p.conn is not None
+server/rooms.py | if code not in self._rooms: ⇒ if True:
+server/rooms.py | range(MAX_PLAYERS) if s not in room ⇒ range(MAX_PLAYERS) if s not in room and s != 0
+server/rooms.py | for s, p in sorted(self._rooms[code].items()) if p.conn is not None] ⇒ for s, p in sorted(self._rooms[code].items())]
+server/rooms.py | if conn in self._where:⏎            return [(conn, {"op": "error", "code": "already_in_room"})]⏎        code = self._new_code() ⇒ code = self._new_code()
+server/protocol.py | len(text) > MAX_CONTROL_CHARS ⇒ len(text) > 5000
+server/protocol.py | [:16] ⇒ [:32]
+server/protocol.py |  and not isinstance(value, bool) ⇒ 
+server/protocol.py | data[0] == POSE_TYPE ⇒ True
+server/protocol.py | self.tokens < 1 ⇒ self.tokens < 0
+server/protocol.py | min(self.burst, ⇒ max(self.burst,
+server/protocol.py | {22} ⇒ {2,}
+server/protocol.py | _CODE.match(code.upper()) ⇒ _CODE.match(code)
+server/protocol.py | len(data) == POSE_BYTES ⇒ len(data) >= POSE_BYTES
+server/ws.py | len(data) > MAX_HANDSHAKE ⇒ len(data) > 99999
+server/ws.py | if first != f"GET {PATH} HTTP/1.1": ⇒ if False:
+server/ws.py | headers.get("upgrade", "").lower() != "websocket" ⇒ False
+server/ws.py | if "upgrade" not in [ ⇒ if False and "upgrade" not in [
+server/ws.py | headers.get("sec-websocket-version") != "13" ⇒ False
+server/ws.py | != 16: ⇒ != 15:
+server/ws.py | and headers.get("origin") not in allowed_origins ⇒ and False
+server/ws.py | or (opcode >= OP_CLOSE and n > 125) ⇒ or False
+server/ws.py | if rsv: ⇒ if False:
+server/ws.py | if not fin: ⇒ if False:
+server/ws.py | if masked != self.expect_masked: ⇒ if False:
+server/ws.py | if n == 127: ⇒ if False:
+server/ws.py | GUID = "258EAFA5 ⇒ GUID = "158EAFA5
+server/ws.py | bytes([0x80 | opcode]) ⇒ bytes([opcode])
+server/ws.py | if n > MAX_PAYLOAD ⇒ if n > MAX_PAYLOAD + 1
+server/ws.py | if opcode not in (OP_TEXT, OP_BINARY, OP_CLOSE, OP_PING, OP_PONG): ⇒ if False:
+server/ws.py | if len(b) < need: ⇒ if False:
+server/ws.py | else raw) ⇒ else raw[::-1])
+server/ws.py | not text.endswith ⇒ text.endswith
+server/relay.py | len(self.conns) >= self.max_conns ⇒ len(self.conns) > self.max_conns
+server/relay.py | conn.strikes = 0⏎        self._send_outs ⇒ self._send_outs
+server/relay.py | conn.strikes >= MAX_STRIKES ⇒ conn.strikes > MAX_STRIKES
+server/relay.py | return self._close(conn, 1001) ⇒ return self._close(conn, 1000)
+server/relay.py | slot is None or not protocol.valid_pose_frame(payload) or not conn.pose_limit.allow() ⇒ not protocol.valid_pose_frame(payload) or not conn.pose_limit.allow()
+server/relay.py | slot is None or not protocol.valid_pose_frame(payload) or not conn.pose_limit.allow() ⇒ slot is None or not conn.pose_limit.allow()
+server/relay.py | or not conn.pose_limit.allow(): ⇒ or False:
+server/relay.py | target.writer.transport.get_write_buffer_size() < WRITE_BACKLOG ⇒ True
+server/relay.py | protocol.RateLimiter(5, 10, self.now) ⇒ protocol.RateLimiter(500, 1000, self.now)
+server/relay.py | if conn.text_limit.allow(): ⇒ if True:
+server/relay.py | limit=8192 ⇒ limit=1<<20
+server/relay.py | bytes([slot]) + payload ⇒ payload
+server/relay.py | conn.writer.write(ws.encode_frame(ws.OP_PONG, payload)) ⇒ pass
+server/relay.py | self._send_outs(self.rooms.disconnect(conn.id)) ⇒ pass
+server/relay.py | self._send_outs(self.rooms.tick()) ⇒ pass
+server/relay.py | asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), self.handshake_timeout) ⇒ reader.readuntil(b"\r\n\r\n")

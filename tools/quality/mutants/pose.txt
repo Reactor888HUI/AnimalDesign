@@ -1,0 +1,14 @@
+# arcade/lib/pose.js — тесты tests/unit/pose.test.js
+arcade/lib/pose.js | POSE_BYTES = 24 ⇒ POSE_BYTES = 25
+arcade/lib/pose.js | Math.min(hi, Math.max(lo, v)) ⇒ Math.max(hi, Math.min(lo, v))
+arcade/lib/pose.js | Math.floor((a + Math.PI) ⇒ Math.ceil((a + Math.PI)
+arcade/lib/pose.js | VMAX = 120 ⇒ VMAX = 100
+arcade/lib/pose.js | bytes.length !== POSE_BYTES ⇒ bytes.length < POSE_BYTES
+arcade/lib/pose.js | p.flags & 0xff ⇒ p.flags & 0x0f
+arcade/lib/pose.js | p.steer, -1, 1) * 127 ⇒ p.steer, -1, 1) * 126
+arcade/lib/pose.js | || bytes[0] !== POSE_TYPE ⇒ || false
+arcade/lib/pose.js | if (!Number.isFinite(p[k])) ⇒ if (false)
+arcade/lib/pose.js | "roll", "v", "steer" ⇒ "roll", "steer"
+arcade/lib/pose.js | d.setUint32(19, p.t >>> 0) ⇒ d.setUint32(19, 0)
+arcade/lib/pose.js | d.setUint16(1, p.seq & 0xffff) ⇒ d.setUint16(1, 0)
+arcade/lib/pose.js | bytes instanceof Uint8Array ⇒ true
