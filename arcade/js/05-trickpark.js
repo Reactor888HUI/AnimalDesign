@@ -47,24 +47,24 @@ function buildRings() {
   [...groups.values()].forEach((list, gi) => list.forEach((r, i) => { r.im = CHUNKS[n0 + gi].obj; r.ii = i; }));
   ringQ.length = 0;
 }
-const N05 = northMark();               // трюк-парк ниже — на плато (northLift в конце)
+const N05 = testMark();                // трюк-парк — в сцене площадок (testGroup в конце)
 (() => {
-  flat(330, 100, under(0x8a8a86), 460, 15, .02);
+  flat(330, 100, under(0x8a8a86), 460, TZ + 15, .02);
   const s = new T.Mesh(new T.PlaneGeometry(14, 3.5), new T.MeshBasicMaterial({ map: textTex(["ТРЮК-ПАРК"], 512, 128, "#2b2438", "#9fe3ff"), side: T.DoubleSide }));
-  s.position.set(310, 7, -30); s.rotation.y = Math.PI / 2; scene.add(s);
-  kicker(320, 0, 0, 10, 6, 3);            ring(352, 7, 0);
-  kicker(360, 30, 0, 16, 8, 6, 0x4a3f58); ring(400, 13, 30);
+  s.position.set(310, 7, TZ - 30); s.rotation.y = Math.PI / 2; scene.add(s);
+  kicker(320, TZ, 0, 10, 6, 3);           ring(352, 7, TZ);
+  kicker(360, TZ + 30, 0, 16, 8, 6, 0x4a3f58); ring(400, 13, TZ + 30);
   for (let i = 0; i < 4; i++) {
     const bx = 392 + i * 12.5, bus = new T.Mesh(new T.BoxGeometry(11, 3.2, 2.6), mat(0xe0a83a, { roughness: .5 }));
-    bus.position.set(bx, 1.9, 30); scene.add(bus);
-    const win = new T.Mesh(new T.BoxGeometry(9.5, .8, 2.62), mat(0x1b2236)); win.position.set(bx, 2.5, 30); scene.add(win);
-    addSolid(bx - 5.5, bx + 5.5, 28.7, 31.3, 3.5, "автобус");
+    bus.position.set(bx, 1.9, TZ + 30); scene.add(bus);
+    const win = new T.Mesh(new T.BoxGeometry(9.5, .8, 2.62), mat(0x1b2236)); win.position.set(bx, 2.5, TZ + 30); scene.add(win);
+    addSolid(bx - 5.5, bx + 5.5, TZ + 28.7, TZ + 31.3, 3.5, "автобус");
   }
-  kicker(470, -15, 0, 28, 9, 11, 0x5a3348); ring(530, 22, -15); ring(560, 16, -15);
-  kicker(600, 50, Math.PI, 12, 6, 4);     ring(565, 9, 50, Math.PI);
+  kicker(470, TZ - 15, 0, 28, 9, 11, 0x5a3348); ring(530, 22, TZ - 15); ring(560, 16, TZ - 15);
+  kicker(600, TZ + 50, Math.PI, 12, 6, 4); ring(565, 9, TZ + 50, Math.PI);
   kicker(700, ZA + 13.75, 0, 12, 3.2, 3.5);
   kicker(1100, ZA + 13.75, 0, 22, 3.2, 7);
   kicker(900, ZA - 13.75, Math.PI, 14, 3.2, 4.5);
   ring(760, 9, ZA + 13.75); ring(1190, 16, ZA + 13.75);
 })();
-northLift(N05);
+testGroup(N05);

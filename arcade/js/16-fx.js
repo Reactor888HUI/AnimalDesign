@@ -44,7 +44,7 @@ for (let i = 0; i < PUFFN; i++) { pool.push({ p: new T.Vector3(), on: false, t: 
 let pi = 0;
 function puff(p, v, life, s, g = 0, grow = 2) {       // g — тяжесть (брызги падают обратно), grow — во сколько раз облачко разрастается
   const q = pool[pi++ % pool.length];
-  q.p.copy(p); if (mode !== "free") q.p.y += PLAT; q.v.copy(v).add(new T.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 2, (Math.random() - .5) * 2));
+  q.p.copy(p); q.v.copy(v).add(new T.Vector3((Math.random() - .5) * 2, (Math.random() - .5) * 2, (Math.random() - .5) * 2));
   q.t = 0; q.life = life; q.s = s; q.g = g; q.grow = grow; q.on = true; q.r = Math.random() * 6.3; q.w = (Math.random() - .5) * 1.4;
 }
 // всплеск в Дону: капли вверх и в стороны + расходящееся пенное кольцо на воде
@@ -227,16 +227,16 @@ function buildLevel() {
   levelObjs.forEach(o => scene.remove(o)); levelObjs = [];
   row = []; let x = ROW0;
   for (let i = 0; i < L.cars; i++) { const m = MODELS[i % MODELS.length]; row.push({ ...m, x0: x, x1: x + m.len }); x += m.len + GAP; }
-  rowSolids = row.map(c => ({ x0: c.x0, x1: c.x1, z0: -1, z1: 1, h: PLAT + c.h, name: c.n }));
+  rowSolids = row.map(c => ({ x0: c.x0, x1: c.x1, z0: TZ - 1, z1: TZ + 1, h: c.h, name: c.n }));
   row.forEach(c => {
     const g = new T.Group(), len = c.len;
     const lower = new T.Mesh(new T.BoxGeometry(len, c.h * .5, 1.9), mat(c.c, { roughness: .5 })); lower.position.y = c.h * .25 + .25; g.add(lower);
     const upper = new T.Mesh(new T.BoxGeometry(c.n === "тягач" ? len * .68 : len * .5, c.h * .45, 1.75), mat(c.n === "тягач" ? 0xc9cfdb : 0x2a3348, { roughness: .4 }));
     upper.position.set(c.n === "тягач" ? -len * .14 : -len * .05, c.h * .72 + .2, 0); g.add(upper);
     [-.32, .32].forEach(f => [.95, -.95].forEach(z => { const t = new T.Mesh(new T.CylinderGeometry(.36, .36, .26, 12), mat(0x0b0e17)); t.rotation.x = Math.PI / 2; t.position.set(len * f, .36, z); g.add(t); }));
-    g.position.set((c.x0 + c.x1) / 2, PLAT, 0); scene.add(g); levelObjs.push(g);
+    g.position.set((c.x0 + c.x1) / 2, 0, TZ); scene.add(g); levelObjs.push(g);
   });
   L.padX = L.pad ? row[row.length - 1].x1 + L.pad.off : null;
-  if (L.padX != null) { const pad = flat(L.pad.w, 8, new T.MeshBasicMaterial({ color: 0xffb347 }), L.padX + L.pad.w / 2, 0, .05); pad.position.y += PLAT; levelObjs.push(pad); }
+  if (L.padX != null) levelObjs.push(flat(L.pad.w, 8, new T.MeshBasicMaterial({ color: 0xffb347 }), L.padX + L.pad.w / 2, TZ, .05));
 }
 

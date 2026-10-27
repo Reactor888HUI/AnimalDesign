@@ -13,7 +13,7 @@ const SHOTS = process.env.SHOTS || ".";
   await p.clock.runFor(1200);
   await p.evaluate(() => { localStorage.clear(); __t.fast(true); });   // рисуем редко: физика не отстаёт от часов теста
   const ev = (f, a) => p.evaluate(f, a), run = ms => p.clock.runFor(ms);
-  const M = () => ev(() => __t.missions()), out = {};
+  const M = () => ev(() => __t.missions()), out = {}, TZ0 = await ev(() => TZ);   // площадки-макеты — южнее карты
   const shot = async n => { await ev(() => __t.draw()); await p.screenshot({ path: path.join(SHOTS, n) }); };
   const keys = async (down, ms) => { for (const k of down) await p.keyboard.down(k); await run(ms); for (const k of down) await p.keyboard.up(k); };
 
@@ -32,10 +32,10 @@ const SHOTS = process.env.SHOTS || ".";
   out.roof = { ...(await ev(() => __t.car())), done: !!(await M()).roof, h: roof.h };
   await shot("p2-roof.png");
   // перелёт автобана с трамплина
-  await ev(() => { __t.teleport(850, 120, Math.PI / 2); __t.setCar({ v: 42 }); }); await keys(["ArrowUp"], 2000); await run(5000);   // в воздухе газ не держим — иначе сопла несут дальше
+  await ev(() => { __t.teleport(850, TZ + 120, Math.PI / 2); __t.setCar({ v: 42 }); }); await keys(["ArrowUp"], 2000); await run(5000);   // в воздухе газ не держим — иначе сопла несут дальше
   out.overpass = { ...(await ev(() => __t.car())), done: !!(await M()).overpass };
   // автобусы
-  await ev(() => { __t.teleport(330, 30, 0); __t.setCar({ v: 40 }); }); await keys(["ArrowUp"], 900); await run(3500);
+  await ev(() => { __t.teleport(330, TZ + 30, 0); __t.setCar({ v: 40 }); }); await keys(["ArrowUp"], 900); await run(3500);
   out.bus = { ...(await ev(() => __t.car())), done: !!(await M()).bus };
   // лучший трюк записан → кнопка повтора → повтор идёт и заканчивается
   await run(1200);
@@ -45,17 +45,17 @@ const SHOTS = process.env.SHOTS || ".";
   out.replayVia = out.replayBtn ? "кнопка на экране" : "меню «⋯»";
   if (out.best.frames) { await p.click(out.replayBtn ? "#b-replay" : "#m-replay"); await run(600); out.replayOn = (await ev(() => __t.best())).replay; await shot("p2-replay.png"); await run(6000); out.replayEnded = !(await ev(() => __t.best())).replay; }
   // три кольца подряд: пролетаем сквозь кольца трюк-парка
-  for (const [x, y, z] of [[349, 6.4, 0], [397, 12.4, 30], [527, 21.4, -15]]) { await ev(([x, y, z]) => { __t.teleport(x, z, 0); __t.setCar({ y: __t.carY() + y, vy: 0, v: 14, air: true }); }, [x, y, z]); await run(2500); }
+  for (const [x, y, z] of [[349, 6.4, 0], [397, 12.4, 30], [527, 21.4, -15]].map(([x, y, z]) => [x, y, z + TZ0])) { await ev(([x, y, z]) => { __t.teleport(x, z, 0); __t.setCar({ y: __t.carY() + y, vy: 0, v: 14, air: true }); }, [x, y, z]); await run(2500); }
   out.rings3 = !!(await M()).rings3;
   // две бочки: посадка ровно с накрученными 720°
   await ev(() => { __t.teleport(-300, 150, 0); __t.setCar({ y: __t.carY() + 6, vy: 0, v: 5, air: true }); __t.spin(720); }); await run(3000);
   out.barrel2 = !!(await M()).barrel2;
   // «Восьмёрка»: едем по точкам двух петель
-  await ev(() => __t.teleport(1010, 172, -Math.PI / 2));
+  await ev(() => __t.teleport(1010, TZ + 172, -Math.PI / 2));
   const way = [];
-  for (let i = 1; i <= 24; i++) { const a = i / 24 * Math.PI * 2; way.push([960 + 50 * Math.cos(a), 170 + 50 * Math.sin(a)]); }
-  for (let i = 1; i <= 24; i++) { const a = Math.PI - i / 24 * Math.PI * 2; way.push([1060 + 50 * Math.cos(a), 170 + 50 * Math.sin(a)]); }
-  way.push([1010, 175]);
+  for (let i = 1; i <= 24; i++) { const a = i / 24 * Math.PI * 2; way.push([960 + 50 * Math.cos(a), TZ0 + 170 + 50 * Math.sin(a)]); }
+  for (let i = 1; i <= 24; i++) { const a = Math.PI - i / 24 * Math.PI * 2; way.push([1060 + 50 * Math.cos(a), TZ0 + 170 + 50 * Math.sin(a)]); }
+  way.push([1010, TZ0 + 175]);
   let wi = 0;
   for (let t = 0; t < 45 && wi < way.length; t += .2) {
     const c = await ev(() => __t.car()), h = await ev(() => __t.heading());
@@ -71,12 +71,12 @@ const SHOTS = process.env.SHOTS || ".";
   await run(500);
   out.eight = { done: !!(await M()).eight, waypoints: wi + "/" + way.length };
   // автобан за 30 с: стартуем разогнанными у знака
-  await ev(() => { __t.teleport(-215, -46.25, 0); __t.setCar({ v: 50 }); }); await keys(["ArrowUp"], 29000);
+  await ev(() => { __t.teleport(-215, SPAWN.z, 0); __t.setCar({ v: 50 }); }); await keys(["ArrowUp"], 29000);
   out.autobahn = { ...(await ev(() => __t.car())), done: !!(await M()).autobahn };
 
   // трафик: стоим в полосе — машины сзади тормозят или объезжают, а не проезжают сквозь
   // любая попутная машина (направление +x) не у края мира: встаём в её полосу в 60 м перед ней
-  const lead = (await ev(() => __t.traffic())).find(c => c.zt > -60 && !c.wreck && c.x > -560 && c.x < 1250);
+  const ZA0 = await ev(() => ZA), lead = (await ev(() => __t.traffic())).find(c => c.zt > ZA0 && !c.wreck && c.x > -560 && c.x < 1250);
   const px = lead.x + 60, lane = lead.zt;
   await ev(([x, z]) => __t.teleport(x, z, 0), [px, lane]); await run(100);
   let minGap = Infinity, changed = 0;
@@ -88,7 +88,7 @@ const SHOTS = process.env.SHOTS || ".";
   }
   out.traffic = { minGapBehind: +minGap.toFixed(1), laneChanges: changed > 0 };
   // авария сверху: падаем на крышу машины в потоке
-  const tc = (await ev(() => __t.traffic())).find(c => c.x > -400 && c.x < 1200 && c.z > -60 && !c.wreck);
+  const tc = (await ev(() => __t.traffic())).find(c => c.x > -400 && c.x < 1200 && c.z > ZA0 && !c.wreck);
   await ev(c => { __t.teleport(c.x, c.z, 0); __t.setCar({ y: __t.carY() + 3.2, vy: -2, v: c.v, air: true }); }, tc); await run(800);
   const after = await ev(() => __t.traffic());
   out.stomp = { wrecked: after.some(c => c.wreck > 0), car: await ev(() => __t.car()) };

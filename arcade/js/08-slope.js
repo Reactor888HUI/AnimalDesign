@@ -123,6 +123,7 @@ const HILL = (() => {
 });
 kickers.forEach(festKicker);                         // праздничные лампочки и вымпелы на всех трамплинах
 if (FEST.geos.length) { scene.add(new T.Mesh(mergeGeos(FEST.geos), FEST_M)); FEST.geos = []; }
+freeze(TEST.group, true);   // площадки-макеты — своя склейка (прячутся вдали целиком)
 freeze(scene);   // вся неподвижная геометрия мира — несколько склеенных мешей
 // мелкая склеенная статика (вывески, указатели — у каждой своя текстура) издалека не нужна: в отсечение участков
 scene.children.forEach(o => {

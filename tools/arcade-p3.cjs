@@ -42,7 +42,7 @@ const path = require("path");
     await p2.evaluate(([x, z, y]) => __t.teleport(x, z, y), [D.cx + D.dx * s + D.nx * l, D.cz + D.dz * s + D.nz * l, Math.atan2(-D.dz * k, D.dx * k)]);
     await p2.keyboard.down("ArrowUp"); await p2.clock.runFor(18000); await p2.keyboard.up("ArrowUp");
   }
-  await p2.clock.runFor(5000);
+  await p2.clock.runFor(9000);   // мост теперь с подъёмом от правого берега: задание засчитывается позже, запись — через 4 с после него
   out.boardMissions = await p2.evaluate(() => __t.missions()); out.boardCar = await p2.evaluate(() => __t.car());
   out.boardWrites = await p2.evaluate(() => window.__writes.map(w => ({ path: w.path, best: w.data.best })));
   await p2.click("#dock-btn"); await p2.clock.runFor(300);

@@ -8,7 +8,7 @@ const { chromium } = require(process.env.PW || 'playwright');
   await p.addInitScript(o => { try { localStorage.setItem('baklan3d-v1', JSON.stringify({ unlocked: 1, best: {}, quality: 'mid', vehicle: o.veh, cam: o.cam })); } catch (e) {} }, { veh: process.env.VEH || 'vaz', cam: process.env.CAM || 'chase' });   // VEH=suv — с внедорожником, CAM=cockpit — из кабины
   await p.goto('file://' + require('path').resolve(__dirname, '../arcade/index.html') + '#test');
   await p.waitForTimeout(1500);
-  for (const [n, x, z, yaw] of [['autobahn', -60, -46, 0], ['city', 880, -560, -Math.PI / 2], ['city-x', 300, -170, 0]]) {
+  for (const [n, x, z, yaw] of [['autobahn', -60, -3376, 0], ['city', 880, -560, -Math.PI / 2], ['city-x', 300, -170, 0]]) {
     await p.evaluate(([x, z, yaw]) => window.__t.teleport(x, z, yaw), [x, z, yaw]);
     await p.waitForTimeout(1200);
     // real-time fps over 3 s

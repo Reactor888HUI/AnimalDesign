@@ -5,35 +5,35 @@
 
 ## Код: `arcade/js/`
 
-### `01-core.js` — 152 строк, 12 КБ
+### `01-core.js` — 154 строк, 13 КБ
 
 Параметры, уроки, сохранение, случайность, сцена, куски мира.
 
-Разделы: параметры полигона (стр. 19) · параметры города (стр. 25) · уроки (стр. 51) · сохранение (стр. 89) · случайность с зерном: город всегда одинаковый (стр. 94) · сцена (стр. 98) · куски мира: мелкие объекты по квадратам 200 м, рисуем только видимые (стр. 112)
+Разделы: параметры полигона (стр. 19) · параметры города (стр. 25) · уроки (стр. 52) · сохранение (стр. 90) · случайность с зерном: город всегда одинаковый (стр. 95) · сцена (стр. 99) · куски мира: мелкие объекты по квадратам 200 м, рисуем только видимые (стр. 113)
 
-Имена: `$`, `showFatal`, `halted`, `halt`, `T`, `G`, `RS`, `ROW0`, `AIR_SLOW`, `CLEAN_ROLL`, `ZA`, `PLAT`, `VMAXF`, `WORLD`, `SPAWN`, `yUp0`, `MODELS`, `LEVELS`, `FREE`, `DRILLS`, `save`, `persist`, `seed`, `rnd`, `stage`, `renderer`, `MAXQ`, `scene`, `camera`, `CHUNKS`, `chunked`, `chunkFrustum`, `cullChunks`, `grainTex`, `M4`
+Имена: `$`, `showFatal`, `halted`, `halt`, `T`, `G`, `RS`, `ROW0`, `AIR_SLOW`, `CLEAN_ROLL`, `TZ`, `ZA`, `PLAT`, `VMAXF`, `WORLD`, `SPAWN`, `yUp0`, `MODELS`, `LEVELS`, `FREE`, `DRILLS`, `save`, `persist`, `seed`, `rnd`, `stage`, `renderer`, `MAXQ`, `scene`, `camera`, `CHUNKS`, `chunked`, `chunkFrustum`, `cullChunks`, `grainTex`, `M4`
 
-### `02-sky.js` — 271 строк, 23 КБ
+### `02-sky.js` — 266 строк, 23 КБ
 
 Небо и свет, вода Дона (WAKE), праздничное оформление; общие помощники: mat, mergeGeos, bake, freeze, flat, addSolid.
 
 Разделы: небо и свет: 16:30, низкое золотое солнце (стр. 4) · праздничное оформление: «парк аттракционов» для трюков (стр. 174)
 
-Имена: `SUN_DIR`, `HAZE`, `hemi`, `sun`, `DON_WATER`, `WAKE`, `TIMES`, `TIME`, `NIGHT`, `nightReg`, `skyDome`, `shafts`, `shaftTmp`, `tickSky`, `matCache`, `mat`, `GLOW`, `glowMat`, `mergeGeos`, `bake`, `FEST_M`, `FEST_COLS`, `FEST`, `festPut`, `FEST_BULB`, `festBulbs`, `festPole`, `festTri`, `festQuadUp`, `festBunting`, `festKicker`, `freeze`, `under`, `flat`, `textTex`, `walls`, `addSolid`, `northMark`, `northLift`
+Имена: `SUN_DIR`, `HAZE`, `hemi`, `sun`, `DON_WATER`, `WAKE`, `TIMES`, `TIME`, `NIGHT`, `nightReg`, `skyDome`, `shafts`, `shaftTmp`, `tickSky`, `matCache`, `mat`, `GLOW`, `glowMat`, `mergeGeos`, `bake`, `FEST_M`, `FEST_COLS`, `FEST`, `festPut`, `FEST_BULB`, `festBulbs`, `festPole`, `festTri`, `festQuadUp`, `festBunting`, `festKicker`, `freeze`, `under`, `flat`, `textTex`, `walls`, `addSolid`, `TEST`, `testMark`, `testGroup`
 
-### `03-ground.js` — 121 строк, 7 КБ
+### `03-ground.js` — 130 строк, 8 КБ
 
 Земля, полигон, автобан.
 
-Разделы: земля и полигон (стр. 4) · автобан (стр. 66)
+Разделы: земля и полигон (стр. 4) · автобан (стр. 66) · дорога из города к площадкам: от южного края карты (у середины) на юг до автобана (стр. 118)
 
 Имена: `groundM`, `N03`, `markM`, `groundLabel`, `tower`, `beacon`, `TRIB`, `smooth`, `lerp`, `rampY`
 
-### `04-rostov.js` — 605 строк, 56 КБ
+### `04-rostov.js` — 602 строк, 56 КБ
 
 Ростов из OpenStreetMap, рельеф правого берега, дома, дороги.
 
-Разделы: Ростов: настоящий район из OpenStreetMap (стр. 4) · рельеф правого берега (стр. 75)
+Разделы: Ростов: настоящий район из OpenStreetMap (стр. 4) · рельеф правого берега (стр. 72)
 
 Имена: `dm`, `rectOf`, `CORE`, `inStrip`, `inWorldMap`, `inPoly`, `inRings`, `lineDist`, `bboxOf`, `ROAD_W`, `ROADS`, `deckH`, `deckAt`, `WATER`, `PIERS`, `TER`, `DEM`, `demH`, `TX0`, `BANK`, `terLerp`, `clamp01`, `sideZ`, `sideH`, `terrainH`, `surfaceH`, `terrainN`, `M4T`, `DECKS`, `onCarriageway`, `ZONES`, `waterAt`, `roadPoint`, `placeName`, `CITY`
 
@@ -61,7 +61,7 @@
 
 Имена: `N07`, `SHOW`
 
-### `08-slope.js` — 147 строк, 14 КБ
+### `08-slope.js` — 148 строк, 14 КБ
 
 Запечённые тени домов, сетка склона.
 
@@ -171,7 +171,7 @@
 
 Имена: `respawn`, `sink`, `sinkStep`, `freeCrash`, `takeoff`, `stepFree`, `landFree`
 
-### `22-ui.js` — 459 строк, 37 КБ
+### `22-ui.js` — 460 строк, 37 КБ
 
 Результаты, меню, уроки, повтор, рекорды, «⋯», карта.
 
@@ -203,13 +203,13 @@
 
 Имена: `joy`, `ctrl`, `joyMode`, `wheel`, `DRIFT_VIS`, `driftUI`, `driftHands`, `dz`, `thr`, `brk`, `turn`, `joyHintUntil`, `joyEnd`, `setHintText`, `KEYS`, `keyOf`, `hold`, `coachHint`, `btnFor`, `lastHint`, `driftKitTick`, `speedFx`, `speedLines`, `ui`
 
-### `26-frame.js` — 362 строк, 32 КБ
+### `26-frame.js` — 360 строк, 32 КБ
 
 Кадр (главный цикл), ручки для тестов.
 
 Разделы: кадр (стр. 4)
 
-Имена: `camPos`, `RYO`, `render`, `renderAt`, `layerGround`, `resize`, `wallBasis`, `perf`, `setTime`, `setQuality`, `trackPerf`, `last`, `testFast`, `CINE`, `frame`
+Имена: `camPos`, `render`, `layerGround`, `resize`, `wallBasis`, `perf`, `setTime`, `setQuality`, `trackPerf`, `last`, `testFast`, `CINE`, `frame`
 
 ## Данные: `arcade/data/`
 
@@ -415,8 +415,6 @@
 | `nextCam` | `22-ui.js` |
 | `NIGHT` | `02-sky.js` |
 | `nightReg` | `02-sky.js` |
-| `northLift` | `02-sky.js` |
-| `northMark` | `02-sky.js` |
 | `nozzle` | `17-state.js` |
 | `onCarriageway` | `04-rostov.js` |
 | `onEightTrack` | `18-missions.js` |
@@ -463,7 +461,6 @@
 | `recordFree` | `22-ui.js` |
 | `rectOf` | `04-rostov.js` |
 | `render` | `26-frame.js` |
-| `renderAt` | `26-frame.js` |
 | `renderer` | `01-core.js` |
 | `renderMenu` | `22-ui.js` |
 | `replayBtnUntil` | `22-ui.js` |
@@ -483,7 +480,6 @@
 | `ROW0` | `01-core.js` |
 | `RS` | `01-core.js` |
 | `rubberMetal` | `14-car.js` |
-| `RYO` | `26-frame.js` |
 | `save` | `01-core.js` |
 | `scene` | `01-core.js` |
 | `sceneChunk` | `09-scenes.js` |
@@ -559,7 +555,10 @@
 | `terLerp` | `04-rostov.js` |
 | `terrainH` | `04-rostov.js` |
 | `terrainN` | `04-rostov.js` |
+| `TEST` | `02-sky.js` |
 | `testFast` | `26-frame.js` |
+| `testGroup` | `02-sky.js` |
+| `testMark` | `02-sky.js` |
 | `teul` | `15-traffic.js` |
 | `textTex` | `02-sky.js` |
 | `thr` | `25-input.js` |
@@ -594,6 +593,7 @@
 | `TUNES` | `14-car.js` |
 | `turn` | `25-input.js` |
 | `TX0` | `04-rostov.js` |
+| `TZ` | `01-core.js` |
 | `ui` | `25-input.js` |
 | `under` | `02-sky.js` |
 | `UNDER` | `12-photo.js` |

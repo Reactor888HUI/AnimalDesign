@@ -38,7 +38,7 @@ const TRAFFIC_KINDS = (() => {
   };
   Object.values(K).forEach(k => {
     k.meshes = [new T.InstancedMesh(k.body, new T.MeshStandardMaterial({ vertexColors: true, roughness: .45, metalness: .2 }), k.n), new T.InstancedMesh(k.fix, glowMat(), k.n)];
-    k.meshes.forEach(im => scene.add(im));
+    k.meshes.forEach(im => TEST.group.add(im));   // трафик — на автобане площадок
   });
   return K;
 })();
@@ -61,7 +61,7 @@ function tickTraffic(dt) {
   traffic.forEach((c, i) => {
     if (c.wreck > 0) {                     // разбитая машина стоит с дымом, потом уезжает «на эвакуаторе»
       c.wreck -= dt;
-      if (Math.random() < dt * 8) puff(new T.Vector3(c.x, PLAT + 1.6, c.z), new T.Vector3(0, 2.5, 0), 1.1, .35);
+      if (Math.random() < dt * 8) puff(new T.Vector3(c.x, 1.6, c.z), new T.Vector3(0, 2.5, 0), 1.1, .35);
       if (c.wreck <= 0) { c.x = c.dir > 0 ? -590 : 1390; c.v = c.v0; }
     } else {
       // кто впереди в той же полосе: машина потока или игрок
@@ -86,7 +86,7 @@ function tickTraffic(dt) {
       if (c.x > 1390) c.x = -590; if (c.x < -590) c.x = 1390;
     }
     tq.setFromEuler(teul.set(c.wreck > 0 ? .25 : 0, (c.dir > 0 ? 0 : Math.PI) + (c.zt - c.z) * .06 * c.dir, 0, "YXZ"));
-    tpos.set(c.x, PLAT, c.z); tmat.compose(tpos, tq, tone); TRAFFIC_KINDS[c.kind].meshes.forEach(im => im.setMatrixAt(c.k, tmat));
+    tpos.set(c.x, 0, c.z); tmat.compose(tpos, tq, tone); TRAFFIC_KINDS[c.kind].meshes.forEach(im => im.setMatrixAt(c.k, tmat));
   });
   Object.values(TRAFFIC_KINDS).forEach(K => K.meshes.forEach(im => { im.instanceMatrix.needsUpdate = true; }));
 }

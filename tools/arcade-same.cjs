@@ -5,9 +5,9 @@
 const path = require('path'), fs = require('fs');
 const { chromium } = require(process.env.PW || 'playwright');
 const [html, out] = process.argv.slice(2);
-const SHOTS = [
-  ['autobahn', -60, -46, 0, 'vaz'], ['city', 880, -560, -Math.PI / 2, 'vaz'], ['city-x', 300, -170, 0, 'vaz'],
-  ['trickpark', 296, 0, 0, 'vaz'], ['arena', 380, -1460, Math.PI, 'vaz'], ['west', 2600, -1500, -Math.PI / 2, 'vaz'],
+const SHOTS = [                 // автобан и трюк-парк — площадки южнее карты (TZ = −3330)
+  ['autobahn', -60, -3376, 0, 'vaz'], ['city', 880, -560, -Math.PI / 2, 'vaz'], ['city-x', 300, -170, 0, 'vaz'],
+  ['trickpark', 296, -3330, 0, 'vaz'], ['arena', 380, -1460, Math.PI, 'vaz'], ['west', 2600, -1500, -Math.PI / 2, 'vaz'],
   ['suv-city', 880, -560, -Math.PI / 2, 'suv'],
 ];
 (async () => {

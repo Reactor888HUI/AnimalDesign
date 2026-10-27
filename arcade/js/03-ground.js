@@ -2,32 +2,32 @@
 // Код игры разбит на файлы arcade/js/NN-*.js; они грузятся по порядку номеров и делят общие имена (docs/ARCHITECTURE.md).
 "use strict";
 /* ---------- земля и полигон ---------- */
-// земля до западной сцены: южная часть — на нуле (город лежит на ней своим склоном), северная — плато (поднимается в конце файла)
-flat(5600, 2868, new T.MeshLambertMaterial({ color: 0xa79d7a, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }), 1100, -1516, 0);   // свой материал: под слоями воды и газонов
+// земля до западной сцены: южная часть (город, левый берег, площадки) — на нуле, за Садовой — плато PLAT
+flat(5600, 4218, new T.MeshLambertMaterial({ color: 0xa79d7a, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 }), 1100, -2191, 0);   // свой материал: под слоями воды и газонов
 const groundM = new T.MeshLambertMaterial({ color: 0xa79d7a, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 });   // плато и склоны к нему (отдельно от южной земли)
-const N03 = northMark();
-flat(5600, 1432, groundM, 1100, 634, 0);
-flat(360, 10, under(0x45474b), 120, 0, .02);
+flat(5600, 1432, groundM, 1100, 634, PLAT / 3);
+const N03 = testMark();                   // дальше — площадки-макеты (testGroup в конце файла)
+flat(360, 10, under(0x45474b), 120, TZ, .02);
 const markM = new T.MeshBasicMaterial({ color: 0xbfc4d0 });
-for (let x = -20; x < 300; x += 6) flat(2.5, .2, markM, x, 0, .03);
+for (let x = -20; x < 300; x += 6) flat(2.5, .2, markM, x, TZ, .03);
 function groundLabel(text, x, z) {
   const c = document.createElement("canvas"); c.width = 128; c.height = 64;
   const g = c.getContext("2d"); g.fillStyle = "#e8ecf5"; g.font = "bold 40px JetBrains Mono, monospace"; g.textAlign = "center"; g.fillText(text, 64, 46);
   const m = new T.Mesh(new T.PlaneGeometry(4, 2), new T.MeshBasicMaterial({ map: new T.CanvasTexture(c), transparent: true }));
   m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.PI / 2; m.position.set(x, .12, z); scene.add(m);
 }
-for (let m = 10; m <= 120; m += 10) groundLabel(`${m} м`, RX + m, 6.5);
-const tower = new T.Mesh(new T.BoxGeometry(2, 30, 2), mat(0x2b2438)); tower.position.set(110, 15, -28); scene.add(tower);
-addSolid(109, 111, -29, -27, 30, "башню");
-const beacon = new T.Mesh(new T.BoxGeometry(.8, .8, .8), new T.MeshBasicMaterial({ color: 0xff5a4a })); beacon.position.set(110, 30.6, -28); scene.add(beacon);
+for (let m = 10; m <= 120; m += 10) groundLabel(`${m} м`, RX + m, TZ + 6.5);
+const tower = new T.Mesh(new T.BoxGeometry(2, 30, 2), mat(0x2b2438)); tower.position.set(110, 15, TZ - 28); scene.add(tower);
+addSolid(109, 111, TZ - 29, TZ - 27, 30, "башню");
+const beacon = new T.Mesh(new T.BoxGeometry(.8, .8, .8), new T.MeshBasicMaterial({ color: 0xff5a4a })); beacon.position.set(110, 30.6, TZ - 28); scene.add(beacon);
 for (let i = 0; i < 9; i++) {
   const w = 40 + (i * 37) % 50, h = 22 + (i * 13) % 26;
   const mtn = new T.Mesh(new T.CylinderGeometry(w * .45, w * .6, h, 6), mat(0x8d9a8a, { flatShading: true }));
-  mtn.position.set(-300 + i * 190, h / 2, 330 + (i * 53) % 120); scene.add(mtn);
+  mtn.position.set(-300 + i * 190, h / 2, TZ - 330 - (i * 53) % 120);   // за автобаном, с дальней от города стороны scene.add(mtn);
 }
 
 /* трибуна */
-const TRIB = { x: ROW0 + 14, z: 22 };
+const TRIB = { x: ROW0 + 14, z: TZ + 22 };
 (() => {
   for (let k = 0; k < 4; k++) { const s = new T.Mesh(new T.BoxGeometry(26, 1, 2), mat(0x1c2033)); s.position.set(TRIB.x, .5 + k, TRIB.z + k * 2); scene.add(s); }
   const roof = new T.Mesh(new T.BoxGeometry(28, .3, 10), mat(0x2b2438)); roof.position.set(TRIB.x, 7.5, TRIB.z + 3); scene.add(roof);
@@ -50,7 +50,7 @@ const rampY = t => RH * t * t;
   for (let i = 0; i < N; i++) {
     const t = (i + .5) / N, roll = 180 * smooth(t) * DEG;
     const seg = new T.Group();
-    seg.position.set(RS + RL * t, rampY(t) + WHEEL, 0);
+    seg.position.set(RS + RL * t, rampY(t) + WHEEL, TZ);
     seg.rotation.set(roll, 0, Math.atan(2 * RH * t / RL), "ZYX");
     const deck = new T.Mesh(new T.BoxGeometry(RL / N * 1.35, .15, 3.2), rampMat); deck.position.y = -WHEEL - .08; seg.add(deck);
     [-1.65, 1.65].forEach((z, k) => { const r = new T.Mesh(new T.BoxGeometry(RL / N * 1.35, .3, .12), k ? railA : railB); r.position.set(0, -WHEEL + .05, z); seg.add(r); });
@@ -82,17 +82,15 @@ const rampY = t => RH * t * t;
     gaps.sort((a, b) => a[0] - b[0]).forEach(([g0, g1]) => { if (g0 > s) out.push([s, g0]); s = Math.max(s, g1); });
     if (s < x1) out.push([s, x1]); return out;
   };
-  const cityGaps = [];                      // разрывы отбойника там, где к автобану выходят улицы Ростова
-  OSM.r.forEach(([c, , , a]) => { if (c > 3) return; [[a[0], a[1]], [a[a.length - 2], a[a.length - 1]]].forEach(([x, z]) => { if (z / 10 > -83) cityGaps.push([x / 10 - 8, x / 10 + 8]); }); });
   segs(-600, 1400, [[193, 207], [593, 607], [993, 1007]]).forEach(([a, b]) => {
     const m = new T.Mesh(new T.BoxGeometry(b - a, .9, .6), concrete); m.position.set((a + b) / 2, .45, ZA); scene.add(m);
     walls.push({ x0: a, x1: b, z0: ZA - .5, z1: ZA + .5, h: .9 });
   });
-  segs(-600, 1400, cityGaps).forEach(([a, b]) => {
+  segs(-600, 1400, []).forEach(([a, b]) => {
     const m = new T.Mesh(new T.BoxGeometry(b - a, .8, .2), rail); m.position.set((a + b) / 2, .55, ZA - 18.2); scene.add(m);
     walls.push({ x0: a, x1: b, z0: ZA - 18.6, z1: ZA - 17.8, h: .8 });
   });
-  segs(-600, 1400, [[-40, 640]]).forEach(([a, b]) => {
+  segs(-600, 1400, [[-40, 640], [868, 892]]).forEach(([a, b]) => {
     const m = new T.Mesh(new T.BoxGeometry(b - a, .8, .2), rail); m.position.set((a + b) / 2, .55, ZA + 18.2); scene.add(m);
     walls.push({ x0: a, x1: b, z0: ZA + 17.8, z1: ZA + 18.6, h: .8 });
   });
@@ -117,4 +115,15 @@ const rampY = t => RH * t * t;
   gantry(250, ["Ростов ← налево", "Трюк-парк → направо"]);
   gantry(650, ["Трамплин на крайней", "правой полосе"]);
 })();
-northLift(N03);
+/* ---------- дорога из города к площадкам: от южного края карты (у середины) на юг до автобана ---------- */
+(() => {
+  const x = 880, z0 = -2840, z1 = ZA + 18, L = z0 - z1;            // южный край карты — z −2844; середина (x ~760) — протока, x 880 — ближайшая суша
+  flat(10, L, under(0x404246), x, (z0 + z1) / 2, .02);
+  const white = new T.MeshBasicMaterial({ color: 0xd9dde6 });
+  [-4.7, 4.7].forEach(o => flat(.2, L, white, x + o, (z0 + z1) / 2, .03));
+  for (let z = z1 + 3; z < z0 - 3; z += 12) flat(.2, 6, white, x, z + 3, .03);
+  const sign = new T.Mesh(new T.PlaneGeometry(9, 2.6), new T.MeshBasicMaterial({ map: textTex(["ПОЛИГОН · ТРЮК-ПАРК", "«Восьмёрка» · автобан ↓"], 512, 148), side: T.DoubleSide }));
+  sign.position.set(x + 9, 3.6, z0 - 12); scene.add(sign);
+  [-3.8, 3.8].forEach(o => { const p = new T.Mesh(new T.BoxGeometry(.2, 3.6, .2), mat(0x6b6f7c)); p.position.set(x + 9 + o, 1.8, z0 - 12); scene.add(p); });
+})();
+testGroup(N03);

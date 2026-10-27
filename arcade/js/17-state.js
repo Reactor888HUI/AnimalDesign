@@ -9,7 +9,7 @@ let free = { score: 0, air: false, airT: 0, cork: false, ringBonus: 0, safe: { .
 const input = { thrust: false, rl: false, rr: false, brake: false, hop: false };
 
 function freshCar() {
-  car = { x: 0, y: 0, z: 0, yaw: 0, v: 0, vx: 0, vy: 0, roll: 0, om: 0, pitch: 0, spin: 0, floor: 0 };
+  car = { x: 0, y: 0, z: TZ, yaw: 0, v: 0, vx: 0, vy: 0, roll: 0, om: 0, pitch: 0, spin: 0, floor: 0 };
   gas = 100; tPhase = 0; landing = null; totalRoll = 0; result = null; rec = []; simT = 0; replay = null; free.gh = 0;
   if (zoneMesh) { scene.remove(zoneMesh); zoneMesh = null; }
 }
@@ -17,7 +17,7 @@ function zone(y0, y1) {
   const geo = new T.BoxGeometry(14, y1 - y0, 7);
   zoneMesh = new T.Mesh(geo, new T.MeshBasicMaterial({ color: 0x6fdc8c, transparent: true, opacity: .14, depthWrite: false }));
   zoneMesh.add(new T.LineSegments(new T.EdgesGeometry(geo), new T.LineBasicMaterial({ color: 0x6fdc8c })));
-  zoneMesh.position.set(car.x, PLAT + (y0 + y1) / 2, 0); scene.add(zoneMesh);
+  zoneMesh.position.set(car.x, (y0 + y1) / 2, TZ); scene.add(zoneMesh);
 }
 function reset(li) {
   L = LEVELS[li]; L.i = li; buildLevel();
@@ -27,7 +27,7 @@ function reset(li) {
 }
 const rollErr = r => ((r % 360) + 540) % 360 - 180;
 const timeToGround = (gh = 0) => { const h = Math.max(0, car.y - gh); return (car.vy + Math.sqrt(Math.max(0, car.vy * car.vy + 2 * G * h))) / G; };
-const nozzle = (lx, ly) => { const p = new T.Vector3(lx, ly, 0).applyEuler(carObj.rotation).add(carObj.position); if (mode !== "free") p.y -= PLAT; return p; };   // в высотах физики (в уровнях — от земли полигона)
+const nozzle = (lx, ly) => new T.Vector3(lx, ly, 0).applyEuler(carObj.rotation).add(carObj.position);
 
 /* ---------- физика полигона (уровни и уроки) ---------- */
 function step(dt) {
@@ -149,7 +149,7 @@ function land() {
     why += err > HARD_ROLL ? " Смотрите на прибор крена: колёса должны смотреть на зелёную линию." : " Держите ГАЗ перед землёй.";
     return crash(why);
   }
-  dust(car.x, 0, 0, 10); sfx.thump(Math.min(1, vImp / 14));
+  dust(car.x, 0, car.z, 10); sfx.thump(Math.min(1, vImp / 14));
   landing = { x: car.x, err, vImp, q };
   car.y = 0; car.vy = 0; car.roll = 0; car.om = 0;
   phase = "roll"; tPhase = 0;

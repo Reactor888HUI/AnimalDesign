@@ -256,15 +256,10 @@ function textTex(lines, w = 512, h = 128, bg = "#1f6b3a", fg = "#ffffff") {
 /* препятствия: стены (низкие, отбрасывают) и здания/объекты (высокие) */
 const walls = [], solids = [], kickers = [];
 const addSolid = (x0, x1, z0, z1, h, name) => solids.push({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), h, name });
-// Север стоит на плато PLAT. Его строители (03-ground, 05-trickpark, 07-eight) рисуют от нуля, как раньше;
-// northLift(northMark()) в конце файла поднимает всё, что файл добавил: объекты сцены, препятствия, отбойники, трамплины, кольца, куски, праздничные гирлянды.
-const northMark = () => ({ o: scene.children.length, s: solids.length, w: walls.length, k: kickers.length, r: typeof rings === "undefined" ? 0 : rings.length, c: CHUNKS.length, f: FEST.geos.length });
-function northLift(m) {
-  scene.children.slice(m.o).forEach(o => { o.position.y += PLAT; o.updateMatrixWorld(true); });
-  solids.slice(m.s).forEach(b => { b.h += PLAT; }); walls.slice(m.w).forEach(b => { b.h += PLAT; });
-  kickers.slice(m.k).forEach(k => { k.y0 += PLAT; });
-  if (typeof rings !== "undefined") rings.slice(m.r).forEach(r => { r.y += PLAT; });
-  CHUNKS.slice(m.c).forEach(ch => { ch.s.center.y += PLAT; });
-  FEST.geos.slice(m.f).forEach(g => g.translate(0, PLAT, 0));
-}
+// Площадки-макеты (03-ground, 05-trickpark, конец 06-arena, 07-eight) — отдельная сцена TEST южнее карты: всё, что строитель
+// добавил в сцену между testMark() и testGroup(), уходит в TEST.group; она склеивается отдельно от города и прячется вдали (cullChunks).
+const TEST = { group: new T.Group(), box: { x0: -620, x1: 1420, z0: TZ - 470, z1: TZ + 240 } };
+TEST.group.userData.dyn = true; scene.add(TEST.group);
+const testMark = () => scene.children.length;
+function testGroup(n0) { scene.children.slice(n0).forEach(o => TEST.group.add(o)); }
 

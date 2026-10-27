@@ -23,10 +23,11 @@ const ROW0 = RX + 8, GAP = 0.8, HALF = 2.2, WHEEL = 0.65;
 const AIR_SLOW = 0.8;
 const CLEAN_ROLL = 20, CLEAN_V = 16, HARD_ROLL = 45, HARD_V = 24;
 /* ---------- параметры города ---------- */
-const ZA = -60;                       // ось автобана
-const PLAT = 42;                      // высота плато севера (z > −82: автобан, трюк-парк, полигон, «Восьмёрка») — верх города у Садовой (ТЗ, раздел 9)
+const TZ = -3330;                     // площадки-макеты (автобан, трюк-парк, полигон, «Восьмёрка») — южнее карты, к ним дорога от её южного края
+const ZA = -60 + TZ;                  // ось автобана
+const PLAT = 42;                      // высота плато за Садовой (z > −82): верх города (ТЗ, раздел 9); сейчас там пусто
 const VMAXF = 55;                     // ~200 км/ч
-const WORLD = { x0: -580, x1: 3640, z0: -2860, z1: 260 };   // до x 3640 — западная сцена: Темерницкий и железнодорожный мосты
+const WORLD = { x0: -580, x1: 3640, z0: -3800, z1: 260 };   // до x 3640 — западная сцена: Темерницкий и железнодорожный мосты
 const SPAWN = { x: -60, z: ZA + 13.75, yaw: 0 };
 // данные: arcade/data/osm-main.js (tools/osm-to-game.py)
 // данные: arcade/data/osm-west.js (MARK=WEST-DATA tools/osm-to-game.py)
@@ -136,6 +137,7 @@ function cullChunks() {
     if (ch.obj.visible) n++;
   }
   chunkStat.shown = n; chunkStat.total = CHUNKS.length;
+  TEST.group.visible = Math.hypot(Math.max(TEST.box.x0 - camera.position.x, 0, camera.position.x - TEST.box.x1), Math.max(TEST.box.z0 - camera.position.z, 0, camera.position.z - TEST.box.z1)) < 1500;   // площадки — отдельная сцена
   if (INNER) INNER.group.visible = Math.hypot(camera.position.x - ARENA.C[0], camera.position.z - ARENA.C[1]) < 560;   // начинка Арены — только вблизи
 }
 // фактура асфальта: мелкое зерно и пятна заплаток; с мипмапами — вдали сглаживается, не рябит

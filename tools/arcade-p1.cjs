@@ -32,7 +32,7 @@ const SHOTS = process.env.SHOTS || ".";
   await ev(() => __t.fast(false));
 
   // 2. при разгоне нос приподнимается (при торможении — клюёт, см. drift.bodyPitch)
-  await ev(() => __t.teleport(-60, -46.25, 0));
+  await ev(() => __t.teleport(SPAWN.x, SPAWN.z, 0));
   await p.keyboard.down("ArrowUp"); await p.clock.runFor(500);
   out.pitchAccel = (await ev(() => __t.drift())).bodyPitch;
   await p.keyboard.up("ArrowUp");
@@ -41,7 +41,7 @@ const SHOTS = process.env.SHOTS || ".";
   await p.click("#dock-btn"); await p.clock.runFor(200);
   await p.click("#m-ctrl"); out.ctrlLabel = await p.textContent("#m-ctrl");
   await p.click("#dock-btn"); await p.clock.runFor(200);
-  await ev(() => __t.teleport(-60, -46.25, 0));
+  await ev(() => __t.teleport(SPAWN.x, SPAWN.z, 0));
   const cdp = await ctx.newCDPSession(p);
   const TT = (type, pts) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: pts });
   const L = x => ({ x, y: 600, id: 1 }), Rt = y => ({ x: 320, y, id: 2 });
@@ -62,10 +62,10 @@ const SHOTS = process.env.SHOTS || ".";
   out.wheel = { gasSpeed: w1.v, turnedRight: h2 < h1, dHeading: h2 - h1, brakeSlows: w3.v < w1.v + 6 && w3.v < (await ev(() => __t.car())).v + 1, hiddenAfter: await p.$eval("#wheel", e => e.hidden) && await p.$eval("#pedal", e => e.hidden) };
 
   // 4. камера на заднем ходу выше, чем при езде вперёд
-  await ev(() => __t.teleport(-60, -46.25, 0));
+  await ev(() => __t.teleport(SPAWN.x, SPAWN.z, 0));
   await p.keyboard.down("ArrowUp"); await p.clock.runFor(1500); await p.keyboard.up("ArrowUp");
   const camF = await ev(() => __t.cam()), carF = await ev(() => __t.car());
-  await ev(() => __t.teleport(-60, -46.25, 0));
+  await ev(() => __t.teleport(SPAWN.x, SPAWN.z, 0));
   await p.keyboard.down("ArrowDown"); await p.clock.runFor(2500);
   const camR = await ev(() => __t.cam()), carR = await ev(() => __t.car());
   await p.keyboard.up("ArrowDown");

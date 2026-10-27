@@ -442,21 +442,21 @@ const INNER = ARENA && (() => {
 })();
 
 /* новые трюк-зоны: четверть трубы, стена с кольцом, трамплин через автобан, трасса «Восьмёрка» */
-const EIGHT = { ax: 960, bx: 1060, z: 170, r: 50, hw: 7.5 };      // две петли, перекрёсток в (1010, 170); hw — полуширина асфальта (15 м)
-const N06 = northMark();                    // всё ниже — на плато (northLift в конце)
+const EIGHT = { ax: 960, bx: 1060, z: TZ + 170, r: 50, hw: 7.5 };   // две петли, перекрёсток в (1010, EIGHT.z); hw — полуширина асфальта (15 м)
+const N06 = testMark();                     // всё ниже — в сцене площадок (testGroup в конце)
 (() => {
-  flat(130, 100, under(0x8a8a86), 690, 15, .02);
-  kicker(645, 10, 0, 11, 7, 8, 0x6b4a8a, true); ring(672, 19, 10);
-  kicker(690, 45, 0, 10, 6, 6, 0x4a3f58); ring(715, 11, 45);
-  const wall = new T.Mesh(new T.BoxGeometry(1.2, 7, 9), mat(0x8a3b4a)); wall.position.set(715, 3.5, 45); scene.add(wall);
-  addSolid(714.4, 715.6, 40.5, 49.5, 7, "стену");
+  flat(130, 100, under(0x8a8a86), 690, TZ + 15, .02);
+  kicker(645, TZ + 10, 0, 11, 7, 8, 0x6b4a8a, true); ring(672, 19, TZ + 10);
+  kicker(690, TZ + 45, 0, 10, 6, 6, 0x4a3f58); ring(715, 11, TZ + 45);
+  const wall = new T.Mesh(new T.BoxGeometry(1.2, 7, 9), mat(0x8a3b4a)); wall.position.set(715, 3.5, TZ + 45); scene.add(wall);
+  addSolid(714.4, 715.6, TZ + 40.5, TZ + 49.5, 7, "стену");
   const ws = new T.Mesh(new T.PlaneGeometry(9, 1.6), new T.MeshBasicMaterial({ map: textTex(["СКВОЗЬ КОЛЬЦО"], 512, 96, "#8a3b4a", "#ffe2a6"), side: T.DoubleSide }));
-  ws.rotation.y = Math.PI / 2; ws.position.set(714.3, 5.6, 45); scene.add(ws);
+  ws.rotation.y = Math.PI / 2; ws.position.set(714.3, 5.6, TZ + 45); scene.add(ws);
   // трамплин через автобан: разгон с пустыря на север, перелёт над всеми полосами
-  flat(8, 170, under(0x2f2c35), 850, 79, .02);
-  kicker(850, -6, Math.PI / 2, 16, 7, 6, 0xc8323c).id = "overpass";
+  flat(8, 170, under(0x2f2c35), 850, TZ + 79, .02);
+  kicker(850, TZ - 6, Math.PI / 2, 16, 7, 6, 0xc8323c).id = "overpass";
   const os = new T.Mesh(new T.PlaneGeometry(13, 3.4), new T.MeshBasicMaterial({ map: textTex(["ТРАМПЛИН", "через автобан"], 512, 128, "#c8323c", "#ffffff"), side: T.DoubleSide }));
-  os.position.set(860, 6, 24); scene.add(os);
+  os.position.set(860, 6, TZ + 24); scene.add(os);
   // «Восьмёрка»: две асфальтовые петли, ворота на дальних точках и старт на перекрёстке
   const ringM = under(0x34313a);
   [EIGHT.ax, EIGHT.bx].forEach(cx => { const m = new T.Mesh(new T.RingGeometry(EIGHT.r - EIGHT.hw, EIGHT.r + EIGHT.hw, 96), ringM); m.rotation.x = -Math.PI / 2; m.position.set(cx, .05, EIGHT.z); scene.add(m); });
@@ -473,4 +473,4 @@ const N06 = northMark();                    // всё ниже — на плат
   // асфальт петель — тёмный, с зерном (было бледно-сиреневым)
   ringM.color.setHex(0x2b2a30); { const g = grainTex.clone(); g.repeat.set(16, 16); g.needsUpdate = true; ringM.map = g; }
 })();
-northLift(N06);
+testGroup(N06);

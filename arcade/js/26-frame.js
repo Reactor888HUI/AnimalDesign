@@ -3,10 +3,7 @@
 "use strict";
 /* ---------- кадр ---------- */
 const camPos = new T.Vector3(SPAWN.x - 10, 4, SPAWN.z), look = new T.Vector3();
-// уроки и уровни полигона считают высоту от его земли (0), а полигон стоит на плато: на время отрисовки машина — на PLAT выше
-let RYO = 0;
-function render(dt) { RYO = mode === "free" ? 0 : PLAT; car.y += RYO; try { renderAt(dt); } finally { car.y -= RYO; } }
-function renderAt(dt) {
+function render(dt) {
   carObj.position.set(car.x, car.y + WHEEL, car.z);
   const lean = SUV && SUV.on ? SUV.LEAN : { roll: 1, pitch: 1 };   // внедорожник кренится мягче
   carObj.rotation.set((car.roll + (car.bodyRoll || 0) * lean.roll + (car.slopeRoll || 0)) * DEG, car.yaw, car.pitch + (car.bodyPitch || 0) * lean.pitch * DEG, "YZX");
@@ -31,7 +28,7 @@ function renderAt(dt) {
     U.wheels.forEach(w => { w.spin.rotation.z = -U.wa; w.steer.rotation.y = w.front ? U.st : 0; });
     U.redM.emissiveIntensity = PARTY.on ? PARTY.red : !replay && brk() > .1 ? 2.4 : .55;
   }
-  const gh = mode === "free" ? groundAt(car.x, car.z, car.y + .5).h : RYO;   // в уроках земля полигона — на плато
+  const gh = mode === "free" ? groundAt(car.x, car.z, car.y + .5).h : 0;
   const hgt = Math.max(0, car.y - gh);
   shadow.visible = !(mode === "free" && (free.wall || free.tube)) && !CINE.noShadow;
   shadow.position.set(car.x, gh + .15, car.z); shadow.rotation.z = car.yaw;
@@ -58,9 +55,9 @@ function renderAt(dt) {
     carObj.visible = true;
   } else if (replay) {
     carObj.visible = true;
-    const eye = replay.eye || new T.Vector3(TRIB.x - 4, PLAT + 5, TRIB.z - 3);
+    const eye = replay.eye || new T.Vector3(TRIB.x - 4, 5, TRIB.z - 3);
     camPos.copy(eye); camera.position.copy(eye); camera.up.set(0, 1, 0);
-    look.set(car.x, car.y + .6, replay.free ? car.z : 0); camera.lookAt(look);
+    look.set(car.x, car.y + .6, car.z); camera.lookAt(look);
     camera.fov = Math.max(14, Math.min(55, 2 * Math.atan(12 / eye.distanceTo(look)) / DEG));
   } else if (camMode === "cockpit" && phase !== "drill" && phase !== "brief") {
     const suv = SUV && SUV.on; carObj.visible = suv; if (suv) SUV.cockpit(true);   // внедорожник: виден салон, руль, приборы, капот
@@ -72,7 +69,7 @@ function renderAt(dt) {
     camera.fov = suv ? (tall ? 80 : 68) : 75; camPos.copy(eye); camera.near = suv ? .08 : .5;   // из кабины зеркало и стойки ближе полуметра
   } else {
     carObj.visible = true; if (SUV && SUV.on) SUV.cockpit(false);
-    const air = phase === "air" || phase === "crash" || phase === "fcrash" || phase === "drill" || (phase === "brief" && briefPhase === "drill") || (phase === "lesson-done" && car.y - RYO > .5) || (mode === "free" && (free.air || free.aero));
+    const air = phase === "air" || phase === "crash" || phase === "fcrash" || phase === "drill" || (phase === "brief" && briefPhase === "drill") || (phase === "lesson-done" && car.y > .5) || (mode === "free" && (free.air || free.aero));
     const fx = Math.cos(car.yaw), fz = -Math.sin(car.yaw);
     let want, tight = false;
     if (mode === "free") {
@@ -97,15 +94,15 @@ function renderAt(dt) {
         want.copy(from.lerp(want, Math.max(.05, (i - 1.5) / 12))); want.y = Math.max(want.y + 1.2, car.y + 2.6); tight = true; break;
       }
     }
-    else if (phase === "drill" || (phase === "brief" && briefPhase === "drill")) want = new T.Vector3(car.x - 14, car.y + 3, 9);
-    else want = new T.Vector3(car.x - (air ? 11 : 9), car.y + (air ? 4.5 : 3), air ? 5 : 3.5);
+    else if (phase === "drill" || (phase === "brief" && briefPhase === "drill")) want = new T.Vector3(car.x - 14, car.y + 3, car.z + 9);
+    else want = new T.Vector3(car.x - (air ? 11 : 9), car.y + (air ? 4.5 : 3), car.z + (air ? 5 : 3.5));
     if (mode === "free" && camMode === "far") want.set(car.x - fx * 15, want.y + 4, car.z - fz * 15);    // дальний вид
     camPos.lerp(want, mode === "free" && free.tube ? 1 : Math.min(1, dt * (mode === "free" ? (free.cat && free.air ? 3 : 5) : 4)));
     if (mode === "free" && ARENA && !free.tube) { const bw = ARENA.bowl(camPos.x, camPos.z); if (bw && camPos.y < bw.h + 2.2) camPos.y = bw.h + 2.2; }   // не под трибуной
     camera.position.copy(camPos); camera.up.set(0, 1, 0);
     if (mode === "free" && free.cat && free.air) look.set(car.x, car.y + .5, car.z);                 // панорама: смотрим на саму машину
     else if (mode === "free") look.set(car.x + fx * (tight ? 14 : 6), car.y + .8 - (air && !free.aero ? Math.min(3, hgt * .25) : 0), car.z + fz * (tight ? 14 : 6));
-    else look.set(car.x + (air ? 6 : 5), car.y + .6 - (air ? Math.min(3, (car.y - RYO) * .25) : 0), 0);
+    else look.set(car.x + (air ? 6 : 5), car.y + .6 - (air ? Math.min(3, car.y * .25) : 0), car.z);
     camera.lookAt(look); camera.fov = 60 + (mode === "free" ? Math.min(14, Math.abs(car.v) * .25) : 0);
     const orb = mode === "free" && !replay && PARTY.orbit();
     if (orb) {                                             // вечеринка: облёт камеры — один плавный пролёт, как дроном: 225° вокруг машины,
@@ -260,9 +257,9 @@ if (location.hash === "#test") window.__t = { carObj, suv: on => { if (on !== un
   water: (x, z) => !!waterAt(x, z),
   zone: () => zoneName(car.x, car.z),
   solidAt: (x, z) => { const b = hitSolid(x, z, .2); return b ? b.name : ""; },
-  // путь для тестового «водителя»: поиск в ширину по сетке 3 м, препятствия — дома, вода, машины; цель — автобан
+  // путь для тестового «водителя»: поиск в ширину по сетке 3 м, препятствия — дома, вода, машины; цель — начало дороги к площадкам
   path(x, z, pad = 2.6) {
-    const C = 3, i0 = Math.floor((STRIP.x0 - 30) / C), i1 = Math.ceil((STRIP.x1 + 30) / C), j0 = Math.floor((STRIP.z0 - 30) / C), j1 = Math.ceil((ZA - 15) / C);
+    const C = 3, i0 = Math.floor((STRIP.x0 - 30) / C), i1 = Math.ceil((STRIP.x1 + 30) / C), j0 = Math.floor((STRIP.z0 - 30) / C), j1 = Math.ceil((STRIP.z1 - 15) / C);
     const W = i1 - i0 + 1, H = j1 - j0 + 1, prev = new Int32Array(W * H).fill(-2), blk = new Int8Array(W * H).fill(-1);
     const ctr = k => [(k % W + i0 + .5) * C, (Math.floor(k / W) + j0 + .5) * C];
     const dkc = new Map(), deck = k => { if (!dkc.has(k)) { const [cx, cz] = ctr(k), d = DECKS.length && deckAt(cx, cz, 1e3); dkc.set(k, d && d.edge > 5 ? d.h - terrainH(cx, cz) : null); } return dkc.get(k); };   // высота настила над землёй; края — не для пути
@@ -270,7 +267,8 @@ if (location.hash === "#test") window.__t = { carObj, suv: on => { if (on !== un
     const s = (Math.floor(z / C) - j0) * W + (Math.floor(x / C) - i0), q = [s]; prev[s] = -1;
     for (let h = 0; h < q.length; h++) {
       const k = q[h], ci = k % W, cj = Math.floor(k / W);
-      if (cj + j0 >= j1 - 1) { const path = []; for (let v = k; v >= 0; v = prev[v]) path.unshift([(v % W + i0 + .5) * C, (Math.floor(v / W) + j0 + .5) * C]); return path.filter((_, n) => n % 3 === 0 || n === path.length - 1); }
+      // цель — начало дороги к площадкам у южного края карты
+      if (Math.hypot((ci + i0 + .5) * C - 880, (cj + j0 + .5) * C + 2836) < 6) { const path = []; for (let v = k; v >= 0; v = prev[v]) path.unshift([(v % W + i0 + .5) * C, (Math.floor(v / W) + j0 + .5) * C]); return path.filter((_, n) => n % 3 === 0 || n === path.length - 1); }
       for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
         const ni = ci + di, nj = cj + dj; if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
         const n = nj * W + ni; if (prev[n] !== -2 || bad(n)) continue;

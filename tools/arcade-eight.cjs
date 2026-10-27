@@ -33,7 +33,7 @@ const path = require("path");
     for (const k of keys) await p.keyboard.up(k);
     return { t: +t.toFixed(1), points: n, seenShow, maxMult };
   };
-  await ev(() => __t.teleport(1010, 150, -Math.PI / 2)); await run(300);
+  await ev(() => __t.teleport(1010, TZ + 150, -Math.PI / 2)); await run(300);
   for (let i = 0; i < 20 && !(await ev(() => __t.driftKit().on)); i++) await run(150);   // на медленном рендере кадр с переключением может ещё не пройти
   out.kit = await ev(() => __t.driftKit());
   // дрифтовый руль на экране показывает поворот: «вправо» — около +120°, отпустили — в центр (управление — обычное)
@@ -52,7 +52,7 @@ const path = require("path");
     await p.mouse.up(); await run(200);
     await ev(() => __t.fast(true));
   }
-  await ev(() => __t.teleport(1010, 150, -Math.PI / 2));
+  await ev(() => __t.teleport(1010, TZ + 150, -Math.PI / 2));
   out.drive = await drive(3, 17);
   await run(1500);
   out.after = await ev(() => __t.show());
@@ -62,7 +62,7 @@ const path = require("path");
   out.badge = (await ev(() => __t.driftKit())).badge;
   // дрифт и срыв: после финиша 6 с паузы (финиш запускает вечеринку 888 — 7 с замедления), затем снова на старт, разгон до перекрёстка, занос и «закрутило»
   await run(11000);
-  await ev(() => __t.teleport(1010, 150, -Math.PI / 2)); await ev(() => __t.setCar({ v: 15 })); await run(1500);
+  await ev(() => __t.teleport(1010, TZ + 150, -Math.PI / 2)); await ev(() => __t.setCar({ v: 15 })); await run(1500);
   out.started = !!(await ev(() => __t.show()));
   await ev(() => __t.setCar({ v: 22, vl: 7 })); await run(120);
   out.drift = ((await ev(() => __t.show())) || {}).drift;

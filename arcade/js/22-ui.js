@@ -376,10 +376,10 @@ function paintWorld(g, px) {   // всё в метрах, px — сколько 
   g.fillStyle = "#86bddb"; WATER.forEach(w => { if (w.outside) g.fillRect(w.x0, w.z0, w.x1 - w.x0, w.z1 - w.z0); });
   g.fillStyle = "#6c6679"; g.fillRect(-600, ZA - 18, 2000, 36);
   g.fillStyle = "#cfd3dc"; g.fillRect(-600, ZA - .6, 2000, 1.2); g.fillRect(-600, ZA - 18, 2000, Math.max(.8, px)); g.fillRect(-600, ZA + 17.2, 2000, Math.max(.8, px));
-  g.fillStyle = "#6a6271"; g.fillRect(295, -35, 330, 100); g.fillRect(625, -35, 130, 100); g.fillRect(846, -6, 8, 170);
+  g.fillStyle = "#6a6271"; g.fillRect(295, TZ - 35, 330, 100); g.fillRect(625, TZ - 35, 130, 100); g.fillRect(846, TZ - 6, 8, 170); g.fillRect(875, ZA + 18, 10, -2840 - ZA - 18);   // + дорога из города
   g.strokeStyle = "#6a6271"; g.lineWidth = 10; [EIGHT.ax, EIGHT.bx].forEach(cx => { g.beginPath(); g.arc(cx, EIGHT.z, EIGHT.r, 0, Math.PI * 2); g.stroke(); });
-  g.fillStyle = "#5a5463"; g.fillRect(-20, -5, 320, 10);
-  g.fillStyle = "#9fe3ff"; g.fillRect(RS, -1.6, RL, 3.2);
+  g.fillStyle = "#5a5463"; g.fillRect(-20, TZ - 5, 320, 10);
+  g.fillStyle = "#9fe3ff"; g.fillRect(RS, TZ - 1.6, RL, 3.2);
   g.fillStyle = "#e0a83a"; solids.forEach(b => { if (b.name === "автобус") g.fillRect(b.x0, b.z0, b.x1 - b.x0, b.z1 - b.z0); });
   kickers.forEach(k => {
     g.save(); g.translate(k.x, k.z); g.rotate(-k.yaw); g.fillStyle = "#ffb347"; g.fillRect(0, -k.w / 2, k.len, k.w); g.restore();
@@ -387,7 +387,7 @@ function paintWorld(g, px) {   // всё в метрах, px — сколько 
 }
 const arenaB = bboxOf(dm(OSM.b.find(b => b[1] === 4)?.[2][0] || [0, 0])), zoneC = n => { const z = ZONES.find(z => z.name === n); return z ? [(z.x0 + z.x1) / 2, (z.z0 + z.z1) / 2] : [0, 0]; };
 const PLACES = [["Богатяновка", -150, -300], ["Дон", 140, -800], ["Ростов Арена", -150, (arenaB.z0 + arenaB.z1) / 2], ["Акватория", -150, zoneC("Акватория")[1]],
-  ["Трюк-парк", 330, 90], ["Полигон", -10, 30], ["Автобан", -560, ZA - 26], ["Восьмёрка", 930, EIGHT.z + 80]];
+  ["Трюк-парк", 330, TZ + 90], ["Полигон", -10, TZ + 30], ["Автобан", -560, ZA - 26], ["Восьмёрка", 930, EIGHT.z + 80]];
 if (RAILB) PLACES.push(["Ж/д мост", RAILB.C.x + 60, RAILB.C.z + 40]);
 function drawMap() {
   const W = mapC.width, H = mapC.height, sc = Math.min(W / (WORLD.x1 - WORLD.x0 + 40), H / (WORLD.z1 - WORLD.z0 + 40));
@@ -408,16 +408,17 @@ function drawMap() {
 const mini = $("mini"), mn = mini.getContext("2d");
 function zoneName(x, z) {
   if (Math.abs(z - ZA) < 19) return "Автобан";
-  if (x > 290 && x < 755 && z > -36 && z < 66) return "Трюк-парк";
-  if (Math.abs(x - 850) < 8 && z > -24 && z < 165) return "Трамплин через автобан";
+  if (x > 290 && x < 755 && z > TZ - 36 && z < TZ + 66) return "Трюк-парк";
+  if (Math.abs(x - 850) < 8 && z > TZ - 24 && z < TZ + 165) return "Трамплин через автобан";
+  if (Math.abs(x - 880) < 7 && z > ZA + 18 && z < -2840) return "Дорога на полигон";
   if (x > EIGHT.ax - EIGHT.r - 10 && x < EIGHT.bx + EIGHT.r + 10 && Math.abs(z - EIGHT.z) < EIGHT.r + 10) return "Восьмёрка";
-  if (x > -25 && x < 300 && z > -40 && z < 40) return "Полигон";
+  if (x > -25 && x < 300 && z > TZ - 40 && z < TZ + 40) return "Полигон";
   { const dk = deckAt(x, z, 99); if (dk) return dk.d.name; }
   if (inStrip(x, z)) return placeName(x, z);
   if (waterAt(x, z)) return "Дон";
   return "Пустырь";
 }
-const isSand = (x, z) => !inStrip(x, z) && Math.abs(z - ZA) > 19 && !(x > -25 && x < 755 && z > -40 && z < 66);
+const isSand = (x, z) => !inStrip(x, z) && Math.abs(z - ZA) > 19 && !(x > -25 && x < 755 && z > TZ - 40 && z < TZ + 66);
 let zoneAt = 0;
 function drawMini() {
   const W = mini.width, R = W / 2, sc = R / 140;
@@ -429,17 +430,17 @@ function drawMini() {
   mn.beginPath(); mn.moveTo(0, -16); mn.lineTo(11, 12); mn.lineTo(0, 6); mn.lineTo(-11, 12); mn.closePath(); mn.fill(); mn.stroke();
   // стрелки-указатели к местам за краем мини-карты
   mn.font = "bold 20px Golos Text, sans-serif"; mn.textAlign = "center"; mn.textBaseline = "middle";
-  [["Т", 460, 15, "#ffb347"], ["Р", 280, -290, "#e8ecf5"], ["П", 70, 0, "#9fe3ff"], ...DECKS.map(d => ["М", d.cx, d.cz, "#6fdc8c"]), ["8", 1010, EIGHT.z, "#ffb347"]].forEach(([t, x, z, c]) => {
+  [["Т", 460, TZ + 15, "#ffb347"], ["Р", 280, -290, "#e8ecf5"], ["П", 70, TZ, "#9fe3ff"], ...DECKS.map(d => ["М", d.cx, d.cz, "#6fdc8c"]), ["8", 1010, EIGHT.z, "#ffb347"]].forEach(([t, x, z, c]) => {
     const dx = x - car.x, dz = z - car.z; if (Math.hypot(dx, dz) < 130) return;
     const ang = Math.atan2(dz, dx) + (car.yaw - Math.PI / 2);
     mn.fillStyle = c; mn.fillText(t, Math.cos(ang) * (R - 16), Math.sin(ang) * (R - 16));
   });
   if (Math.abs(time - zoneAt) > .25) { zoneAt = time; $("zone").textContent = zoneName(car.x, car.z); }   // поиск улицы — 4 раза в секунду
 }
-const GO = [["Арена · баннер", START.x, START.z, START.yaw], ["Автобан", SPAWN.x, SPAWN.z, 0], ["Трюк-парк", 296, 0, 0], ["Полигон · штопор", 15, 0, 0],
+const GO = [["Арена · баннер", START.x, START.z, START.yaw], ["Автобан", SPAWN.x, SPAWN.z, 0], ["Трюк-парк", 296, TZ, 0], ["Полигон · штопор", 15, TZ, 0],
   ["Богатяновка", ...roadPoint("улица Седова")], ["Набережная", ...roadPoint("Береговая улица")],
   ["Ростов Арена", ...roadPoint("улица Бориса Слюсаря")], ["Левобережная", ...roadPoint("Левобережная улица")],
-  ["«Восьмёрка»", 1010, EIGHT.z + 8, -Math.PI / 2], ["Трамплин через автобан", 850, 150, Math.PI / 2],
+  ["«Восьмёрка»", 1010, EIGHT.z + 8, -Math.PI / 2], ["Трамплин через автобан", 850, TZ + 150, Math.PI / 2], ["Дорога на полигон", 880, -2830, -Math.PI / 2],
   ...(ARENA ? [["Трасса у Арены", ARENA.gates[0].x, ARENA.gates[0].z, Math.atan2(-ARENA.gates[0].tz, ARENA.gates[0].tx)]] : []),
   ...(ARENA && ARENA.megas.length ? [["Мега-трамплин к Арене", ARENA.megas[0].x - Math.cos(ARENA.megas[0].yaw) * Math.min(ARENA.megas[0].run - 5, 75), ARENA.megas[0].z + Math.sin(ARENA.megas[0].yaw) * Math.min(ARENA.megas[0].run - 5, 75), ARENA.megas[0].yaw]] : []),
   ...(RAILB ? [["Железнодорожный мост", RAILB.at(-RAILB.RAMP - 30, 0).x, RAILB.at(-RAILB.RAMP - 30, 0).z, RAILB.yaw]] : []),
