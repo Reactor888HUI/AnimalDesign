@@ -23,8 +23,11 @@ OUT = sys.argv[-1] if len(sys.argv) > 1 and not sys.argv[-1].endswith('.py') els
 os.makedirs(OUT, exist_ok=True)
 SIZE = int(os.environ.get('AO_SIZE', '1024'))
 SAMPLES = int(os.environ.get('AO_SAMPLES', '48'))
-KINDS = ['steel', 'brass', 'dark', 'dial']
-COLORS = {'steel': (0.34, 0.37, 0.43), 'brass': (0.79, 0.64, 0.29), 'dark': (0.12, 0.13, 0.16), 'dial': (0.95, 0.92, 0.82)}
+KINDS = ['steel', 'brass', 'dark', 'dial', 'pipe']
+# the look follows the reference picture: polished chrome, warm bronze, graphite, pale glass tubes that glow blue
+COLORS = {'steel': (0.8, 0.81, 0.84), 'brass': (0.86, 0.6, 0.3), 'dark': (0.08, 0.09, 0.11), 'dial': (0.95, 0.92, 0.82), 'pipe': (0.6, 0.85, 1.0)}
+ROUGH = {'steel': 0.14, 'brass': 0.22, 'dark': 0.4, 'dial': 0.6, 'pipe': 0.05}
+METAL = {'steel': 1.0, 'brass': 1.0, 'dark': 0.2, 'dial': 0.0, 'pipe': 0.0}
 MI = {k: i for i, k in enumerate(KINDS)}
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -146,6 +149,22 @@ bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=Matrix.Rotation(math.radians(-315 + 
 gx, gz = polar(1.12 + 0.07, 315)
 bmesh.ops.translate(bm, vec=P(gx, 1.15, gz), verts=gv)
 
+# ---- glass pipes with elbows on both sides, as in the reference: they glow, they do not touch the floor ----------------
+def pipe(points, radius=0.05):
+    for a, b in zip(points, points[1:]):
+        rod('pipe', a, b, radius, 12)
+    for p in points:
+        ball('pipe', p, radius * 1.35)
+
+
+def at(r, deg, y):
+    x, z = polar(r, deg)
+    return (x, y, z)
+
+
+for deg in (150, 30):
+    pipe([at(0.95, deg, 1.95), at(1.7, deg, 1.95), at(2.1, deg, 1.5), at(2.1, deg, 1.05)])
+
 # ---- finish: normals, UVs, object, materials -------------------------------------------------------------------------
 bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 uv = bm.loops.layers.uv.new('UVMap')
@@ -163,9 +182,11 @@ for k in KINDS:
     m.use_nodes = True
     b = m.node_tree.nodes['Principled BSDF']
     b.inputs['Base Color'].default_value = (*COLORS[k], 1)
-    b.inputs['Roughness'].default_value = 0.35 if k in ('steel', 'brass') else 0.6
-    if k in ('steel', 'brass'):
-        b.inputs['Metallic'].default_value = 0.9
+    b.inputs['Roughness'].default_value = ROUGH[k]
+    b.inputs['Metallic'].default_value = METAL[k]
+    if k == 'pipe':
+        b.inputs['Emission Color'].default_value = (0.3, 0.75, 1.0, 1)
+        b.inputs['Emission Strength'].default_value = 1.0
     obj.data.materials.append(m)
 
 # ---- ambient occlusion on the atlas -----------------------------------------------------------------------------------

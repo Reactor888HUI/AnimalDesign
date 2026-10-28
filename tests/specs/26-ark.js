@@ -198,8 +198,8 @@ exports.run = async t => {
     out.colour = B.reactor.color.getHex();
     return out;
   });
-  t.ok(rb.loaded === 4 && rb.oldHidden && rb.std === 4 && rb.ao === 4 && rb.names.join() === 'brass.reactor,dark.reactor,dial.reactor,steel.reactor', 'the body of the reactor comes from Blender (four materials, each with the baked occlusion); the primitives are hidden', rb);
-  t.ok(rb.box[0] > -1.4 && rb.box[1] < 1.4 && rb.box[2] >= -0.01 && rb.box[3] > 3.6 && rb.box[3] < 3.8 && rb.box[4] > -1.95 && rb.box[5] < 0.75, 'it stands on the floor inside the walking box of the reactor (x ±1.3, z -1.9..0.7), 3.7 m high', rb.box);
+  t.ok(rb.loaded === 5 && rb.oldHidden && rb.std === 5 && rb.ao === 5 && rb.names.join() === 'brass.reactor,dark.reactor,dial.reactor,pipe.reactor,steel.reactor', 'the body of the reactor comes from Blender (five materials, each with the baked occlusion); the primitives are hidden', rb);
+  t.ok(rb.box[0] > -2.2 && rb.box[1] < 2.2 && rb.box[2] >= -0.01 && rb.box[3] > 3.6 && rb.box[3] < 3.8 && rb.box[4] > -2.2 && rb.box[5] < 2.2, 'it stands on the floor (the pipes reach 2.1 m out, 3.7 m high)', rb.box);
   t.ok(rb.live[0] && rb.live[1] && rb.colour === 0xff8844, 'the particles, the light and the core still live in the page and follow the stage', rb);
 
   // ---- the landscapes behind the glass -------------------------------------------------------------------------------------------------

@@ -492,7 +492,7 @@
 
     // the reactor made in Blender: the body (plinth, columns, cap, hopper, pipe, gauge) with its baked occlusion replaces the primitives
     B.useReactor = function (root, ao) {
-      const look = { 'steel.reactor': () => steel.clone(), 'brass.reactor': () => brass.clone(), 'dark.reactor': () => M(0x24272e, 0.55, 0.6), 'dial.reactor': () => M(0xf2ecd6, 0.6) };
+      const look = { 'steel.reactor': () => M(0xdfe3e8, 0.14, 1), 'brass.reactor': () => M(0xdb9a4d, 0.22, 1), 'dark.reactor': () => M(0x14171c, 0.4, 0.2), 'dial.reactor': () => M(0xf2ecd6, 0.6), 'pipe.reactor': () => M(0xbfe6ff, 0.05, 0, { emissive: 0x3fb8ff, emissiveIntensity: 0.9 }) };
       let meshes = 0;
       root.traverse(o => {
         if (!o.isMesh) return;
