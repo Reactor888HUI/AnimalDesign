@@ -21,7 +21,7 @@ FLAKY="arcade-eight arcade-inner arcade-menu arcade-p1 arcade-p2 arcade-p3 arcad
 say "== проверка ($MODE) $(date '+%F %T'), $(git rev-parse --short HEAD)$(git diff --quiet || echo ' + несохранённые правки')"
 
 say "-- синтаксис arcade/js, arcade/data"
-bad=0; for f in arcade/js/*.js arcade/data/*.js; do node --check "$f" 2>>"$OUT/syntax.log" || { say "  ошибка в $f"; bad=1; }; done; res "синтаксис" $bad
+bad=0; for f in arcade/js/*.js arcade/lib/*.js arcade/data/*.js; do node --check "$f" 2>>"$OUT/syntax.log" || { say "  ошибка в $f"; bad=1; }; done; res "синтаксис" $bad
 
 say "-- сборка"
 python3 -I tools/build-offline.py > "$OUT/build.log" 2>&1; res "tools/build-offline.py ($(tail -2 "$OUT/build.log" | tr '\n' ' '))" $?
@@ -37,6 +37,10 @@ node tools/net-browser.cjs > "$OUT/net.log" 2>&1; res "tools/net-browser.cjs $(c
 
 say "-- прямое соединение двух страниц Chromium (WebRTC, без сервера)"
 node tools/direct-browser.cjs > "$OUT/direct.log" 2>&1; res "tools/direct-browser.cjs $(cut -c1-120 "$OUT/direct.log")" $?
+
+say "-- игра с друзьями: две страницы игры (рабочая версия и один файл) соединяются напрямую"
+node tools/link-browser.cjs > "$OUT/link.log" 2>&1; res "link-browser (рабочая) $(cut -c1-120 "$OUT/link.log")" $?
+HTML=dist/vosmerka-baklazhan/index.html node tools/link-browser.cjs > "$OUT/link1.log" 2>&1; res "link-browser (один файл) $(cut -c1-120 "$OUT/link1.log")" $?
 
 say "-- запуск (рабочая версия, один файл, папкой): без ошибок, кадры идут"
 cat > "$OUT/boot.cjs" <<'EOF'

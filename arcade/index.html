@@ -241,6 +241,22 @@ body.cine .stage { position: fixed; inset: 0; width: 100vw; height: 100vh; max-h
 .tb.hop-big { min-width: 96px; height: 76px; border-color: var(--amber); }
 .tb.hop-big b { font-size: 16px; color: var(--amber); }
 
+/* игра с друзьями */
+#link-tags { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 3; }
+.link-tag { position: absolute; transform: translate(-50%, -100%); display: flex; gap: 5px; align-items: center; font: 600 12px var(--f-body); color: #fff;
+  background: rgba(10, 14, 26, .62); padding: 2px 8px; border-radius: 11px; white-space: nowrap; }
+.link-tag[hidden] { display: none; }
+.link-tag i, .lk-players i { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; }
+#ov-link label { display: block; margin: 10px 0 4px; font-size: 13px; color: var(--dim); }
+#ov-link .lk-check { display: flex; gap: 8px; align-items: center; color: var(--text); }
+#ov-link textarea, #ov-link input[type=text] { width: 100%; box-sizing: border-box; font: 12px/1.3 var(--f-mono); color: var(--text); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: none; }
+#ov-link input[type=text] { font: 600 15px var(--f-body); }
+#ov-link .row { margin-top: 8px; }
+.lk-status { margin: 10px 0 4px; min-height: 18px; font-size: 13px; color: var(--gas); }
+.lk-status.bad { color: var(--bad); }
+.lk-players { list-style: none; margin: 4px 0 10px; padding: 0; display: grid; gap: 4px; }
+.lk-players li { display: flex; gap: 8px; align-items: center; }
+
 /* окна */
 .ov {
   position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 14px;
@@ -424,6 +440,8 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <button type="button" id="m-paint">Цвет: белая</button>
         <button type="button" id="m-tune">Обвес: заводской</button>
         <button type="button" id="m-garage">Осмотреть машину</button>
+        <div class="lbl">Друзья</div>
+        <button type="button" id="m-link">Игра с друзьями…</button>
         <div class="lbl">Игра</div>
         <button type="button" id="m-full">Экран: во весь</button>
         <button type="button" id="m-snd">Звук: вкл</button>
@@ -461,6 +479,39 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <button class="tb sm" id="b-brake" type="button" aria-label="Тормоз"><b>СТОП</b><small>тормоз</small></button>
         <button class="tb sm" id="b-hop" type="button" aria-label="Прыжок"><b>ПРЫГ</b><small>сопла</small></button>
         <button class="tb wide" id="b-thrust" type="button" aria-label="Газ"><b>ГАЗ</b><small id="thrust-sub">разгон</small></button>
+      </div>
+    </div>
+
+    <div id="link-tags" aria-hidden="true"></div>
+
+    <div class="ov" id="ov-link" hidden>
+      <div class="card">
+        <button class="close" id="lk-close" type="button" aria-label="Закрыть">✕</button>
+        <h2>Игра с друзьями</h2>
+        <div id="lk-start">
+          <p>Прямое соединение между телефонами, без сервера. Один раз обменяйтесь короткими кодами (например, в мессенджере) — и вы видите машины друг друга на дороге. Столкновений нет.</p>
+          <label for="lk-nick">Ваше имя</label>
+          <input type="text" id="lk-nick" maxlength="16" autocomplete="off" placeholder="Игрок">
+          <label class="lk-check"><input type="checkbox" id="lk-stun"> Играем не в одной Wi-Fi сети (через интернет)</label>
+          <div class="row">
+            <button class="btn primary" id="lk-host" type="button">Создать игру</button>
+            <button class="btn" id="lk-guest" type="button">Войти к другу</button>
+          </div>
+        </div>
+        <div id="lk-room" hidden>
+          <p id="lk-help"></p>
+          <div id="lk-out-l">
+            <label for="lk-out" id="lk-out-t"></label>
+            <textarea id="lk-out" rows="3" readonly spellcheck="false"></textarea>
+            <div class="row"><button class="btn" id="lk-copy" type="button">Скопировать</button><button class="btn" id="lk-share" type="button" hidden>Поделиться</button></div>
+          </div>
+          <label for="lk-in" id="lk-in-t"></label>
+          <textarea id="lk-in" rows="3" spellcheck="false" autocomplete="off"></textarea>
+          <div class="row"><button class="btn primary" id="lk-act" type="button"></button><button class="btn" id="lk-more" type="button" hidden>Пригласить ещё друга</button></div>
+          <div class="lk-status" id="lk-status" role="status"></div>
+          <ul class="lk-players" id="lk-players"></ul>
+          <div class="row"><button class="btn" id="lk-stop" type="button">Закончить игру с друзьями</button></div>
+        </div>
       </div>
     </div>
 
@@ -511,6 +562,11 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
 <script src="data/vaz-body.js"></script>
 <script src="data/vehicles.js"></script>
 <script src="data/sounds.js"></script>
+<script src="lib/pose.js"></script>
+<script src="lib/net-client.js"></script>
+<script src="lib/hub.js"></script>
+<script src="lib/remote.js"></script>
+<script src="lib/direct.js"></script>
 <script src="js/01-core.js"></script>
 <script src="js/02-sky.js"></script>
 <script src="js/03-ground.js"></script>
@@ -536,4 +592,5 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
 <script src="js/23-trainer.js"></script>
 <script src="js/24-audio.js"></script>
 <script src="js/25-input.js"></script>
+<script src="js/25a-link.js"></script>
 <script src="js/26-frame.js"></script>

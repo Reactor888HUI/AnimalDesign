@@ -126,6 +126,7 @@ function render(dt) {
   camera.updateProjectionMatrix();
   if (window.__camOv) { const o = window.__camOv; camera.position.set(o[0], o[1], o[2]); camera.up.set(0, 1, 0); camera.lookAt(o[3], o[4], o[5]); camera.fov = o[6] || 40; camera.updateProjectionMatrix(); }   // только автотесты: снимок с заданной точки
   cullChunks(); tickSky(); UNDER.tick(); PHOTO.tick();
+  LINK.draw();                                            // чужие машины друзей — до отрисовки
   renderer.render(scene, camera);
   drawStat.calls = renderer.info.render.calls; drawStat.tris = renderer.info.render.triangles;
 }
@@ -208,6 +209,7 @@ function frame(now) {
   const airNow = mode === "free" ? free.air : phase === "air" || phase === "drill";
   sfx.tick(dt, { speed: mode === "free" ? car.v : phase === "run" || phase === "ramp" ? car.v : phase === "roll" ? car.vx : 0, throttle: thr(), air: airNow, skid: mode === "free" && !free.air ? Math.abs(car.vl || 0) : 0, pro: mode === "free" && !!free.pro, suv: !!(SUV && SUV.on) });
   ui(); if (!testFast || ++testFrame % 20 === 0) render(dt);   // в быстрых автотестах рисуем редко — физика идёт в полную скорость
+  LINK.tick(dt);                                         // своя поза — друзьям (после отрисовки: берём то, что нарисовано)
   requestAnimationFrame(frame);
 }
 

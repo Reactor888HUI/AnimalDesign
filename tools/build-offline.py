@@ -1,7 +1,7 @@
 """Сборка игры для скачивания — две версии, обе работают без интернета и открываются прямо из файла:
 
 1) dist/vosmerka-baklazhan/index.html — всё в одном файле (Three.js, данные, песня внутри) + dist/vosmerka-baklazhan.zip;
-2) dist/vosmerka-web/ — папкой: index.html + js/*.js (код) + data/*.js (карта, модели, фото, звуки, песня) + vendor/three.min.js.
+2) dist/vosmerka-web/ — папкой: index.html + js/*.js (код) + lib/*.js (чистая логика: поза, сеть) + data/*.js (карта, модели, фото, звуки, песня) + vendor/three.min.js.
    Данные подключаются через <script src>, а не fetch: так браузер разрешает и с file://, и с сайта.
 
 Запуск: python3 -I tools/build-offline.py   (нужен three.min.js r149: скачивается с jsdelivr или берётся из dist/three.min.js)
@@ -19,8 +19,8 @@ three = open(cache, encoding="utf8").read()
 src = open(os.path.join(ARC, "index.html"), encoding="utf8").read()
 tag = '<script src="%s"></script>' % URL
 assert src.count(tag) == 1, "в index.html не найден тег Three.js"
-FILES = re.findall(r'<script src="((?:data|js)/[0-9a-z-]+\.js)"></script>', src)
-assert FILES, "в index.html нет подключений data/*.js и js/*.js"
+FILES = re.findall(r'<script src="((?:data|js|lib)/[0-9a-z-]+\.js)"></script>', src)
+assert FILES, "в index.html нет подключений data/*.js, js/*.js и lib/*.js"
 TEXT = {f: open(os.path.join(ARC, f), encoding="utf8").read() for f in FILES}
 MRE = re.compile(r'^const PARTY_MUSIC = "refs/music/party\.mp3";.*\n', flags=re.M)
 mfile = [f for f in FILES if MRE.search(TEXT[f])]
@@ -48,7 +48,7 @@ with zipfile.ZipFile(os.path.join(ROOT, "dist", "vosmerka-baklazhan.zip"), "w", 
 # --- 2) папкой
 web = os.path.join(ROOT, "dist", "vosmerka-web")
 shutil.rmtree(web, ignore_errors=True)
-for d in ("data", "js", "vendor"): os.makedirs(os.path.join(web, d))
+for d in ("data", "js", "lib", "vendor"): os.makedirs(os.path.join(web, d))
 for f in FILES:      # песня — отдельным data/music.js (грузится до кода), строка-ссылка из кода убирается
     open(os.path.join(web, f), "w", encoding="utf8").write(MRE.sub("", TEXT[f]) if f == mfile else TEXT[f])
 open(os.path.join(web, "data", "music.js"), "w", encoding="utf8").write(

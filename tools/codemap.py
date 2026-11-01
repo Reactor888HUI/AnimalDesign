@@ -9,7 +9,7 @@ out = ["# Карта кода «Восьмёрки Баклажан»", "",
        "Создаётся `python3 -I tools/codemap.py` — руками не править. Файлы грузятся в этом порядке; все имена верхнего уровня общие.",
        "Как устроено и зачем — в `docs/ARCHITECTURE.md`.", ""]
 idx = {}
-for kind, pat in (("Код", "arcade/js/*.js"), ("Данные", "arcade/data/*.js")):
+for kind, pat in (("Код", "arcade/js/*.js"), ("Чистая логика", "arcade/lib/*.js"), ("Данные", "arcade/data/*.js")):
     out += [f"## {kind}: `{os.path.dirname(pat)}/`", ""]
     for p in sorted(glob.glob(os.path.join(ROOT, pat))):
         L = open(p, encoding="utf8").read().split("\n"); f = os.path.basename(p)

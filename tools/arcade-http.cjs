@@ -2,7 +2,7 @@
 // (/<репозиторий>/), и запускается без ошибок. Запуск: PW=$(npm root -g)/playwright node tools/arcade-http.cjs
 const http = require("http"), fs = require("fs"), path = require("path");
 const { chromium } = require(process.env.PW || "playwright");
-const ROOT = path.resolve(__dirname, "../dist/vosmerka-web"), BASE = "/AnimalDesign/";
+const ROOT = path.resolve(__dirname, "../" + (process.env.SITE || "dist/vosmerka-web")), BASE = "/AnimalDesign/";   // SITE — папка сайта; MUST — файлы через запятую, которые обязаны отдаваться
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mp3": "audio/mpeg", ".png": "image/png", ".jpg": "image/jpeg" };
 const seen = [], notFound = [];
 const server = http.createServer((req, res) => {
@@ -23,7 +23,9 @@ const server = http.createServer((req, res) => {
   const info = await p.evaluate(() => window.__t.info()), secure = await p.evaluate(() => isSecureContext);
   const fatal = await p.evaluate(() => document.getElementById("fatal")?.textContent || null);
   const missing = seen.filter(u => u.startsWith(BASE) && !fs.existsSync(path.join(ROOT, u.slice(BASE.length) || "index.html")));
-  const ok = !errs.length && !fatal && info.calls > 10 && !missing.length;
-  console.log(JSON.stringify({ ok, files: seen.length, calls: info.calls, secure, fatal, errs, notFound, missing }));
+  const must = (process.env.MUST || "").split(",").filter(Boolean), absent = [];
+  for (const f of must) { const r = await p.evaluate(u => fetch(u).then(x => x.status + ":" + x.headers.get("content-length")), `http://127.0.0.1:${port}${BASE}${f}`); if (!r.startsWith("200")) absent.push(f + " → " + r); }
+  const ok = !errs.length && !fatal && info.calls > 10 && !missing.length && !absent.length;
+  console.log(JSON.stringify({ ok, files: seen.length, calls: info.calls, secure, fatal, errs, notFound, missing, absent }));
   await b.close(); server.close(); process.exit(ok ? 0 : 1);
 })();
