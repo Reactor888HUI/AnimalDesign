@@ -1,0 +1,30 @@
+# arcade/lib/hub.js — тесты tests/unit/hub.test.js и общие образцы tests/vectors/control.json
+arcade/lib/hub.js | Array.from(text).length > MAX_CONTROL_CHARS ⇒ text.length > MAX_CONTROL_CHARS
+arcade/lib/hub.js | .slice(0, 16) ⇒ .slice(0, 17)
+arcade/lib/hub.js | Array.from(v.replace(CONTROL_CHARS, "").trim()) ⇒ v.replace(CONTROL_CHARS, "").trim().split("")
+arcade/lib/hub.js | CODE_RE.test(d.code.toUpperCase()) ⇒ CODE_RE.test(d.code)
+arcade/lib/hub.js | Object.prototype.hasOwnProperty.call(PARSERS, d.op) ⇒ d.op in PARSERS
+arcade/lib/hub.js | this.tokens < 1 ⇒ this.tokens < 0
+arcade/lib/hub.js | Math.min(this.burst, ⇒ Math.max(this.burst,
+arcade/lib/hub.js | if (c.slot !== null) return error(id, "already_in_room");⏎      if (room) ⇒ if (room) 
+arcade/lib/hub.js | if (room) return error(id, "not_allowed"); ⇒ 
+arcade/lib/hub.js | msg.code === CODE ? sendJson(id, state(c.slot)) ⇒ true ? sendJson(id, state(c.slot))
+arcade/lib/hub.js | if (!room || msg.code !== CODE) ⇒ if (!room)
+arcade/lib/hub.js | MAX_PLAYERS = 7 ⇒ MAX_PLAYERS = 8
+arcade/lib/hub.js | c.strikes = 0; ⇒ 
+arcade/lib/hub.js | ++c.strikes >= MAX_STRIKES ⇒ ++c.strikes > MAX_STRIKES
+arcade/lib/hub.js | { hub.disconnect(id); close(id); return; } ⇒ { close(id); return; }
+arcade/lib/hub.js | { hub.disconnect(id); close(id); return; } ⇒ { hub.disconnect(id); return; }
+arcade/lib/hub.js | if (c.slot === null || !validPose(bytes) || !c.pose.allow()) return; ⇒ if (!validPose(bytes) || !c.pose.allow()) return;
+arcade/lib/hub.js | if (c.slot === null || !validPose(bytes) || !c.pose.allow()) return; ⇒ if (c.slot === null || !c.pose.allow()) return;
+arcade/lib/hub.js | if (c.slot === null || !validPose(bytes) || !c.pose.allow()) return; ⇒ if (c.slot === null || !validPose(bytes)) return;
+arcade/lib/hub.js | if (slot !== c.slot) send(p.id, frame) ⇒ send(p.id, frame)
+arcade/lib/hub.js | .filter(([slot]) => slot !== 0) ⇒ .filter(() => true)
+arcade/lib/hub.js | if (!room || c.slot === null) return; ⇒ if (!room) return;
+arcade/lib/hub.js | srv: now() ⇒ srv: 0
+arcade/lib/hub.js | d instanceof ArrayBuffer ? new Uint8Array(d) : null ⇒ null
+arcade/lib/hub.js | frame[0] = c.slot; frame.set(bytes, 1); ⇒ frame[0] = c.slot; frame.set(bytes.reverse(), 1);
+arcade/lib/hub.js | b.length === POSE_BYTES && b[0] === POSE_TYPE ⇒ b.length >= POSE_BYTES && b[0] === POSE_TYPE
+arcade/lib/hub.js | online: true ⇒ online: false
+arcade/lib/hub.js | const c = conns.get(id);⏎        if (!c) return;⏎        if (typeof data ⇒ const c = conns.get(id);⏎        if (typeof data
+arcade/lib/hub.js | if (c.slot === 0) closeRoom(); ⇒ if (false) closeRoom();

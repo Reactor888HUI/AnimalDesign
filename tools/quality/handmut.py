@@ -4,7 +4,7 @@
 Для каждой мутации скрипт копирует нужные папки во временную, подменяет один фрагмент и гоняет тесты:
 тесты упали — мутант убит; прошли — ВЫЖИЛ (дыра в тестах: дописать тест, а не удалять мутацию).
 Запуск:  python3 -I tools/quality/handmut.py --copy server tests --test "python3 -m unittest discover -s tests/server -t ." tools/quality/mutants/server.txt
-Код выхода 0 — выживших нет.
+Перед мутациями тесты обязаны пройти на нетронутой копии (иначе код выхода 2). Код выхода 0 — выживших нет.
 """
 import argparse
 import os
@@ -26,6 +26,21 @@ def read_spec(path):
         yield n, target.strip(), old.replace("⏎", "\n"), new.replace("⏎", "\n")
 
 
+def prepare(args, change):
+    """Временная копия нужных папок проекта; change = (файл, новый текст) — подменяет один файл."""
+    work = tempfile.mkdtemp(prefix="handmut-")
+    for item in args.copy:
+        src, dst = os.path.join(args.root, item), os.path.join(work, item)
+        if os.path.isdir(src):
+            shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__", "node_modules"))
+        else:
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy(src, dst)
+    if change:
+        open(os.path.join(work, change[0]), "w", encoding="utf8").write(change[1])
+    return work
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("spec")
@@ -34,22 +49,20 @@ def main():
     ap.add_argument("--root", default=os.getcwd())
     args = ap.parse_args()
     survivors = total = 0
+    base = prepare(args, None)
+    ok = subprocess.run(args.test, shell=True, cwd=base, capture_output=True, text=True)
+    shutil.rmtree(base, ignore_errors=True)
+    if ok.returncode != 0:     # без этого «упали» любые тесты — и каждый мутант выглядит убитым
+        print("БАЗОВЫЕ ТЕСТЫ НЕ ПРОХОДЯТ в копии (не хватает --copy?):\n" + (ok.stdout + ok.stderr)[-1500:])
+        sys.exit(2)
     for n, target, old, new in read_spec(args.spec):
         source = open(os.path.join(args.root, target), encoding="utf8").read()
         if source.count(old) < 1:
             print(f"НЕТ ФРАГМЕНТА  {args.spec}:{n}  {old[:50]!r}")
             survivors += 1
             continue
-        work = tempfile.mkdtemp(prefix="handmut-")
+        work = prepare(args, (target, source.replace(old, new, 1)))
         try:
-            for item in args.copy:
-                src, dst = os.path.join(args.root, item), os.path.join(work, item)
-                if os.path.isdir(src):
-                    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__", "node_modules"))
-                else:
-                    os.makedirs(os.path.dirname(dst), exist_ok=True)
-                    shutil.copy(src, dst)
-            open(os.path.join(work, target), "w", encoding="utf8").write(source.replace(old, new, 1))
             killed = subprocess.run(args.test, shell=True, cwd=work, capture_output=True).returncode != 0
         finally:
             shutil.rmtree(work, ignore_errors=True)

@@ -52,6 +52,19 @@ class ParseControl(unittest.TestCase):
         self.assertEqual(protocol.parse_control(msg(op="leave", evil="x")), {"op": "leave"})
 
 
+class SharedVectors(unittest.TestCase):
+    """Общие образцы tests/vectors/control.json: те же проверяет JS-хозяин (tests/unit/hub.test.js) — правила разбора не расходятся."""
+
+    def test_every_vector(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..", "vectors", "control.json")
+        with open(path, encoding="utf8") as f:
+            vectors = json.load(f)
+        self.assertGreater(len(vectors), 30)
+        for v in vectors:
+            self.assertEqual(protocol.parse_control(v["input"]), v["expected"], v["name"])
+
+
 class PoseFrame(unittest.TestCase):
     def test_only_24_bytes_of_type_1_pass(self):
         good = bytes([1]) + bytes(23)
