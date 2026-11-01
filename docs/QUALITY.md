@@ -5,10 +5,10 @@
 ## Что есть и что работает (27.10.2026)
 | Что | Чем | Состояние |
 |---|---|---|
-| Тесты чистой логики (JS) | `node:test` (встроен в Node 22, ничего не ставим): `npm test` → `tests/unit/*.test.js` (26 тестов, 1,3 с; 4 из них — сквозные с настоящим сервером) | работает; встроено в `tools/check.sh` |
-| Тесты сервера (Python) | `unittest` из стандартной библиотеки: `npm run test:server` → `tests/server/` (76 тестов, 2,4 с; с настоящими сокетами) | работает; встроено в `tools/check.sh` |
-| Две страницы Chromium через сервер | `node tools/net-browser.cjs` | работает; встроено в `tools/check.sh` |
-| **Ручные мутации** (рычаг, пока нет настоящего mutator) | `bash tools/quality/handmut.sh`: списки `tools/quality/mutants/*.txt` (92 мутации: `pose` 13, `netclient` 18, `server` 61), выживших 0 | работает |
+| Тесты чистой логики (JS) | `node:test` (встроен в Node 22, ничего не ставим): `npm test` → `tests/unit/*.test.js` (88 тестов; часть — сквозные: с настоящим сервером и с настоящим WebRTC-обменом на подделке) | работает; встроено в `tools/check.sh` |
+| Тесты сервера (Python) | `unittest` из стандартной библиотеки: `npm run test:server` → `tests/server/` (77 тестов, 2,4 с; с настоящими сокетами) | работает; встроено в `tools/check.sh` |
+| Две страницы Chromium: через сервер, напрямую, и сама игра | `node tools/net-browser.cjs`, `direct-browser.cjs`, `link-browser.cjs` | работает; встроено в `tools/check.sh` |
+| **Ручные мутации** (рычаг, пока нет настоящего mutator) | `bash tools/quality/handmut.sh`: списки `tools/quality/mutants/*.txt` (187 мутаций: `pose` 13, `netclient` 18, `hub` 29, `remote` 25, `direct` 41, `server` 61), выживших 0; база проверяется до мутаций | работает |
 | Покрытие | встроенное покрытие Node → `coverage/lcov.info`: `npm run coverage` | работает (формат читает crapper) |
 | Тесты игры в браузере | Playwright, `tools/arcade-*.cjs`, `tools/bridge-*.cjs` | работают (8 стабильных + 8 нестабильных) |
 | Сложность и CRAP | **crapper** (https://github.com/unclebob/crapper): CRAP = CC²·(1−покрытие)³ + CC, порог **< 10** | скрипты готовы (`tools/quality/`), **не запускались** — ждут вашего разрешения |

@@ -203,13 +203,43 @@
 
 Имена: `joy`, `ctrl`, `joyMode`, `wheel`, `DRIFT_VIS`, `driftUI`, `driftHands`, `dz`, `thr`, `brk`, `turn`, `joyHintUntil`, `joyEnd`, `setHintText`, `KEYS`, `keyOf`, `hold`, `coachHint`, `btnFor`, `lastHint`, `driftKitTick`, `speedFx`, `speedLines`, `ui`
 
-### `26-frame.js` — 360 строк, 32 КБ
+### `25a-link.js` — 196 строк, 13 КБ
+
+Игра с друзьями: меню «Друзья» (прямое соединение кодами), поза своей машины, чужие машины на дороге.
+
+Разделы: игра с друзьями (стр. 5)
+
+Имена: `LINK`
+
+### `26-frame.js` — 362 строк, 32 КБ
 
 Кадр (главный цикл), ручки для тестов.
 
 Разделы: кадр (стр. 4)
 
 Имена: `camPos`, `render`, `layerGround`, `resize`, `wallBasis`, `perf`, `setTime`, `setQuality`, `trackPerf`, `last`, `testFast`, `CINE`, `frame`
+
+## Чистая логика: `arcade/lib/`
+
+### `direct.js` — 187 строк, 11 КБ
+
+Имена: 
+
+### `hub.js` — 143 строк, 6 КБ
+
+Имена: 
+
+### `net-client.js` — 92 строк, 4 КБ
+
+Имена: 
+
+### `pose.js` — 39 строк, 2 КБ
+
+Имена: 
+
+### `remote.js` — 54 строк, 3 КБ
+
+Имена: 
 
 ## Данные: `arcade/data/`
 
@@ -391,6 +421,7 @@
 | `levelObjs` | `16-fx.js` |
 | `LEVELS` | `01-core.js` |
 | `lineDist` | `04-rostov.js` |
+| `LINK` | `25a-link.js` |
 | `M4` | `01-core.js` |
 | `M4T` | `04-rostov.js` |
 | `makeVaz2108` | `14-car.js` |

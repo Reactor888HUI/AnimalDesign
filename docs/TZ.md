@@ -364,6 +364,7 @@ tools/build-offline.py: две сборки — dist/vosmerka-web/ (папкой
 5. (27.10.2026) **Развитие:** мультиплеер на 2–7 игроков по прямому соединению, гонки по кругу через мосты двух берегов с лучшим кругом, подгружаемые машины и гараж (`docs/ROADMAP.md`).
 7. (27.10.2026) **Сеть: сервер-координатор на Python + запасное прямое соединение; сначала хостинг файлов (игра по ссылке) и сервер.** Одиночная игра остаётся офлайн-первой. Протокол — `docs/PROTOCOL.md`, хостинг — `docs/HOSTING.md`.
 6. (27.10.2026) **Работа по навыку ub-mode**: тест вперёд, чистая логика в `arcade/lib`, ворота качества (CRAP < 10, дублирование < 0,8, мутанты), журнал `docs/LOG.md`.
+8. (01.11.2026) **Прямое соединение сделано первым**: игроки соединяются кодами без сервера (меню «Игра с друзьями…»), чужие машины видны на дороге; сервер остаётся на потом. Адрес GitHub Pages репозитория занят другой игрой («Собачий квартал 3D», ветка `claude/reactor2-mvp-implementation-0hqgsz`) — публикация нашей игры ждёт выбора места (`docs/HOSTING.md`).
 
 ## Источники
 - [Kenney Car Kit](https://kenney-assets.itch.io/car-kit) · [Kenney City Kit Suburban](https://kenney-assets.itch.io/city-kit-suburban) · [City Kit Commercial](https://opengameart.org/content/city-kit-commercial) · [City Kit Industrial](https://opengameart.org/content/city-kit-industrial)
