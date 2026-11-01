@@ -1,0 +1,47 @@
+# arcade/lib/direct.js — тесты tests/unit/direct.test.js (поддельный WebRTC); настоящий — tools/direct-browser.cjs
+arcade/lib/direct.js | MAX_SDP_CHARS = 6000 ⇒ MAX_SDP_CHARS = 60000
+arcade/lib/direct.js | MAX_SDP_LINES = 200 ⇒ MAX_SDP_LINES = 2000
+arcade/lib/direct.js | !sdp.startsWith("v=0\r\n") || !sdp.endsWith("\r\n") ⇒ !sdp.endsWith("\r\n")
+arcade/lib/direct.js | !sdp.startsWith("v=0\r\n") || !sdp.endsWith("\r\n") ⇒ !sdp.startsWith("v=0\r\n")
+arcade/lib/direct.js | /^[\x20-\x7e\r\n]*$/ ⇒ /^[\x00-\xff\r\n]*$/
+arcade/lib/direct.js | !lines.every(l => /^[a-z]=/.test(l)) ⇒ false
+arcade/lib/direct.js | !/^m=application /m.test(sdp) || /^m=(audio|video)/m.test(sdp) ⇒ /^m=(audio|video)/m.test(sdp)
+arcade/lib/direct.js | !/^m=application /m.test(sdp) || /^m=(audio|video)/m.test(sdp) ⇒ !/^m=application /m.test(sdp)
+arcade/lib/direct.js | /[\s«»"“”'`]/g ⇒ /[ ]/g
+arcade/lib/direct.js | if (m[1] !== kind) throw ⇒ if (false) throw
+arcade/lib/direct.js | kind === "O" ? "Это ответ ⇒ kind === "A" ? "Это ответ
+arcade/lib/direct.js | .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") ⇒ 
+arcade/lib/direct.js | if (this.readyState === 1 && fn) queueMicrotask ⇒ if (false) queueMicrotask
+arcade/lib/direct.js | if (this.readyState === 0) { this.readyState = 1; ⇒ if (true) { this.readyState = 1;
+arcade/lib/direct.js | if (this.readyState !== 3) { this.readyState = 3; ⇒ if (true) { this.readyState = 3;
+arcade/lib/direct.js | ch.binaryType = "arraybuffer"; ⇒ 
+arcade/lib/direct.js | this.ctl.readyState === "open" && this.pose.readyState === "open" ⇒ this.ctl.readyState === "open" || this.pose.readyState === "open"
+arcade/lib/direct.js | (typeof data === "string" ? this.ctl : this.pose).send(data) ⇒ this.ctl.send(data)
+arcade/lib/direct.js | close() { this._closed(); this.ctl.close(); this.pose.close(); } ⇒ close() { this._closed(); }
+arcade/lib/direct.js | if (!e.candidate) return finish(); ⇒ if (!e.candidate) return;
+arcade/lib/direct.js | clearTimeout(quiet);⏎        quiet = setTimeout(finish, quietMs); ⇒ quiet = setTimeout(finish, quietMs);
+arcade/lib/direct.js | const limit = setTimeout(finish, ms); ⇒ const limit = setTimeout(finish, ms * 100);
+arcade/lib/direct.js | if (pc.iceGatheringState === "complete") finish(); ⇒ finish();
+arcade/lib/direct.js | iceServers: stun ? STUN : [] ⇒ iceServers: STUN
+arcade/lib/direct.js | { ordered: false, maxRetransmits: 0 } ⇒ { ordered: false }
+arcade/lib/direct.js | if (guests.size >= maxGuests) ⇒ if (guests.size > maxGuests)
+arcade/lib/direct.js | dropPending(); expired = false; ⇒ expired = false;
+arcade/lib/direct.js | if (pending && pending.id === id) { dropPending(); expired = true; ⇒ if (pending && pending.id === id) { expired = true;
+arcade/lib/direct.js | if (pending && pending.id === id) { clearTimeout(pending.timer); pending = null; } ⇒ 
+arcade/lib/direct.js | expired ? "Приглашение устарело — создайте новое" : "Сначала создайте приглашение" ⇒ "Сначала создайте приглашение"
+arcade/lib/direct.js | const sdp = decodeCode(code, "A"); ⇒ const sdp = decodeCode(code, "O");
+arcade/lib/direct.js | sock.onmessage = e => hub.receive(id, e.data); ⇒ 
+arcade/lib/direct.js | sock.onclose = () => { hub.disconnect(id); ⇒ sock.onclose = () => { 
+arcade/lib/direct.js | targets.delete(id); guests.delete(id); pc.close(); ⇒ targets.delete(id); pc.close();
+arcade/lib/direct.js | local.close = () => host.close(); ⇒ local.close = () => local._closed();
+arcade/lib/direct.js | const out = asArrayBuffer(data); queueMicrotask(() => local._deliver(out)); ⇒ local._deliver(data);
+arcade/lib/direct.js | for (const { pc } of guests.values()) pc.close(); ⇒ 
+arcade/lib/direct.js | dropPending();⏎        hub.disconnect("host"); ⇒ hub.disconnect("host");
+arcade/lib/direct.js | if (channels.ctl && channels.pose && !sock) ⇒ if (channels.ctl && !sock)
+arcade/lib/direct.js | const sdp = decodeCode(code, "O"); ⇒ const sdp = decodeCode(code, "A");
+arcade/lib/direct.js | close() { if (sock) sock.close(); if (pc) pc.close(); } ⇒ close() { }
+# Осознанно не мутируем (нет наблюдаемой разницы снаружи):
+#  · MAX_CODE_CHARS — ранний отказ для огромного текста; допустимое описание (≤ 6000 знаков) всё равно не длиннее 8000 знаков кода;
+#  · { fatal: true } — при плохих байтах UTF-8 дальше всё равно CodeError («недопустимые символы»);
+#  · asArrayBuffer: slice вместо d.buffer — комната отдаёт только целые буферы; slice защищает от срезов других вызовов;
+#  · timer.unref — только чтобы тесты в Node не ждали 3 минуты; в браузере setTimeout возвращает число.

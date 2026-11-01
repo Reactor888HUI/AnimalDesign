@@ -4,7 +4,7 @@
 set -u
 cd "$(dirname "$0")/../.."
 fail=0
-for list in pose netclient hub; do
+for list in pose netclient hub remote direct; do
   echo "-- $list"
   python3 -I tools/quality/handmut.py --copy arcade/lib server tests --test "node --test tests/unit/*.test.js" "tools/quality/mutants/$list.txt" | tail -1 || fail=1
 done

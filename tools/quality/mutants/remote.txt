@@ -1,0 +1,27 @@
+# arcade/lib/remote.js — тесты tests/unit/remote.test.js
+arcade/lib/remote.js | KEEP = 8 ⇒ KEEP = 9
+arcade/lib/remote.js | Math.round((b - a) / TAU) ⇒ 0
+arcade/lib/remote.js | d >= 1 && d <= 0x7fff ⇒ d >= 0 && d <= 0x7fff
+arcade/lib/remote.js | d >= 1 && d <= 0x7fff ⇒ d >= 1 && d <= 0xffff
+arcade/lib/remote.js | (seq - last) & 0xffff ⇒ seq - last
+arcade/lib/remote.js | Number.isInteger(p.seq) && ⇒ 
+arcade/lib/remote.js | NUMBERS.every(k => Number.isFinite(p[k])) ⇒ true
+arcade/lib/remote.js | const near = k < 0.5 ? a : b; ⇒ const near = k < 0.5 ? b : a;
+arcade/lib/remote.js | ["yaw", "pitch", "roll"].forEach ⇒ [].forEach
+arcade/lib/remote.js | if (snap) { ⇒ if (false) {
+arcade/lib/remote.js | if (last && !isNewer(pose.seq, last.pose.seq)) return; ⇒ if (last && pose.seq === last.pose.seq) return;
+arcade/lib/remote.js | if (last && !isNewer(pose.seq, last.pose.seq)) return; ⇒ 
+arcade/lib/remote.js | now - last.rx > staleMs ⇒ now - last.rx > staleMs * 100
+arcade/lib/remote.js | now - last.rx > staleMs ⇒ false
+# Осознанно не мутируем: «target <= samples[0].rx» против «<» — при равенстве обе ветви дают то же значение (эквивалентный мутант).
+arcade/lib/remote.js | if (target >= last.rx) { ⇒ if (target > last.rx) {
+arcade/lib/remote.js | Math.min(target - last.rx, extrapolateMs) ⇒ (target - last.rx)
+arcade/lib/remote.js | p.x += Math.cos(p.yaw) * p.v * dt ⇒ p.x += Math.sin(p.yaw) * p.v * dt
+arcade/lib/remote.js | p.z -= Math.sin(p.yaw) * p.v * dt ⇒ p.z += Math.sin(p.yaw) * p.v * dt
+arcade/lib/remote.js | > snapDistance ⇒ > snapDistance * 100
+arcade/lib/remote.js | Math.hypot(b.pose.x - a.pose.x, b.pose.z - a.pose.z) ⇒ Math.abs(b.pose.x - a.pose.x)
+arcade/lib/remote.js | (target - a.rx) / (b.rx - a.rx) ⇒ (target - a.rx) / (b.rx - a.rx) / 2
+arcade/lib/remote.js | delayMs = 120 ⇒ delayMs = 0
+arcade/lib/remote.js | extrapolateMs = 250 ⇒ extrapolateMs = 2500
+arcade/lib/remote.js | if (samples.length > KEEP) samples.shift(); ⇒ 
+arcade/lib/remote.js | const out = { seq: near.seq, t: near.t, flags: near.flags }; ⇒ const out = { seq: near.seq, t: near.t, flags: 0 };

@@ -35,6 +35,9 @@ python3 -m unittest discover -s tests/server -t . > "$OUT/server.log" 2>&1; res 
 say "-- две страницы Chromium через сервер игроков"
 node tools/net-browser.cjs > "$OUT/net.log" 2>&1; res "tools/net-browser.cjs $(cut -c1-110 "$OUT/net.log")" $?
 
+say "-- прямое соединение двух страниц Chromium (WebRTC, без сервера)"
+node tools/direct-browser.cjs > "$OUT/direct.log" 2>&1; res "tools/direct-browser.cjs $(cut -c1-120 "$OUT/direct.log")" $?
+
 say "-- запуск (рабочая версия, один файл, папкой): без ошибок, кадры идут"
 cat > "$OUT/boot.cjs" <<'EOF'
 const { chromium } = require(process.env.PW);
