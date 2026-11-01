@@ -249,6 +249,22 @@ body.cine .stage { position: fixed; inset: 0; width: 100vw; height: 100vh; max-h
 .tb.hop-big { min-width: 96px; height: 76px; border-color: var(--amber); }
 .tb.hop-big b { font-size: 16px; color: var(--amber); }
 
+/* игра с друзьями */
+#link-tags { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 3; }
+.link-tag { position: absolute; transform: translate(-50%, -100%); display: flex; gap: 5px; align-items: center; font: 600 12px var(--f-body); color: #fff;
+  background: rgba(10, 14, 26, .62); padding: 2px 8px; border-radius: 11px; white-space: nowrap; }
+.link-tag[hidden] { display: none; }
+.link-tag i, .lk-players i { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; }
+#ov-link label { display: block; margin: 10px 0 4px; font-size: 13px; color: var(--dim); }
+#ov-link .lk-check { display: flex; gap: 8px; align-items: center; color: var(--text); }
+#ov-link textarea, #ov-link input[type=text] { width: 100%; box-sizing: border-box; font: 12px/1.3 var(--f-mono); color: var(--text); background: var(--night); border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: none; }
+#ov-link input[type=text] { font: 600 15px var(--f-body); }
+#ov-link .row { margin-top: 8px; }
+.lk-status { margin: 10px 0 4px; min-height: 18px; font-size: 13px; color: var(--gas); }
+.lk-status.bad { color: var(--bad); }
+.lk-players { list-style: none; margin: 4px 0 10px; padding: 0; display: grid; gap: 4px; }
+.lk-players li { display: flex; gap: 8px; align-items: center; }
+
 /* окна */
 .ov {
   position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; padding: 14px;
@@ -432,6 +448,8 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <button type="button" id="m-paint">Цвет: белая</button>
         <button type="button" id="m-tune">Обвес: заводской</button>
         <button type="button" id="m-garage">Осмотреть машину</button>
+        <div class="lbl">Друзья</div>
+        <button type="button" id="m-link">Игра с друзьями…</button>
         <div class="lbl">Игра</div>
         <button type="button" id="m-full">Экран: во весь</button>
         <button type="button" id="m-snd">Звук: вкл</button>
@@ -469,6 +487,39 @@ footer { margin-top: 20px; font-size: 12.5px; color: var(--dim); max-width: 75ch
         <button class="tb sm" id="b-brake" type="button" aria-label="Тормоз"><b>СТОП</b><small>тормоз</small></button>
         <button class="tb sm" id="b-hop" type="button" aria-label="Прыжок"><b>ПРЫГ</b><small>сопла</small></button>
         <button class="tb wide" id="b-thrust" type="button" aria-label="Газ"><b>ГАЗ</b><small id="thrust-sub">разгон</small></button>
+      </div>
+    </div>
+
+    <div id="link-tags" aria-hidden="true"></div>
+
+    <div class="ov" id="ov-link" hidden>
+      <div class="card">
+        <button class="close" id="lk-close" type="button" aria-label="Закрыть">✕</button>
+        <h2>Игра с друзьями</h2>
+        <div id="lk-start">
+          <p>Прямое соединение между телефонами, без сервера. Один раз обменяйтесь короткими кодами (например, в мессенджере) — и вы видите машины друг друга на дороге. Столкновений нет.</p>
+          <label for="lk-nick">Ваше имя</label>
+          <input type="text" id="lk-nick" maxlength="16" autocomplete="off" placeholder="Игрок">
+          <label class="lk-check"><input type="checkbox" id="lk-stun"> Играем не в одной Wi-Fi сети (через интернет)</label>
+          <div class="row">
+            <button class="btn primary" id="lk-host" type="button">Создать игру</button>
+            <button class="btn" id="lk-guest" type="button">Войти к другу</button>
+          </div>
+        </div>
+        <div id="lk-room" hidden>
+          <p id="lk-help"></p>
+          <div id="lk-out-l">
+            <label for="lk-out" id="lk-out-t"></label>
+            <textarea id="lk-out" rows="3" readonly spellcheck="false"></textarea>
+            <div class="row"><button class="btn" id="lk-copy" type="button">Скопировать</button><button class="btn" id="lk-share" type="button" hidden>Поделиться</button></div>
+          </div>
+          <label for="lk-in" id="lk-in-t"></label>
+          <textarea id="lk-in" rows="3" spellcheck="false" autocomplete="off"></textarea>
+          <div class="row"><button class="btn primary" id="lk-act" type="button"></button><button class="btn" id="lk-more" type="button" hidden>Пригласить ещё друга</button></div>
+          <div class="lk-status" id="lk-status" role="status"></div>
+          <ul class="lk-players" id="lk-players"></ul>
+          <div class="row"><button class="btn" id="lk-stop" type="button">Закончить игру с друзьями</button></div>
+        </div>
       </div>
     </div>
 
@@ -593,6 +644,526 @@ const ENGINE_SND = {
   ],
   stall: "data:audio/mpeg;base64,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VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/83DEVgAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcMRWAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NyxFUAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NyxFUAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NyxFUAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NyxFUAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NyxFUAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NyxFUAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NwxFYAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/83LEVQAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/83LEVQAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/83LEVQAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/83LEVQAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/83LEVQAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/83LEVQAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/83DEVgAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcsRVAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zcMRWAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NyxFUAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NyxFUAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
 };
+</script>
+<script>
+// «Восьмёрка Баклажан» — поза машины для сети: 24 байта. Чистая логика, без доступа к игре; проверяется tests/unit/pose.test.js.
+// Работает и в игре (классический скрипт, имена попадают в общую область), и в Node (module.exports). Подключение к игре — этап 3 плана (docs/ROADMAP.md).
+"use strict";
+(function (root) {
+  const POSE_BYTES = 24, POSE_TYPE = 1, VMAX = 120;
+  const FLAG = Object.freeze({ AIR: 1, BRAKE: 2, SKID: 4, WALL: 8, TUBE: 16, PRO: 32 });
+  const TAU = Math.PI * 2;
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const wrap = a => a - TAU * Math.floor((a + Math.PI) / TAU);          // угол → [−π, π)
+  const toU16 = (v, lo, hi) => Math.round((clamp(v, lo, hi) - lo) / (hi - lo) * 65535);
+  const fromU16 = (n, lo, hi) => lo + n / 65535 * (hi - lo);
+  const FIELDS = ["x", "y", "z", "yaw", "pitch", "roll", "v", "steer"];
+
+  function encodePose(p, w) {
+    for (const k of FIELDS) if (!Number.isFinite(p[k])) throw new RangeError(`поза: поле ${k} не число (${p[k]})`);
+    const b = new Uint8Array(POSE_BYTES), d = new DataView(b.buffer);
+    d.setUint8(0, POSE_TYPE); d.setUint16(1, p.seq & 0xffff);
+    d.setUint16(3, toU16(p.x, w.x0, w.x1)); d.setUint16(5, toU16(p.y, w.y0, w.y1)); d.setUint16(7, toU16(p.z, w.z0, w.z1));
+    d.setUint16(9, toU16(wrap(p.yaw), -Math.PI, Math.PI)); d.setUint16(11, toU16(wrap(p.pitch), -Math.PI, Math.PI)); d.setUint16(13, toU16(wrap(p.roll), -Math.PI, Math.PI));
+    d.setInt16(15, Math.round(clamp(p.v, -VMAX, VMAX) / VMAX * 32767)); d.setInt8(17, Math.round(clamp(p.steer, -1, 1) * 127));
+    d.setUint8(18, p.flags & 0xff); d.setUint32(19, p.t >>> 0);
+    return b;
+  }
+
+  function decodePose(bytes, w) {
+    if (!(bytes instanceof Uint8Array) || bytes.length !== POSE_BYTES || bytes[0] !== POSE_TYPE) return null;   // граница: чужие байты не проходят дальше
+    const d = new DataView(bytes.buffer, bytes.byteOffset, POSE_BYTES);
+    return {
+      seq: d.getUint16(1), t: d.getUint32(19), flags: d.getUint8(18),
+      x: fromU16(d.getUint16(3), w.x0, w.x1), y: fromU16(d.getUint16(5), w.y0, w.y1), z: fromU16(d.getUint16(7), w.z0, w.z1),
+      yaw: fromU16(d.getUint16(9), -Math.PI, Math.PI), pitch: fromU16(d.getUint16(11), -Math.PI, Math.PI), roll: fromU16(d.getUint16(13), -Math.PI, Math.PI),
+      v: d.getInt16(15) / 32767 * VMAX, steer: d.getInt8(17) / 127,
+    };
+  }
+
+  const api = { POSE_BYTES, FLAG, encodePose, decodePose };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else Object.assign(root, api);
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+// «Восьмёрка Баклажан» — клиент комнаты: связь с сервером игроков (server/), позы машин туда и обратно.
+// Чистая логика с подставляемым сокетом и часами: проверяется tests/unit/netclient.test.js, работает и в игре, и в Node.
+// Всё, что пришло от сервера, разбирается здесь один раз; кривое отбрасывается и считается (client.dropped). Подключение к игре — этап «Сеть».
+"use strict";
+(function (root) {
+  const pose = typeof require !== "undefined" ? require("./pose.js") : root;
+  const MAX_SLOT = 6, CODE = /^[A-Z2-9]{4}$/, TOKEN = /^[A-Za-z0-9_-]{22}$/;
+  const isSlot = n => Number.isInteger(n) && n >= 0 && n <= MAX_SLOT;
+  const isPlayer = p => p && isSlot(p.slot) && typeof p.name === "string" && p.name.length <= 16 && typeof p.online === "boolean";
+
+  function parseRoom(m) {
+    const ok = CODE.test(m.code) && isSlot(m.you) && isSlot(m.host) && Array.isArray(m.players) && m.players.length <= MAX_SLOT + 1 && m.players.every(isPlayer)
+      && (m.token === undefined || TOKEN.test(m.token));
+    return ok ? { type: "room", room: { code: m.code, you: m.you, host: m.host, players: m.players }, token: m.token } : null;
+  }
+
+  // Текст сервера → {type, …} или null (отброшено).
+  function parseServerText(text) {
+    let m;
+    try { m = JSON.parse(text); } catch (e) { return null; }
+    if (!m || typeof m !== "object") return null;
+    if (m.op === "room") return parseRoom(m);
+    if (m.op === "error" && typeof m.code === "string") return { type: "error", code: m.code };
+    if (m.op === "pong" && Number.isFinite(m.t)) return { type: "pong", t: m.t };
+    return null;
+  }
+
+  // Бинарный кадр сервера: номер места отправителя + 24 байта позы → {slot, pose} или null.
+  function parsePoseFrame(buffer, world, myslot) {
+    if (!(buffer instanceof ArrayBuffer)) return null;                        // длину и тип позы проверяет decodePose
+    const bytes = new Uint8Array(buffer), slot = bytes[0];
+    if (!isSlot(slot) || slot === myslot) return null;
+    const p = pose.decodePose(bytes.subarray(1), world);
+    return p ? { slot, pose: p } : null;
+  }
+
+  function createRoomClient({ url, world, WebSocketImpl = globalThis.WebSocket, now = () => Date.now() }) {
+    const handlers = {}, state = { open: false, room: null, token: null };
+    const client = { state, dropped: 0 };
+    let socket = null, seq = 0;
+    const emit = (name, ...args) => (handlers[name] || []).forEach(fn => fn(...args));
+    const drop = () => { client.dropped++; };
+    const sendJson = msg => { socket.send(JSON.stringify(msg)); };
+
+    function onText(text) {
+      const m = parseServerText(text);
+      if (!m) return drop();
+      if (m.type === "room") {
+        state.room = m.room;
+        if (m.token) state.token = m.token;
+        emit("room", m.room);
+      } else if (m.type === "error") emit("error", m.code);
+      else emit("pong", now() - m.t);
+    }
+
+    function onBinary(buffer) {
+      const f = state.room && parsePoseFrame(buffer, world, state.room.you);
+      if (!f) return drop();
+      emit("pose", f.slot, f.pose);
+    }
+
+    client.on = (name, fn) => { (handlers[name] = handlers[name] || []).push(fn); return () => { handlers[name] = handlers[name].filter(h => h !== fn); }; };
+    client.connect = () => new Promise((resolve, reject) => {
+      socket = new WebSocketImpl(url);
+      socket.binaryType = "arraybuffer";
+      socket.onopen = () => { state.open = true; resolve(client); };
+      socket.onmessage = e => (typeof e.data === "string" ? onText(e.data) : onBinary(e.data));
+      socket.onclose = () => {
+        const wasOpen = state.open;
+        state.open = false; state.room = null;
+        if (wasOpen) emit("close"); else reject(new Error("соединение не открылось"));
+      };
+    });
+    client.close = () => { if (socket) socket.close(); };
+    client.create = name => sendJson({ op: "create", name });
+    client.join = (code, name, token) => sendJson(token ? { op: "join", code, name, token } : { op: "join", code, name });
+    client.leave = () => { sendJson({ op: "leave" }); state.room = null; state.token = null; };
+    client.ping = () => sendJson({ op: "ping", t: now() });
+    client.sendPose = p => {
+      if (!state.open || !state.room) return false;
+      let bytes;
+      try { bytes = pose.encodePose({ ...p, seq: seq++, t: now() }, world); } catch (e) { return false; }   // ошибка физики — не в сеть
+      socket.send(bytes);
+      return true;
+    };
+    return client;
+  }
+
+  const api = { createRoomClient, parseServerText, parsePoseFrame };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else Object.assign(root, api);
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+// «Восьмёрка Баклажан» — комната-хозяин внутри страницы игры (прямое соединение без сервера).
+// Говорит на том же протоколе, что сервер игроков (docs/PROTOCOL.md), но комната одна: код «DRCT», место 0 — хозяин, возврата по токену нет.
+// Чистая логика: связь (send/close) и часы подставляются; проверяется tests/unit/hub.test.js и общими образцами tests/vectors/control.json.
+"use strict";
+(function (root) {
+  const CODE = "DRCT", MAX_PLAYERS = 7, MAX_STRIKES = 5, MAX_CONTROL_CHARS = 512, POSE_BYTES = 24, POSE_TYPE = 1;
+  const CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}$/, TOKEN_RE = /^[A-Za-z0-9_-]{22}$/, CONTROL_CHARS = /[\x00-\x1f\x7f]/g;
+
+  const cleanName = v => (typeof v === "string" ? Array.from(v.replace(CONTROL_CHARS, "").trim()).slice(0, 16).join("").trim() : "") || "Игрок";
+  const finiteNumber = v => Number.isFinite(v);                         // не приводит типы: строка и true — не числа
+
+  function parseJoin(d) {
+    if (typeof d.code !== "string" || !CODE_RE.test(d.code.toUpperCase())) return null;
+    const out = { op: "join", code: d.code.toUpperCase(), name: cleanName(d.name) };
+    if ("token" in d) {
+      if (typeof d.token !== "string" || !TOKEN_RE.test(d.token)) return null;
+      out.token = d.token;
+    }
+    return out;
+  }
+
+  const PARSERS = {
+    create: d => ({ op: "create", name: cleanName(d.name) }),
+    join: parseJoin,
+    leave: () => ({ op: "leave" }),
+    ping: d => (finiteNumber(d.t) ? { op: "ping", t: d.t } : null),
+  };
+
+  // Текст игрока → нормализованное сообщение или null (то же, что server/protocol.py: parse_control).
+  function parseControl(text) {
+    if (typeof text !== "string" || Array.from(text).length > MAX_CONTROL_CHARS) return null;
+    let d;
+    try { d = JSON.parse(text); } catch (e) { return null; }
+    const parser = d && typeof d === "object" && typeof d.op === "string" && Object.prototype.hasOwnProperty.call(PARSERS, d.op) ? PARSERS[d.op] : null;
+    return parser ? parser(d) : null;
+  }
+
+  // Не больше rate сообщений в секунду, пачкой не больше burst; долгая тишина запас не копит. now — секунды.
+  class RateLimiter {
+    constructor(rate, burst, now) { this.rate = rate; this.burst = burst; this.now = now; this.tokens = burst; this.last = now(); }
+    allow() {
+      const t = this.now();
+      this.tokens = Math.min(this.burst, this.tokens + (t - this.last) * this.rate);
+      this.last = t;
+      if (this.tokens < 1) return false;
+      this.tokens -= 1;
+      return true;
+    }
+  }
+
+  const asBytes = d => (d instanceof Uint8Array ? d : d instanceof ArrayBuffer ? new Uint8Array(d) : null);
+  const validPose = b => b && b.length === POSE_BYTES && b[0] === POSE_TYPE;
+
+  function createHub({ send, close, now = () => Date.now() }) {
+    const conns = new Map();              // id → { slot|null, strikes, text, pose }
+    let room = null;                      // Map слот → { id, name } или null, пока хозяин не создал комнату
+    const seconds = () => now() / 1000;
+    const sendJson = (id, m) => send(id, JSON.stringify(m));
+    const members = () => (room ? [...room.entries()].sort((a, b) => a[0] - b[0]) : []);
+    const state = you => ({ op: "room", code: CODE, you, host: 0, players: members().map(([slot, p]) => ({ slot, name: p.name, online: true })) });
+    const broadcast = () => members().forEach(([slot, p]) => sendJson(p.id, state(slot)));
+    const error = (id, code) => sendJson(id, { op: "error", code });
+
+    function seat(id, slot, name) {
+      room.set(slot, { id, name });
+      conns.get(id).slot = slot;
+      broadcast();
+    }
+    function unseat(id) {
+      const c = conns.get(id);
+      if (!room || c.slot === null) return;
+      room.delete(c.slot);
+      c.slot = null;
+      broadcast();
+    }
+    function closeRoom() {
+      const guests = members().filter(([slot]) => slot !== 0).map(([, p]) => p.id);
+      room = null;
+      guests.forEach(id => { conns.delete(id); close(id); });
+    }
+
+    function strike(id) {
+      const c = conns.get(id);
+      if (++c.strikes >= MAX_STRIKES) { hub.disconnect(id); close(id); return; }
+      error(id, "bad_msg");
+    }
+
+    function create(id, c, msg) {
+      if (c.slot !== null) return error(id, "already_in_room");
+      if (room) return error(id, "not_allowed");
+      room = new Map();
+      seat(id, 0, msg.name);
+    }
+    function join(id, c, msg) {
+      if (c.slot !== null) return msg.code === CODE ? sendJson(id, state(c.slot)) : error(id, "already_in_room");
+      if (!room || msg.code !== CODE) return error(id, "no_room");
+      const free = [...Array(MAX_PLAYERS).keys()].find(s => !room.has(s));                // место 0 занято хозяином, пока комната есть
+      if (free === undefined) return error(id, "full");
+      seat(id, free, msg.name);
+    }
+    const handlers = {
+      create, join,
+      leave: id => unseat(id),
+      ping: (id, c, msg) => sendJson(id, { op: "pong", t: msg.t, srv: now() }),
+    };
+
+    function onText(id, c, text) {
+      const msg = c.text.allow() ? parseControl(text) : null;
+      if (!msg) return strike(id);
+      c.strikes = 0;
+      handlers[msg.op](id, c, msg);
+    }
+    function onPose(id, c, bytes) {
+      if (c.slot === null || !validPose(bytes) || !c.pose.allow()) return;
+      const frame = new Uint8Array(POSE_BYTES + 1);
+      frame[0] = c.slot; frame.set(bytes, 1);
+      members().forEach(([slot, p]) => { if (slot !== c.slot) send(p.id, frame); });
+    }
+
+    const hub = {
+      connect(id) { conns.set(id, { slot: null, strikes: 0, text: new RateLimiter(5, 10, seconds), pose: new RateLimiter(60, 30, seconds) }); },
+      receive(id, data) {
+        const c = conns.get(id);
+        if (!c) return;
+        if (typeof data === "string") onText(id, c, data);
+        else onPose(id, c, asBytes(data));
+      },
+      disconnect(id) {
+        const c = conns.get(id);
+        if (!c) return;
+        if (c.slot === 0) closeRoom();
+        else unseat(id);
+        conns.delete(id);
+      },
+      slotOf(id) { const c = conns.get(id); return c ? c.slot : null; },
+    };
+    return hub;
+  }
+
+  const api = { createHub, parseControl, RateLimiter, HUB_CODE: CODE };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else Object.assign(root, api);
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+// «Восьмёрка Баклажан» — чужая машина: из редких поз с дрожанием по времени получаем плавное положение.
+// Показываем машину чуть «из прошлого» (интерполяция между двумя позами); если новых поз нет — ненадолго продолжаем по скорости.
+// Чистая логика, время подставляется (мс по своим часам прихода): проверяется tests/unit/remote.test.js. Соглашения игры: x += cos(курс)·v, z −= sin(курс)·v.
+"use strict";
+(function (root) {
+  const KEEP = 8, TAU = Math.PI * 2;
+  const NUMBERS = ["x", "y", "z", "yaw", "pitch", "roll", "v", "steer"];
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const lerpAngle = (a, b, k) => a + (b - a - TAU * Math.round((b - a) / TAU)) * k;
+  const isNewer = (seq, last) => { const d = (seq - last) & 0xffff; return d >= 1 && d <= 0x7fff; };      // с переходом через 65535 → 0
+  const usable = p => p && Number.isInteger(p.seq) && NUMBERS.every(k => Number.isFinite(p[k]));
+
+  function blend(a, b, k, snap) {
+    const near = k < 0.5 ? a : b;
+    const out = { seq: near.seq, t: near.t, flags: near.flags };
+    NUMBERS.forEach(f => { out[f] = lerp(a[f], b[f], k); });
+    ["yaw", "pitch", "roll"].forEach(f => { out[f] = lerpAngle(a[f], b[f], k); });
+    if (snap) { out.x = near.x; out.y = near.y; out.z = near.z; }
+    return out;
+  }
+
+  function createRemote({ delayMs = 120, extrapolateMs = 250, snapDistance = 150, staleMs = 2500 } = {}) {
+    const samples = [];                                  // { rx, pose } по возрастанию времени прихода
+    return {
+      size: () => samples.length,
+      push(pose, rx) {
+        if (!usable(pose)) return;
+        const last = samples[samples.length - 1];
+        if (last && !isNewer(pose.seq, last.pose.seq)) return;
+        samples.push({ rx, pose });
+        if (samples.length > KEEP) samples.shift();
+      },
+      sample(now) {
+        const last = samples[samples.length - 1];
+        if (!last || now - last.rx > staleMs) return null;
+        const target = now - delayMs;
+        if (target <= samples[0].rx) return { ...samples[0].pose };
+        if (target >= last.rx) {
+          const dt = Math.min(target - last.rx, extrapolateMs) / 1000, p = { ...last.pose };
+          p.x += Math.cos(p.yaw) * p.v * dt; p.z -= Math.sin(p.yaw) * p.v * dt;
+          return p;
+        }
+        const i = samples.findIndex((s, n) => samples[n + 1] && target < samples[n + 1].rx);
+        const a = samples[i], b = samples[i + 1];
+        const snap = Math.hypot(b.pose.x - a.pose.x, b.pose.z - a.pose.z) > snapDistance;
+        return blend(a.pose, b.pose, (target - a.rx) / (b.rx - a.rx), snap);
+      },
+    };
+  }
+
+  const api = { createRemote };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else Object.assign(root, api);
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+// «Восьмёрка Баклажан» — прямое соединение игроков без сервера (WebRTC): хозяин создаёт «приглашение», друг отвечает «ответом».
+// Коды — обычный текст (BK1.O.… / BK1.A.…), их можно переслать в мессенджере. По соединению идут два канала: «ctl» (надёжный, текст)
+// и «pose» (без порядка и повторов, байты). Для остальной игры всё выглядит как обычный WebSocket (createRoomClient не знает разницы).
+// Хозяин держит комнату у себя на странице (hub.js); гости — только клиенты. Проверяется tests/unit/direct.test.js (поддельный WebRTC)
+// и tools/direct-browser.cjs (настоящий WebRTC в Chromium). Что приходит в код, разбирается один раз в decodeCode; кривое — CodeError по-русски.
+"use strict";
+(function (root) {
+  const hubLib = typeof require !== "undefined" ? require("./hub.js") : root;
+  const PREFIX = "BK1", MAX_CODE_CHARS = 8000, MAX_SDP_CHARS = 6000, MAX_SDP_LINES = 200, STUN = [{ urls: "stun:stun.l.google.com:19302" }];
+
+  class CodeError extends Error {}
+
+  function checkSdp(sdp) {
+    if (typeof sdp !== "string" || sdp.length > MAX_SDP_CHARS) throw new CodeError("Описание соединения слишком длинное — код повреждён?");
+    if (!/^[\x20-\x7e\r\n]*$/.test(sdp)) throw new CodeError("В коде есть недопустимые символы");
+    if (!sdp.startsWith("v=0\r\n") || !sdp.endsWith("\r\n")) throw new CodeError("Код повреждён или обрезан — скопируйте его целиком");
+    const lines = sdp.slice(0, -2).split("\r\n");
+    if (lines.length > MAX_SDP_LINES || !lines.every(l => /^[a-z]=/.test(l))) throw new CodeError("Код повреждён — скопируйте его целиком");
+    if (!/^m=application /m.test(sdp) || /^m=(audio|video)/m.test(sdp)) throw new CodeError("Это не код для игры (нет канала данных)");
+  }
+
+  const toBase64Url = text => btoa(String.fromCharCode(...new TextEncoder().encode(text))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  function fromBase64Url(text) {
+    try {
+      const b = atob(text.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((text.length + 3) % 4));
+      return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(b, c => c.charCodeAt(0)));
+    } catch (e) { throw new CodeError("Код повреждён или обрезан — скопируйте его целиком"); }
+  }
+
+  // kind: "O" — приглашение, "A" — ответ.
+  function encodeCode(kind, sdp) {
+    checkSdp(sdp);
+    return `${PREFIX}.${kind}.${toBase64Url(sdp)}`;
+  }
+
+  function decodeCode(text, kind) {
+    if (typeof text !== "string") throw new CodeError("Код не найден — вставьте его целиком");
+    const code = text.replace(/[\s«»"“”'`]/g, "");
+    if (code.length > MAX_CODE_CHARS) throw new CodeError("Код слишком длинный — скопируйте только его");
+    const m = /^BK1\.([OA])\.([A-Za-z0-9_-]+)$/.exec(code);
+    if (!m) throw new CodeError("Это не код из игры — скопируйте его целиком, он начинается с BK1.");
+    if (m[1] !== kind) throw new CodeError(kind === "O" ? "Это ответ, а здесь нужно приглашение" : "Это приглашение, а здесь нужен ответ");
+    const sdp = fromBase64Url(m[2]);
+    checkSdp(sdp);
+    return sdp;
+  }
+
+  // Общая часть сокетов «как WebSocket»: обработчик открытия, поставленный после открытия, всё равно узнаёт о нём.
+  class SocketBase {
+    constructor() { this.readyState = 0; this.binaryType = "arraybuffer"; this._open = null; this.onmessage = null; this.onclose = null; }
+    get onopen() { return this._open; }
+    set onopen(fn) {
+      this._open = fn;
+      if (this.readyState === 1 && fn) queueMicrotask(() => { if (this._open === fn) fn({}); });
+    }
+    _opened() { if (this.readyState === 0) { this.readyState = 1; if (this._open) this._open({}); } }
+    _closed() { if (this.readyState !== 3) { this.readyState = 3; if (this.onclose) this.onclose({}); } }
+    _deliver(data) { if (this.onmessage) this.onmessage({ data }); }
+  }
+
+  // Сокет поверх двух каналов WebRTC: текст — в «ctl», байты — в «pose».
+  class ChannelSocket extends SocketBase {
+    constructor({ ctl, pose }) {
+      super();
+      this.ctl = ctl; this.pose = pose;
+      for (const ch of [ctl, pose]) {
+        ch.binaryType = "arraybuffer";
+        ch.onmessage = e => this._deliver(e.data);
+        ch.onclose = () => this._closed();
+        ch.onopen = () => this._check();
+      }
+      this._check();
+    }
+    _check() { if (this.ctl.readyState === "open" && this.pose.readyState === "open") this._opened(); }
+    send(data) {
+      try { (typeof data === "string" ? this.ctl : this.pose).send(data); } catch (e) { /* ещё не открыт или закрывается — не страшно */ }
+    }
+    close() { this._closed(); this.ctl.close(); this.pose.close(); }
+  }
+
+  const asArrayBuffer = d => (typeof d === "string" ? d : d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength));
+
+  // Ждём адреса для соединения: до «сбор завершён», либо до тишины quietMs после последнего адреса, либо не дольше ms.
+  // (Часть окружений присылает адреса сразу, а «завершено» — никогда или через секунды.)
+  function gathered(pc, ms, quietMs) {
+    return new Promise(resolve => {
+      let quiet = null;
+      const limit = setTimeout(finish, ms);
+      function finish() { clearTimeout(limit); clearTimeout(quiet); pc.onicecandidate = null; pc.onicegatheringstatechange = null; resolve(); }
+      pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === "complete") finish(); };
+      pc.onicecandidate = e => {
+        if (!e.candidate) return finish();
+        clearTimeout(quiet);
+        quiet = setTimeout(finish, quietMs);
+      };
+    });
+  }
+
+  function createDirectHost({ RTC = globalThis.RTCPeerConnection, stun = false, gatherMs = 2500, quietMs = 400, inviteTtlMs = 180000, maxGuests = 6, onState = () => {} } = {}) {
+    const targets = new Map(), guests = new Map();          // id → сокет; id → { pc, sock }
+    let pending = null, expired = false, next = 1;
+
+    const hub = hubLib.createHub({ send: (id, data) => { const t = targets.get(id); if (t) t.send(data); }, close: id => { const t = targets.get(id); if (t) t.close(); } });
+
+    // Сокет для собственного клиента хозяина: без сети, прямо в комнату.
+    const local = new SocketBase();
+    local.send = data => hub.receive("host", data);
+    targets.set("host", { send: data => { const out = asArrayBuffer(data); queueMicrotask(() => local._deliver(out)); }, close: () => local._closed() });
+    hub.connect("host");
+    local._opened();
+
+    function dropPending() {
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      pending.pc.close();
+      pending = null;
+    }
+
+    function attach(id, pc, sock) {
+      sock.onopen = () => { targets.set(id, sock); hub.connect(id); guests.set(id, { pc, sock }); if (pending && pending.id === id) { clearTimeout(pending.timer); pending = null; } onState("Друг подключился"); };
+      sock.onmessage = e => hub.receive(id, e.data);
+      sock.onclose = () => { hub.disconnect(id); targets.delete(id); guests.delete(id); pc.close(); onState("Друг отключился"); };
+    }
+
+    const host = {
+      hub, guests: () => [...guests.keys()],
+      Socket: function () { return local; },
+      async invite() {
+        if (guests.size >= maxGuests) throw new CodeError("Комната заполнена");
+        dropPending(); expired = false;
+        const pc = new RTC({ iceServers: stun ? STUN : [] }), id = "g" + next++;
+        const ctl = pc.createDataChannel("ctl"), pose = pc.createDataChannel("pose", { ordered: false, maxRetransmits: 0 });
+        const sock = new ChannelSocket({ ctl, pose });
+        const timer = setTimeout(() => { if (pending && pending.id === id) { dropPending(); expired = true; onState("Приглашение устарело"); } }, inviteTtlMs);
+        if (timer.unref) timer.unref();                                   // в Node таймер не удерживает процесс (в браузере setTimeout отдаёт число)
+        pending = { pc, id, timer };
+        attach(id, pc, sock);
+        const ready = gathered(pc, gatherMs, quietMs);
+        await pc.setLocalDescription(await pc.createOffer());
+        await ready;
+        return encodeCode("O", pc.localDescription.sdp);
+      },
+      async accept(code) {
+        const sdp = decodeCode(code, "A");
+        if (!pending) throw new CodeError(expired ? "Приглашение устарело — создайте новое" : "Сначала создайте приглашение");
+        await pending.pc.setRemoteDescription({ type: "answer", sdp });
+      },
+      cancel: dropPending,
+      close() {
+        dropPending();
+        hub.disconnect("host");
+        local._closed();
+        for (const { pc } of guests.values()) pc.close();
+      },
+    };
+    local.close = () => host.close();                                   // клиент хозяина вышел — закрывается всё
+    return host;
+  }
+
+  function createDirectGuest({ RTC = globalThis.RTCPeerConnection, stun = false, gatherMs = 2500, quietMs = 400 } = {}) {
+    let sock = null, pc = null, resolveReady;
+    const ready = new Promise(r => { resolveReady = r; });
+    return {
+      ready,
+      Socket: function () { return sock; },
+      async join(code) {
+        const sdp = decodeCode(code, "O");
+        pc = new RTC({ iceServers: stun ? STUN : [] });
+        const channels = {};
+        pc.ondatachannel = e => {
+          channels[e.channel.label] = e.channel;
+          if (channels.ctl && channels.pose && !sock) { sock = new ChannelSocket({ ctl: channels.ctl, pose: channels.pose }); resolveReady(sock); }
+        };
+        await pc.setRemoteDescription({ type: "offer", sdp });
+        const done = gathered(pc, gatherMs, quietMs);
+        await pc.setLocalDescription(await pc.createAnswer());
+        await done;
+        return encodeCode("A", pc.localDescription.sdp);
+      },
+      close() { if (sock) sock.close(); if (pc) pc.close(); },
+    };
+  }
+
+  const api = { encodeCode, decodeCode, CodeError, ChannelSocket, createDirectHost, createDirectGuest };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else Object.assign(root, api);
+})(typeof globalThis !== "undefined" ? globalThis : this);
 </script>
 <script>
 // «Восьмёрка Баклажан» — параметры, уроки, сохранение, случайность, сцена, куски мира.
@@ -6823,6 +7394,203 @@ function ui() {
 
 </script>
 <script>
+// «Восьмёрка Баклажан» — игра с друзьями: меню «Друзья» (прямое соединение кодами), поза своей машины, чужие машины на дороге.
+// Код игры разбит на файлы arcade/js/NN-*.js; они грузятся по порядку номеров и делят общие имена (docs/ARCHITECTURE.md).
+// Логика связи — в arcade/lib (pose, net-client, hub, direct, remote: чистые модули под тестами); здесь только склейка с игрой и экраном.
+"use strict";
+/* ---------- игра с друзьями ---------- */
+// Чужие машины — только картинка: физику каждый считает у себя, столкновений нет. Все чужие машины — один вызов отрисовки (InstancedMesh).
+const LINK = (() => {
+  const NET_WORLD = { x0: WORLD.x0, x1: WORLD.x1, z0: WORLD.z0, z1: WORLD.z1, y0: -20, y1: 220 };
+  // цвет игрока по месту: css — для кружков и табличек, tint — для кузова (в r149 hex на экране светлее, поэтому темнее)
+  const PALETTE = [["#ff5a4a", "#a8120c"], ["#ff9a3c", "#d42800"], ["#6fdc8c", "#1e9a45"], ["#39b6ff", "#1f6fd0"], ["#c552ff", "#9a2fd8"], ["#ff8ef0", "#d03a9e"], ["#e8ecf5", "#a9aebb"]]
+    .map(([css, tint]) => ({ css, tint: new T.Color(tint) }));
+  const SEND_MS = 40, PING_MS = 2000, MAX_REMOTE = 6, FAR = 500;
+  const st = { role: null, host: null, guest: null, client: null, rtt: null, sent: 0, received: 0, sendAt: 0, pingAt: 0 };
+  const remotes = new Map();                                       // место → { remote, name, color, tag, x, y, z, v, visible }
+  const api = { hideRemotes: false };
+
+  // ---- чужая машина: одна склеенная сетка с цветами вершин (белое красится цветом игрока, тёмное остаётся тёмным) ----
+  function carGeometry() {
+    const pos = [], nor = [], col = [];
+    const box = (x0, x1, y0, y1, z0, z1, c) => {
+      const g = new T.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2).toNonIndexed();
+      pos.push(...g.attributes.position.array); nor.push(...g.attributes.normal.array);
+      for (let i = 0; i < g.attributes.position.count; i++) col.push(c, c, c);
+    };
+    const g0 = -WHEEL;                                              // земля под колёсами
+    box(-2.0, 2.0, g0 + .28, g0 + .86, -.82, .82, 1);                // кузов
+    box(-1.05, .85, g0 + .86, g0 + 1.36, -.72, .72, 1);             // салон
+    box(-.95, .75, g0 + .92, g0 + 1.3, -.74, .74, .12);             // стёкла
+    for (const x of [-1.25, 1.25]) for (const z of [-.8, .8]) box(x - .31, x + .31, g0, g0 + .58, z - .12, z + .12, .06);   // колёса
+    const g = new T.BufferGeometry();
+    g.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new T.Float32BufferAttribute(nor, 3)); g.setAttribute("color", new T.Float32BufferAttribute(col, 3));
+    return g;
+  }
+  const mesh = new T.InstancedMesh(carGeometry(), new T.MeshLambertMaterial({ vertexColors: true }), MAX_REMOTE);
+  mesh.setColorAt(0, PALETTE[0].tint);                                    // цвета экземпляров нужны ДО первого кадра: в Three.js r149 шейдер выбирается один раз
+  mesh.count = 0; mesh.frustumCulled = false; mesh.userData.dyn = true; scene.add(mesh);
+  api.mesh = mesh;
+
+  // ---- поза своей машины: то, что нарисовано (положение и поворот модели), в тех же углах, что у чужих ----
+  const euler = new T.Euler();
+  function poseNow() {
+    const p = carObj.position, U = carObj.userData;
+    euler.setFromQuaternion(carObj.quaternion, "YZX");                                                   // как в render(): rotation.set(крен, курс, тангаж, "YZX")
+    const flags = (free.air ? FLAG.AIR : 0) | (brk() > .1 ? FLAG.BRAKE : 0) | (Math.abs(car.vl || 0) > 3 ? FLAG.SKID : 0) | (free.wall ? FLAG.WALL : 0) | (free.tube ? FLAG.TUBE : 0) | (free.pro ? FLAG.PRO : 0);
+    return { x: p.x, y: p.y - WHEEL, z: p.z, yaw: euler.y, pitch: euler.z, roll: euler.x, v: car.v || 0, steer: Math.max(-1, Math.min(1, (U.st || 0) / .45)), flags };
+  }
+
+  // ---- табличка с именем над машиной ----
+  const tagsBox = $("link-tags");
+  function makeTag(css) {
+    const el = document.createElement("div"); el.className = "link-tag"; el.hidden = true;
+    const dot = document.createElement("i"); dot.style.background = css; el.append(dot, document.createElement("span"));
+    tagsBox.appendChild(el);
+    return el;
+  }
+
+  // ---- комната ----
+  function syncRemotes(room) {
+    const here = new Set();
+    for (const p of room.players) {
+      if (p.slot === room.you) continue;
+      here.add(p.slot);
+      let r = remotes.get(p.slot);
+      if (!r) { const c = PALETTE[p.slot % PALETTE.length]; r = { remote: createRemote(), color: c.tint, tag: makeTag(c.css), name: p.name, visible: false }; remotes.set(p.slot, r); showToast(`${p.name} в игре`, "good", 1800); }
+      r.name = p.name;
+    }
+    for (const [slot, r] of remotes) if (!here.has(slot)) { r.tag.remove(); remotes.delete(slot); }
+  }
+  function renderPlayers(room) {
+    const ul = $("lk-players"); ul.textContent = "";
+    for (const p of room.players) {
+      const li = document.createElement("li"), dot = document.createElement("i");
+      dot.style.background = PALETTE[p.slot % PALETTE.length].css;
+      li.append(dot, `${p.name}${p.slot === room.you ? " (вы)" : ""}${p.slot === 0 ? " · хозяин" : ""}`);
+      ul.appendChild(li);
+    }
+  }
+  const status = (text, bad = false) => { const el = $("lk-status"); el.textContent = text; el.classList.toggle("bad", bad); };
+  const nick = () => (($("lk-nick").value || "").trim() || "Игрок").slice(0, 16);
+
+  function makeClient(Socket) {
+    const c = createRoomClient({ url: "link", world: NET_WORLD, WebSocketImpl: Socket });
+    c.on("room", room => {
+      syncRemotes(room); renderPlayers(room); status(room.players.length > 1 ? "Вы в одной игре" : "Ждём друзей…");
+      if (st.role === "guest") {                                               // соединились: коды больше не нужны
+        ["lk-out-l", "lk-in-t", "lk-in", "lk-act"].forEach(id => { $(id).hidden = true; });
+        $("lk-help").textContent = "Готово! Закройте окно и поезжайте — друзья видны на дороге. Свободная езда у всех.";
+      }
+    });
+    c.on("pose", (slot, pose) => { const r = remotes.get(slot); if (r) { r.remote.push(pose, performance.now()); st.received++; } });
+    c.on("error", code => status(code === "full" ? "В игре уже 7 человек" : `Ошибка: ${code}`, true));
+    c.on("pong", ms => { st.rtt = Math.round(ms); });
+    c.on("close", () => { if (st.client === c) { status("Связь разорвана", true); clearRemotes(); } });
+    return c;
+  }
+  function clearRemotes() { for (const r of remotes.values()) r.tag.remove(); remotes.clear(); }
+
+  const fail = e => status(e instanceof CodeError ? e.message : `Не удалось соединиться: ${e && e.message ? e.message : e}`, true);
+  const textFor = role => role === "host"
+    ? { help: "1. Отправьте другу код приглашения. 2. Когда друг пришлёт ответ — вставьте его ниже и нажмите «Подключить друга».", out: "Код приглашения — отправьте другу", inp: "Ответ друга — вставьте сюда", act: "Подключить друга" }
+    : { help: "1. Вставьте код, который прислал хозяин, и нажмите «Получить ответ». 2. Отправьте ответ хозяину и подождите соединения.", out: "Ваш ответ — отправьте хозяину", inp: "Код хозяина — вставьте сюда", act: "Получить ответ" };
+  function showRoomView(role) {
+    const t = textFor(role);
+    $("lk-start").hidden = true; $("lk-room").hidden = false;
+    $("lk-help").textContent = t.help; $("lk-out-t").textContent = t.out; $("lk-in-t").textContent = t.inp; $("lk-act").textContent = t.act;
+    $("lk-more").hidden = role !== "host"; $("lk-out").value = ""; $("lk-in").value = ""; $("lk-players").textContent = "";
+    $("lk-out-l").hidden = role !== "host";
+  }
+  function showStart() { $("lk-start").hidden = false; $("lk-room").hidden = true; status(""); }
+  const settings = () => ({ stun: $("lk-stun").checked });
+
+  async function newInvite() {
+    try { status("Создаём приглашение…"); $("lk-out").value = await st.host.invite(); status("Приглашение готово — отправьте его другу"); }
+    catch (e) { fail(e); }
+  }
+  async function startHost() {
+    stop(); save.nick = nick(); persist();
+    try {
+      st.role = "host";
+      st.host = createDirectHost({ ...settings(), onState: text => { status(text); if (st.host && st.host.guests().length) $("lk-more").hidden = false; } });
+      st.client = makeClient(st.host.Socket); await st.client.connect(); st.client.create(nick());
+      showRoomView("host"); await newInvite();
+    } catch (e) { fail(e); }
+  }
+  function startGuest() { stop(); save.nick = nick(); persist(); st.role = "guest"; st.guest = createDirectGuest(settings()); showRoomView("guest"); $("lk-out-l").hidden = true; status("Вставьте код хозяина"); }
+
+  async function act() {
+    try {
+      if (st.role === "host") { await st.host.accept($("lk-in").value); $("lk-in").value = ""; status("Подключаем друга…"); return; }
+      if ($("lk-out").value) return;                                    // ответ уже выдан — ждём соединения
+      $("lk-out").value = await st.guest.join($("lk-in").value); $("lk-out-l").hidden = false; status("Отправьте ответ хозяину — и ждите соединения…");
+      await st.guest.ready;
+      st.client = makeClient(st.guest.Socket); await st.client.connect(); st.client.join(HUB_CODE, nick());
+    } catch (e) { fail(e); }
+  }
+  function stop() {
+    const { client, host, guest } = st;
+    Object.assign(st, { role: null, host: null, guest: null, client: null, rtt: null });
+    if (client) client.close(); if (host) host.close(); if (guest) guest.close();
+    clearRemotes();
+  }
+
+  // ---- каждый кадр ----
+  api.tick = () => {
+    const c = st.client;
+    if (!c || !c.state.open || !c.state.room) return;
+    const now = performance.now();
+    if (mode === "free" && !replay && now - st.sendAt >= SEND_MS) { st.sendAt = now; if (c.sendPose(poseNow())) st.sent++; }
+    if (now - st.pingAt >= PING_MS) { st.pingAt = now; c.ping(); if (st.rtt !== null) status(`Связь: ${st.rtt} мс`); }
+  };
+  const mat = new T.Matrix4(), quat = new T.Quaternion(), pos = new T.Vector3(), one = new T.Vector3(1, 1, 1), proj = new T.Vector3();
+  api.draw = () => {
+    const live = !api.hideRemotes && mode === "free" && !replay && st.client && st.client.state.open;
+    const now = performance.now(), rect = tagsBox.getBoundingClientRect();
+    let n = 0;
+    camera.updateMatrixWorld();
+    for (const r of remotes.values()) {
+      const p = live && n < MAX_REMOTE ? r.remote.sample(now) : null;
+      r.visible = !!p;
+      if (!p) { r.tag.hidden = true; continue; }
+      euler.set(p.roll, p.yaw, p.pitch, "YZX"); quat.setFromEuler(euler); pos.set(p.x, p.y + WHEEL, p.z);
+      mesh.setMatrixAt(n, mat.compose(pos, quat, one)); mesh.setColorAt(n, r.color); n++;
+      Object.assign(r, { x: p.x, y: p.y, z: p.z, v: p.v });
+      proj.set(p.x, p.y + 0.9, p.z).project(camera); r.nx = proj.x; r.ny = proj.y;                 // середина кузова на экране (для проверки в тестах)
+      proj.set(p.x, p.y + 1.9, p.z).project(camera);
+      const near = camera.position.distanceTo(pos) < FAR && proj.z < 1 && Math.abs(proj.x) < 1.1 && Math.abs(proj.y) < 1.1;
+      r.tag.hidden = !near;
+      if (near) {
+        r.tag.style.left = `${(proj.x * .5 + .5) * rect.width}px`; r.tag.style.top = `${(-proj.y * .5 + .5) * rect.height}px`;
+        r.tag.lastChild.textContent = `${r.name} · ${Math.round(Math.abs(p.v) * 3.6)} км/ч`;
+      }
+    }
+    mesh.count = n; mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  };
+  api.stop = stop;
+  api.debug = () => ({ role: st.role, open: !!(st.client && st.client.state.open), room: st.client && st.client.state.room, rtt: st.rtt, sent: st.sent, received: st.received,
+    remotes: [...remotes.values()].map(r => ({ name: r.name, visible: r.visible, x: r.x, y: r.y, z: r.z, v: r.v, nx: r.nx, ny: r.ny })) });
+
+  // ---- экран ----
+  const open = () => { closeDock(); $("lk-nick").value = save.nick || ""; $("ov-link").hidden = false; };
+  $("m-link").onclick = open;
+  $("lk-close").onclick = () => { $("ov-link").hidden = true; };
+  $("lk-host").onclick = startHost;
+  $("lk-guest").onclick = startGuest;
+  $("lk-act").onclick = act;
+  $("lk-more").onclick = newInvite;
+  $("lk-stop").onclick = () => { stop(); showStart(); };
+  $("lk-copy").onclick = async () => {
+    const text = $("lk-out").value;
+    try { await navigator.clipboard.writeText(text); status("Скопировано"); }
+    catch (e) { $("lk-out").select(); status(document.execCommand && document.execCommand("copy") ? "Скопировано" : "Выделите код и скопируйте вручную", false); }
+  };
+  if (navigator.share) { $("lk-share").hidden = false; $("lk-share").onclick = () => navigator.share({ text: $("lk-out").value }).catch(() => {}); }
+  return api;
+})();
+</script>
+<script>
 // «Восьмёрка Баклажан» — кадр (главный цикл), ручки для тестов.
 // Код игры разбит на файлы arcade/js/NN-*.js; они грузятся по порядку номеров и делят общие имена (docs/ARCHITECTURE.md).
 "use strict";
@@ -6951,6 +7719,7 @@ function render(dt) {
   camera.updateProjectionMatrix();
   if (window.__camOv) { const o = window.__camOv; camera.position.set(o[0], o[1], o[2]); camera.up.set(0, 1, 0); camera.lookAt(o[3], o[4], o[5]); camera.fov = o[6] || 40; camera.updateProjectionMatrix(); }   // только автотесты: снимок с заданной точки
   cullChunks(); tickSky(); UNDER.tick(); PHOTO.tick();
+  LINK.draw();                                            // чужие машины друзей — до отрисовки
   renderer.render(scene, camera);
   drawStat.calls = renderer.info.render.calls; drawStat.tris = renderer.info.render.triangles;
 }
@@ -7033,6 +7802,7 @@ function frame(now) {
   const airNow = mode === "free" ? free.air : phase === "air" || phase === "drill";
   sfx.tick(dt, { speed: mode === "free" ? car.v : phase === "run" || phase === "ramp" ? car.v : phase === "roll" ? car.vx : 0, throttle: thr(), air: airNow, skid: mode === "free" && !free.air ? Math.abs(car.vl || 0) : 0, pro: mode === "free" && !!free.pro, suv: !!(SUV && SUV.on) });
   ui(); if (!testFast || ++testFrame % 20 === 0) render(dt);   // в быстрых автотестах рисуем редко — физика идёт в полную скорость
+  LINK.tick(dt);                                         // своя поза — друзьям (после отрисовки: берём то, что нарисовано)
   requestAnimationFrame(frame);
 }
 
