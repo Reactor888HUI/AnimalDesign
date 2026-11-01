@@ -17,3 +17,4 @@ dist/vosmerka-web/
 coverage/
 node_modules/
 target/
+dist/pages/
